@@ -11,16 +11,19 @@ const roles = [
 ];
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, authError } = useAuth();
   const navigate = useNavigate();
   const [selected, setSelected] = useState('Student');
-  const [email, setEmail] = useState('priya.sharma@email.com');
-  const [password, setPassword] = useState('demo');
+  const [email, setEmail] = useState('admin@edu.local');
+  const [password, setPassword] = useState('admin123');
+  const [submitting, setSubmitting] = useState(false);
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    login(selected);
-    navigate('/app/dashboard');
+    setSubmitting(true);
+    const ok = await login({ email, password, role: selected });
+    setSubmitting(false);
+    if (ok) navigate('/app/dashboard');
   };
 
   return (
@@ -115,12 +118,18 @@ export default function Login() {
             </div>
           </div>
 
-          <Button type="submit" size="lg" className="w-full">
-            Sign in →
+          {authError && (
+            <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+              {authError}
+            </div>
+          )}
+
+          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+            {submitting ? 'Signing in…' : 'Sign in →'}
           </Button>
 
           <div className="mt-6 text-center text-xs text-slate-500">
-            Demo build · any credentials accepted
+            Default admin: admin@edu.local / admin123
           </div>
         </form>
       </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ResponsiveContainer,
@@ -15,6 +15,7 @@ import { ProgressRing } from '../components/ui/ProgressRing';
 import { Gauge } from '../components/ui/Gauge';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
+import { getJobs, getNotifications, fetchGapReport } from '../services/api';
 import {
   recentScores,
   missingSkills,
@@ -32,6 +33,36 @@ const courseIcons = {
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const [liveJobs, setLiveJobs] = useState(null);
+  const [liveGap, setLiveGap] = useState(null);
+  const [notifCount, setNotifCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [jobs, notifs] = await Promise.all([getJobs(), getNotifications().catch(() => [])]);
+        if (cancelled) return;
+        setLiveJobs(jobs);
+        setNotifCount(notifs.filter((n) => !n.read_status).length);
+      } catch (e) {
+        // backend unreachable — keep mocks
+      }
+      if (user?.id) {
+        try {
+          const gap = await fetchGapReport(user.id);
+          if (!cancelled) setLiveGap(gap);
+        } catch (e) { /* ignore */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  const readiness = liveGap?.readiness_score ?? user?.readiness ?? 0;
+  const topGaps = liveGap?.missing_skills?.length ? liveGap.missing_skills : missingSkills;
+  const jobsToShow = liveJobs?.length
+    ? liveJobs.slice(0, 3).map((j) => ({ role: j.title, count: 1, action: 'View / Apply' }))
+    : jobOpportunities;
 
   return (
     <div className="space-y-6">
@@ -41,14 +72,14 @@ export default function StudentDashboard() {
             <div className="text-xs uppercase tracking-wider text-white/70">
               Welcome back
             </div>
-            <h2 className="text-2xl font-bold">{user?.firstName}, you&apos;re {user?.readiness}% ready 🚀</h2>
+            <h2 className="text-2xl font-bold">{user?.firstName || user?.name}, you&apos;re {readiness}% ready 🚀{notifCount > 0 ? ` · ${notifCount} new` : ''}</h2>
             <div className="text-sm text-white/80 mt-1">
               You&apos;ve completed {user?.coursesCompleted} courses. Target role:{' '}
               <span className="font-semibold">{user?.careerGoal}</span>.
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <ProgressRing value={user?.readiness ?? 0} size={88} />
+            <ProgressRing value={readiness} size={88} />
             <Link to="/app/learning-paths">
               <Button variant="accent">Continue Learning →</Button>
             </Link>
@@ -66,7 +97,7 @@ export default function StudentDashboard() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-600">Skills Readiness</span>
-                <span className="font-bold text-brand-green-600">{user?.readiness}%</span>
+                <span className="font-bold text-brand-green-600">{readiness}%</span>
               </div>
             </div>
             <Link to="/app/learning-paths">
@@ -102,11 +133,11 @@ export default function StudentDashboard() {
 
         <Card title="Gap Analysis" className="sm:col-span-2 lg:col-span-1">
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <Gauge value={user?.readiness ?? 0} size={140} label="Readiness" />
+            <Gauge value={readiness} size={140} label="Readiness" />
             <div className="flex-1 text-xs w-full">
               <div className="font-semibold text-slate-700 mb-1">Top Gaps</div>
               <ul className="space-y-1">
-                {missingSkills.map((s) => (
+                {topGaps.map((s) => (
                   <li key={s} className="flex items-center gap-1.5 text-slate-600">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-orange-500" />
                     {s}
@@ -149,7 +180,7 @@ export default function StudentDashboard() {
 
         <Card title="Job Opportunities">
           <div className="space-y-3">
-            {jobOpportunities.map((j) => (
+            {jobsToShow.map((j) => (
               <div
                 key={j.role}
                 className="p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition"

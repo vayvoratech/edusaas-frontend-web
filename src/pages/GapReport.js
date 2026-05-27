@@ -1,11 +1,26 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Gauge } from '../components/ui/Gauge';
 import { SkillBar } from '../components/ui/SkillBar';
 import { gapReport } from '../mocks/data';
+import { useAuth } from '../context/AuthContext';
+import { fetchGapReport } from '../services/api';
 
 export default function GapReport() {
+  const { user } = useAuth();
+  const [live, setLive] = useState(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchGapReport(user.id).then(setLive).catch(() => { /* fall back to mock */ });
+  }, [user?.id]);
+
+  const readiness = live?.readiness_score ?? gapReport.readiness;
+  const needs = live?.missing_skills?.length
+    ? live.missing_skills.map((name) => ({ name }))
+    : gapReport.needsImprovement;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -25,7 +40,7 @@ export default function GapReport() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <Card title="Readiness Overview">
           <div className="flex flex-col items-center">
-            <Gauge value={gapReport.readiness} size={200} label="Overall Readiness" />
+            <Gauge value={readiness} size={200} label="Overall Readiness" />
           </div>
         </Card>
 
@@ -42,7 +57,7 @@ export default function GapReport() {
 
         <Card title="Needs Improvement" className="border-l-4 border-l-brand-orange-500">
           <ul className="space-y-2">
-            {gapReport.needsImprovement.map((s) => (
+            {needs.map((s) => (
               <li key={s.name} className="flex items-center gap-2 text-sm">
                 <span className="text-brand-orange-500">⚠</span>
                 <span className="text-slate-800">{s.name}</span>

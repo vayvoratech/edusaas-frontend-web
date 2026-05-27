@@ -3,13 +3,41 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { assessmentQuestion } from '../mocks/data';
+import { submitAssessment } from '../services/api';
 
 export default function SkillAssessment() {
   const navigate = useNavigate();
   const [answer, setAnswer] = useState(assessmentQuestion.starter);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const progressPct = (assessmentQuestion.number / assessmentQuestion.total) * 100;
+
+  const onSubmit = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      // Demo scoring: full mark if answer mentions ORDER BY + LIMIT
+      const txt = answer.toLowerCase();
+      const score =
+        txt.includes('order by') && txt.includes('limit')
+          ? 100
+          : txt.includes('order by') || txt.includes('limit')
+          ? 70
+          : 40;
+      await submitAssessment({
+        type: assessmentQuestion.language || 'sql-basics',
+        score,
+        answers: [{ q: assessmentQuestion.number, answer }],
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err.response?.data?.error || err.message || 'Submit failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -47,8 +75,8 @@ export default function SkillAssessment() {
         />
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <Button variant="primary" onClick={() => setSubmitted(true)}>
-            Submit Answer
+          <Button variant="primary" onClick={onSubmit} disabled={submitting}>
+            {submitting ? 'Submitting…' : 'Submit Answer'}
           </Button>
           <Button variant="outline">Skip Question</Button>
           <div className="flex-1" />
@@ -60,7 +88,12 @@ export default function SkillAssessment() {
         {submitted && (
           <div className="mt-5 p-3 rounded-lg bg-brand-green-100 text-brand-green-600 flex items-center gap-2 text-sm font-medium animate-fade-in">
             <span>✅</span>
-            <span>Great Job! Correct Answer</span>
+            <span>Submitted — your score has been recorded.</span>
+          </div>
+        )}
+        {submitError && (
+          <div className="mt-5 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
+            {submitError}
           </div>
         )}
       </Card>
