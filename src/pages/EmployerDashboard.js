@@ -1,15 +1,42 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, StatPill } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Gauge } from '../components/ui/Gauge';
+import { getJobs, getAllUsers } from '../services/api';
 
-const candidates = [
+const fallbackCandidates = [
   { name: 'Raj Mehta', role: 'Cloud Engineer', match: 82, avatar: 'https://i.pravatar.cc/80?img=12' },
   { name: 'Anita Verma', role: 'Data Analyst', match: 77, avatar: 'https://i.pravatar.cc/80?img=45' },
   { name: 'Vikram Singh', role: 'DevOps Engineer', match: 71, avatar: 'https://i.pravatar.cc/80?img=33' },
 ];
 
 export default function EmployerDashboard() {
+  const [jobs, setJobs] = useState([]);
+  const [candidates, setCandidates] = useState(fallbackCandidates);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const js = await getJobs();
+        setJobs(js);
+      } catch (e) { /* ignore */ }
+      try {
+        const users = await getAllUsers();
+        const students = users.filter((u) => u.role === 'student');
+        if (students.length) {
+          setCandidates(
+            students.slice(0, 5).map((u, i) => ({
+              name: u.name,
+              role: 'Candidate',
+              match: 70 + ((i * 7) % 25),
+              avatar: `https://i.pravatar.cc/80?img=${20 + i}`,
+            }))
+          );
+        }
+      } catch (e) { /* not admin -> can't list users; keep fallback */ }
+    })();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>
@@ -24,7 +51,7 @@ export default function EmployerDashboard() {
           <div className="flex flex-col items-center">
             <Gauge value={64} size={180} label="Pipeline Readiness" />
             <p className="text-xs text-slate-500 text-center mt-3 max-w-xs">
-              Across 280 active candidates in your shortlist.
+              Across {candidates.length} candidates in your shortlist.
             </p>
           </div>
         </Card>
@@ -49,19 +76,23 @@ export default function EmployerDashboard() {
         </Card>
       </div>
 
-      <Card title="Post Skill Requirements">
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="p-4 rounded-lg border border-slate-200">
-            <div className="font-semibold text-slate-800">AWS Solutions Architect</div>
-            <div className="text-xs text-slate-500 mb-3">12 candidates available</div>
-            <Button size="sm" variant="success">Continue Posting</Button>
+      <Card title="Posted Jobs">
+        {jobs.length === 0 ? (
+          <p className="text-sm text-slate-500">No jobs posted yet.</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-4">
+            {jobs.map((j) => (
+              <div key={j.id} className="p-4 rounded-lg border border-slate-200">
+                <div className="font-semibold text-slate-800">{j.title}</div>
+                <div className="text-xs text-slate-500 mb-1">
+                  {(j.required_skills || []).join(', ') || '—'}
+                </div>
+                <div className="text-xs text-slate-400 mb-3">Status: {j.status}</div>
+                <Button size="sm" variant="success">View applicants</Button>
+              </div>
+            ))}
           </div>
-          <div className="p-4 rounded-lg border border-slate-200">
-            <div className="font-semibold text-slate-800">Senior Data Engineer</div>
-            <div className="text-xs text-slate-500 mb-3">8 candidates available</div>
-            <Button size="sm" variant="success">Continue Posting</Button>
-          </div>
-        </div>
+        )}
       </Card>
     </div>
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -12,8 +12,17 @@ import {
 import { Card, StatPill } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { skillGapTrend, batchPerformance, topSkillGaps } from '../mocks/data';
+import { getCourses, getInsights } from '../services/api';
 
 export default function EducatorDashboard() {
+  const [courses, setCourses] = useState([]);
+  const [insights, setInsights] = useState(null);
+
+  useEffect(() => {
+    getCourses().then(setCourses).catch(() => {});
+    getInsights().then(setInsights).catch(() => {}); // admin-only; silently fall back
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>
@@ -83,12 +92,14 @@ export default function EducatorDashboard() {
           </p>
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div className="p-4 rounded-lg bg-brand-blue-50">
-              <div className="text-xs text-slate-500">Syllabus topics</div>
-              <div className="text-2xl font-bold text-brand-blue-700">142</div>
+              <div className="text-xs text-slate-500">Live courses</div>
+              <div className="text-2xl font-bold text-brand-blue-700">{courses.length}</div>
             </div>
             <div className="p-4 rounded-lg bg-brand-orange-100">
-              <div className="text-xs text-slate-500">Industry gaps</div>
-              <div className="text-2xl font-bold text-brand-orange-600">18</div>
+              <div className="text-xs text-slate-500">Enrollments</div>
+              <div className="text-2xl font-bold text-brand-orange-600">
+                {insights?.totals?.enrollments ?? '—'}
+              </div>
             </div>
           </div>
         </Card>

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { SkillBar } from '../components/ui/SkillBar';
 import { useAuth } from '../context/AuthContext';
+import { getUserProfile, fetchGapReport } from '../services/api';
 import {
   skills,
   learningHistory,
@@ -15,6 +16,17 @@ const recIcons = { Take: '🎯', Learn: '📘', Project: '🚀' };
 
 export default function Profile() {
   const { user } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [live, setLive] = useState(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getUserProfile(user.id).then(setProfile).catch(() => {});
+    fetchGapReport(user.id).then(setLive).catch(() => {});
+  }, [user?.id]);
+
+  const readiness = live?.readiness_score ?? gapReport.readiness;
+  const gaps = live?.missing_skills?.length ? live.missing_skills : missingSkills;
 
   return (
     <div className="space-y-6">
@@ -33,9 +45,9 @@ export default function Profile() {
               alt={user?.name}
               className="w-28 h-28 rounded-full mx-auto object-cover ring-4 ring-brand-blue-100"
             />
-            <h3 className="mt-3 font-bold text-lg text-slate-900">{user?.name}</h3>
+            <h3 className="mt-3 font-bold text-lg text-slate-900">{profile?.name || user?.name}</h3>
             <div className="text-xs px-2 py-0.5 rounded-full bg-brand-blue-100 text-brand-blue-700 inline-block mt-1">
-              {user?.role}
+              {profile?.role || user?.role}
             </div>
           </div>
           <div className="mt-5 space-y-2 text-sm">
@@ -53,7 +65,7 @@ export default function Profile() {
             </div>
             <div>
               <div className="text-xs text-slate-500">Email</div>
-              <div className="font-medium text-slate-800 break-all">{user?.email}</div>
+              <div className="font-medium text-slate-800 break-all">{profile?.email || user?.email}</div>
             </div>
           </div>
           <Button variant="outline" className="w-full mt-5">
@@ -114,12 +126,12 @@ export default function Profile() {
           </div>
           <div className="mb-4 text-sm">
             Gap Score:{' '}
-            <span className="text-brand-orange-600 font-bold">{gapReport.readiness}% Readiness</span>
+            <span className="text-brand-orange-600 font-bold">{readiness}% Readiness</span>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-400 mb-2">Missing Skills</div>
             <ul className="space-y-1.5 text-sm">
-              {missingSkills.map((s) => (
+              {gaps.map((s) => (
                 <li key={s} className="flex items-center gap-2 text-slate-700">
                   <span className="text-brand-orange-500">⚠</span>
                   {s}
