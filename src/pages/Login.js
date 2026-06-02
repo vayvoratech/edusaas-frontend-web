@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 
@@ -129,6 +129,12 @@ export default function Login() {
           </Button>
 
           <div className="mt-6 text-center text-xs text-slate-500">
+            Don&apos;t have an account?{' '}
+            <Link to="/signup" className="font-semibold text-brand-blue-600 hover:underline">
+              Sign up →
+            </Link>
+          </div>
+          <div className="mt-2 text-center text-[11px] text-slate-400">
             Default admin: admin@edu.local / admin123
           </div>
         </form>

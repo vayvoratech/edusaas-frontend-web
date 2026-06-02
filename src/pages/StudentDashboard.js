@@ -196,6 +196,29 @@ export default function StudentDashboard() {
         </Card>
       </div>
 
+      <Card title="Achievements">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {[
+            { name: 'Python Basics', desc: 'Python Basics', icon: '🐍', tone: 'bg-brand-blue-50 text-brand-blue-700' },
+            { name: 'Project Completed', desc: 'Deer Consequmen!', icon: '🏆', tone: 'bg-brand-orange-100 text-brand-orange-700' },
+            { name: 'Excel Certified', desc: 'Power user', icon: '📊', tone: 'bg-brand-green-100 text-brand-green-700' },
+            { name: 'SQL Pro', desc: 'Top 10% scorer', icon: '🗄️', tone: 'bg-slate-100 text-slate-700' },
+            { name: '5-Day Streak', desc: 'Consistent learner', icon: '🔥', tone: 'bg-brand-orange-50 text-brand-orange-700' },
+          ].map((b) => (
+            <div
+              key={b.name}
+              className={`p-3 rounded-xl border border-slate-200 flex items-start gap-3 hover:shadow-sm transition ${b.tone}`}
+            >
+              <div className="text-2xl leading-none">{b.icon}</div>
+              <div>
+                <div className="font-semibold text-sm">{b.name}</div>
+                <div className="text-[11px] opacity-75 leading-snug">{b.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card title="Skill Trend" className="lg:col-span-2">
           <div className="h-56">

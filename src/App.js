@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppLayout } from './components/layout/AppLayout';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 import StudentDashboard from './pages/StudentDashboard';
 import EducatorDashboard from './pages/EducatorDashboard';
 import EmployerDashboard from './pages/EmployerDashboard';
@@ -31,6 +32,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
 
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
