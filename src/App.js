@@ -12,6 +12,9 @@ import SkillAssessment from './pages/SkillAssessment';
 import GapReport from './pages/GapReport';
 import LearningPath from './pages/LearningPath';
 import Profile from './pages/Profile';
+import UserManagement from './pages/UserManagement';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 import Placeholder from './pages/Placeholder';
 
 function RoleDashboard() {
@@ -47,7 +50,9 @@ export default function App() {
             <Route path="curriculum" element={<Placeholder title="Curriculum Alignment" description="Compare syllabus vs. industry skill needs." />} />
             <Route path="candidates" element={<Placeholder title="Candidate Matching" description="Skill match percentages and assessment invitations." />} />
             <Route path="workforce" element={<Placeholder title="Workforce Insights" description="Team readiness and in-demand skills." />} />
-            <Route path="users" element={<Placeholder title="User Management" description="Roles, permissions, and platform usage." />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="settings" element={<Settings />} />
             <Route path="ai-insights" element={<Placeholder title="AI Insights Hub" description="Predictive analytics for future skills." />} />
             <Route path="subscriptions" element={<Placeholder title="Subscription Management" description="Billing, integrations, and system health." />} />
           </Route>

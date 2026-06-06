@@ -25,7 +25,9 @@ const navByRole = {
   ],
   Admin: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
-    { to: '/app/users', label: 'Users', icon: '👥' },
+    { to: '/app/users', label: 'User Management', icon: '👥' },
+    { to: '/app/reports', label: 'Reports', icon: '📑' },
+    { to: '/app/settings', label: 'Settings', icon: '⚙️' },
     { to: '/app/ai-insights', label: 'AI Insights', icon: '🤖' },
     { to: '/app/subscriptions', label: 'Subscriptions', icon: '💳' },
     { to: '/app/profile', label: 'Profile', icon: '👤' },

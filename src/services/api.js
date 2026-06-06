@@ -79,8 +79,23 @@ export const applyJob = (jobId) =>
 export const getNotifications = () => api.get("/api/notifications").then((r) => r.data);
 
 // Admin
-export const getAllUsers = () => api.get("/api/admin/users").then((r) => r.data);
+export const getAllUsers = (params = {}) =>
+  api.get("/api/admin/users", { params }).then((r) => r.data);
+export const updateUser = (id, data) =>
+  api.patch(`/api/admin/users/${id}`, data).then((r) => r.data);
+export const deleteUser = (id) =>
+  api.delete(`/api/admin/users/${id}`).then((r) => r.data);
 export const getInsights = () => api.get("/api/admin/insights").then((r) => r.data);
+
+// Reports
+export const getReportsSummary = () => api.get("/api/reports/summary").then((r) => r.data);
+export const getTopReports = () => api.get("/api/reports").then((r) => r.data);
+export const getExportHistory = () => api.get("/api/reports/exports").then((r) => r.data);
+
+// Settings
+export const getSettings = () => api.get("/api/settings").then((r) => r.data);
+export const updateSettings = (patch) =>
+  api.patch("/api/settings", patch).then((r) => r.data);
 
 // Subscriptions
 export const updateSubscription = (data) =>
