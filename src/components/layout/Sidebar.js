@@ -5,22 +5,29 @@ import { useAuth } from '../../context/AuthContext';
 const navByRole = {
   Student: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
+    { to: '/app/courses', label: 'Courses', icon: '📚' },
+    { to: '/app/achievements', label: 'Achievements', icon: '🏆' },
+    { to: '/app/tasks', label: 'Tasks & Deadlines', icon: '✅' },
+    { to: '/app/recommendations', label: 'Recommendations', icon: '✨' },
+    { to: '/app/my-insights', label: 'Insights', icon: '📊' },
     { to: '/app/assessments', label: 'Assessments', icon: '📝' },
-    { to: '/app/learning-paths', label: 'Learning Paths', icon: '📚' },
-    { to: '/app/gap-report', label: 'Gap Report', icon: '📊' },
-    { to: '/app/profile', label: 'Profile', icon: '👤' },
-    { to: '/app/marketplace', label: 'Marketplace', icon: '🛒' },
+    { to: '/app/gap-report', label: 'Gap Report', icon: '📈' },
+    { to: '/app/profile', label: 'My Profile', icon: '👤' },
+    { to: '/app/settings', label: 'Settings', icon: '⚙️' },
   ],
   Educator: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
-    { to: '/app/analytics', label: 'Batch Analytics', icon: '📈' },
-    { to: '/app/curriculum', label: 'Curriculum', icon: '📘' },
-    { to: '/app/profile', label: 'Profile', icon: '👤' },
+    { to: '/app/manage-courses', label: 'Courses', icon: '📚' },
+    { to: '/app/learners', label: 'Learners', icon: '👥' },
+    { to: '/app/insights', label: 'Insights', icon: '📊' },
+    { to: '/app/announcements', label: 'Announcements', icon: '📣' },
+    { to: '/app/profile', label: 'My Profile', icon: '👤' },
   ],
   Employer: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
+    { to: '/app/job-listings', label: 'Job Listings', icon: '📋' },
     { to: '/app/candidates', label: 'Candidates', icon: '🧑‍💼' },
-    { to: '/app/workforce', label: 'Workforce', icon: '📊' },
+    { to: '/app/analytics', label: 'Analytics', icon: '📈' },
     { to: '/app/profile', label: 'Profile', icon: '👤' },
   ],
   Admin: [
@@ -35,9 +42,8 @@ const navByRole = {
 };
 
 export function Sidebar({ mobileOpen = false, onClose = () => {} }) {
-  const { role, switchRole } = useAuth();
+  const { role } = useAuth();
   const items = navByRole[role] || navByRole.Student;
-  const roles = ['Student', 'Educator', 'Employer', 'Admin'];
 
   return (
     <>
@@ -76,24 +82,10 @@ export function Sidebar({ mobileOpen = false, onClose = () => {} }) {
         </div>
 
         <div className="px-3 py-3 border-b border-slate-100">
-          <div className="text-[10px] uppercase tracking-wide text-slate-400 px-2 mb-2">
-            Role
+          <div className="text-[10px] uppercase tracking-wide text-slate-400 px-2 mb-1">
+            Signed in as
           </div>
-          <div className="grid grid-cols-2 gap-1">
-            {roles.map((r) => (
-              <button
-                key={r}
-                onClick={() => switchRole(r)}
-                className={`px-2 py-1.5 rounded-md text-xs font-medium transition ${
-                  role === r
-                    ? 'bg-brand-blue-500 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
+          <div className="px-2 text-sm font-semibold text-slate-700">{role || 'Guest'}</div>
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">

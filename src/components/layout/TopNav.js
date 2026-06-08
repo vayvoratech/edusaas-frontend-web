@@ -3,6 +3,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { notifications } from '../../mocks/data';
 
+const initials = (name) =>
+  (name || '?')
+    .split(' ')
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
 export function TopNav({ onOpenNav = () => {} }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -10,6 +18,12 @@ export function TopNav({ onOpenNav = () => {} }) {
   const [openNotif, setOpenNotif] = useState(false);
   const unreadCount = notifications.filter((n) => n.unread).length;
   const wrapRef = useRef(null);
+
+  const displayName = user?.name || user?.firstName || 'Guest';
+  const firstName = displayName.split(' ')[0];
+  const displayRole = user?.role
+    ? user.role[0].toUpperCase() + user.role.slice(1)
+    : '';
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -38,7 +52,7 @@ export function TopNav({ onOpenNav = () => {} }) {
               Education SaaS Dashboard
             </h1>
             <div className="text-xs text-slate-500 hidden sm:block truncate">
-              Welcome back, {user?.firstName} — let&apos;s close those skill gaps.
+              Welcome back, {firstName} — let&apos;s close those skill gaps.
             </div>
           </div>
         </div>
@@ -101,17 +115,23 @@ export function TopNav({ onOpenNav = () => {} }) {
               }}
               className="flex items-center gap-2 pl-1 pr-2 sm:pr-3 py-1 rounded-full hover:bg-slate-100"
             >
-              <img
-                src={user?.avatar}
-                alt=""
-                className="w-8 h-8 rounded-full object-cover"
-              />
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt=""
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold text-xs">
+                  {initials(displayName)}
+                </div>
+              )}
               <div className="text-left hidden sm:block">
                 <div className="text-sm font-medium text-slate-800 leading-tight">
-                  {user?.firstName}
+                  {firstName}
                 </div>
                 <div className="text-[10px] text-slate-500 leading-tight">
-                  {user?.role}
+                  {displayRole}
                 </div>
               </div>
             </button>

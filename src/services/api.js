@@ -51,6 +51,10 @@ export const registerUser = (data) =>
 
 // Users
 export const getUserProfile = (id) => api.get(`/api/users/${id}`).then((r) => r.data);
+export const saveUserProfile = (id, data) =>
+  api.put(`/api/users/${id}/profile`, data).then((r) => r.data);
+export const getStudentCandidates = () =>
+  api.get("/api/users/students/candidates").then((r) => r.data);
 
 // Assessments
 export const submitAssessment = (data) =>
@@ -63,7 +67,26 @@ export const fetchGapReport = (userId) =>
   api.get(`/api/gap-report/${userId}`).then((r) => r.data);
 
 // Courses
-export const getCourses = () => api.get("/api/courses").then((r) => r.data);
+export const getCourses = (params = {}) =>
+  api.get("/api/courses", { params }).then((r) => r.data);
+export const getCourse = (id) => api.get(`/api/courses/${id}`).then((r) => r.data);
+export const createCourse = (data) => api.post("/api/courses", data).then((r) => r.data);
+export const updateCourse = (id, data) =>
+  api.patch(`/api/courses/${id}`, data).then((r) => r.data);
+export const deleteCourse = (id) => api.delete(`/api/courses/${id}`).then((r) => r.data);
+
+// Lessons
+export const getLessonsForCourse = (courseId) =>
+  api.get(`/api/courses/${courseId}/lessons`).then((r) => r.data);
+export const createLesson = (courseId, data) =>
+  api.post(`/api/courses/${courseId}/lessons`, data).then((r) => r.data);
+export const getLesson = (lessonId) =>
+  api.get(`/api/lessons/lesson/${lessonId}`).then((r) => r.data);
+
+// Progress
+export const getMyProgress = () => api.get("/api/progress").then((r) => r.data);
+export const updateProgress = (lessonId, patch) =>
+  api.patch(`/api/progress/${lessonId}`, patch).then((r) => r.data);
 
 // Enrollments
 export const enrollCourse = (courseId) =>
@@ -71,9 +94,15 @@ export const enrollCourse = (courseId) =>
 export const getMyEnrollments = () => api.get("/api/enrollments").then((r) => r.data);
 
 // Jobs
-export const getJobs = () => api.get("/api/jobs").then((r) => r.data);
+export const getJobs = (params = {}) => api.get("/api/jobs", { params }).then((r) => r.data);
+export const createJob = (data) => api.post("/api/jobs", data).then((r) => r.data);
+export const updateJob = (id, data) =>
+  api.patch(`/api/jobs/${id}`, data).then((r) => r.data);
+export const deleteJob = (id) => api.delete(`/api/jobs/${id}`).then((r) => r.data);
 export const applyJob = (jobId) =>
   api.post(`/api/jobs/${jobId}/apply`).then((r) => r.data);
+export const getJobApplications = (jobId) =>
+  api.get(`/api/jobs/${jobId}/applications`).then((r) => r.data);
 
 // Notifications
 export const getNotifications = () => api.get("/api/notifications").then((r) => r.data);
@@ -101,5 +130,36 @@ export const updateSettings = (patch) =>
 export const updateSubscription = (data) =>
   api.post("/api/subscriptions", data).then((r) => r.data);
 export const getMySubscription = () => api.get("/api/subscriptions").then((r) => r.data);
+
+// Tasks
+export const getMyTasks = (params = {}) =>
+  api.get("/api/tasks", { params }).then((r) => r.data);
+export const createTask = (data) => api.post("/api/tasks", data).then((r) => r.data);
+export const updateTask = (id, data) =>
+  api.patch(`/api/tasks/${id}`, data).then((r) => r.data);
+export const deleteTask = (id) => api.delete(`/api/tasks/${id}`).then((r) => r.data);
+
+// Achievements
+export const getMyAchievements = () => api.get("/api/achievements").then((r) => r.data);
+
+// Certificates
+export const getMyCertificates = () => api.get("/api/certificates").then((r) => r.data);
+
+// Recommendations
+export const getMyRecommendations = () =>
+  api.get("/api/recommendations").then((r) => r.data);
+
+// Announcements
+export const getAnnouncements = () => api.get("/api/announcements").then((r) => r.data);
+export const sendAnnouncement = (data) =>
+  api.post("/api/announcements", data).then((r) => r.data);
+
+// Dashboards
+export const getStudentDashboard = () =>
+  api.get("/api/dashboard/student").then((r) => r.data);
+export const getEducatorDashboard = () =>
+  api.get("/api/dashboard/educator").then((r) => r.data);
+export const getEmployerDashboard = () =>
+  api.get("/api/dashboard/employer").then((r) => r.data);
 
 export default api;

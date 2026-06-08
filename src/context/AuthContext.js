@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { currentUser } from '../mocks/data';
 import { loginUser, registerUser, tokenStore, userStore } from '../services/api';
 
 const AuthContext = createContext(null);
 
-const roleToApi = (r) => (r || 'Student').toLowerCase();
 const apiToRole = (r) => {
   if (!r) return 'Student';
   return r.charAt(0).toUpperCase() + r.slice(1);
@@ -31,15 +29,14 @@ export function AuthProvider({ children }) {
       authError,
       isAuthenticated: !!user,
       // Real API login. Returns true on success, false on failure.
-      login: async ({ email, password, role: selectedRole }) => {
+      login: async ({ email, password }) => {
         setAuthError(null);
         try {
           const { token, user: apiUser } = await loginUser({ email, password });
           tokenStore.set(token);
-          const merged = { ...currentUser, ...apiUser, role: apiUser.role || roleToApi(selectedRole) };
-          userStore.set(merged);
-          setUser(merged);
-          setRole(apiToRole(merged.role));
+          userStore.set(apiUser);
+          setUser(apiUser);
+          setRole(apiToRole(apiUser.role));
           return true;
         } catch (err) {
           setAuthError(err.response?.data?.error || err.message || 'Login failed');
@@ -52,7 +49,7 @@ export function AuthProvider({ children }) {
           const { token, user: apiUser } = await registerUser(data);
           tokenStore.set(token);
           userStore.set(apiUser);
-          setUser({ ...currentUser, ...apiUser });
+          setUser(apiUser);
           setRole(apiToRole(apiUser.role));
           return true;
         } catch (err) {
@@ -60,12 +57,10 @@ export function AuthProvider({ children }) {
           return false;
         }
       },
-      switchRole: (newRole) => {
-        setRole(newRole);
-        setUser((prev) => (prev ? { ...prev, role: newRole } : prev));
-      },
       logout: () => {
         tokenStore.clear();
+        userStore.clear?.();
+        localStorage.removeItem('edu_user');
         setUser(null);
         setRole('Student');
       },

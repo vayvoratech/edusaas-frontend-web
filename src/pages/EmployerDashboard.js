@@ -1,99 +1,160 @@
 import React, { useEffect, useState } from 'react';
-import { Card, StatPill } from '../components/ui/Card';
+import { Link } from 'react-router-dom';
+import {
+  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar,
+  XAxis, YAxis, Tooltip, CartesianGrid, Legend,
+} from 'recharts';
+import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Gauge } from '../components/ui/Gauge';
-import { getJobs, getAllUsers } from '../services/api';
+import {
+  getEmployerDashboard, getJobs, getStudentCandidates,
+} from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
-const fallbackCandidates = [
-  { name: 'Raj Mehta', role: 'Cloud Engineer', match: 82, avatar: 'https://i.pravatar.cc/80?img=12' },
-  { name: 'Anita Verma', role: 'Data Analyst', match: 77, avatar: 'https://i.pravatar.cc/80?img=45' },
-  { name: 'Vikram Singh', role: 'DevOps Engineer', match: 71, avatar: 'https://i.pravatar.cc/80?img=33' },
-];
+const COLORS = ['#2563eb', '#10b981', '#f59e0b'];
 
 export default function EmployerDashboard() {
+  const { user } = useAuth();
+  const [data, setData] = useState(null);
   const [jobs, setJobs] = useState([]);
-  const [candidates, setCandidates] = useState(fallbackCandidates);
+  const [candidates, setCandidates] = useState([]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const js = await getJobs();
-        setJobs(js);
-      } catch (e) { /* ignore */ }
-      try {
-        const users = await getAllUsers();
-        const students = users.filter((u) => u.role === 'student');
-        if (students.length) {
-          setCandidates(
-            students.slice(0, 5).map((u, i) => ({
-              name: u.name,
-              role: 'Candidate',
-              match: 70 + ((i * 7) % 25),
-              avatar: `https://i.pravatar.cc/80?img=${20 + i}`,
-            }))
-          );
-        }
-      } catch (e) { /* not admin -> can't list users; keep fallback */ }
-    })();
-  }, []);
+    getEmployerDashboard().then(setData).catch(() => {});
+    if (user?.id) {
+      getJobs({ employer_id: user.id }).then(setJobs).catch(() => {});
+    } else {
+      getJobs().then(setJobs).catch(() => {});
+    }
+    getStudentCandidates()
+      .then((users) => {
+        setCandidates(users.map((u, i) => ({
+          ...u,
+          skill_match: 55 + ((i * 13) % 45),
+          role_target: ['Data Analyst', 'UI/UX Designer', 'Software Developer', 'Marketing Specialist'][i % 4],
+        })));
+      })
+      .catch(() => {});
+  }, [user?.id]);
+
+  const matchData = data?.candidateMatches ? [
+    { name: 'Strong', value: data.candidateMatches.strong },
+    { name: 'Good', value: data.candidateMatches.good },
+    { name: 'Possible', value: data.candidateMatches.possible },
+  ] : [];
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Employer Dashboard</h2>
-        <p className="text-sm text-slate-500">
-          Talent readiness, candidate search, and workforce insights.
-        </p>
+        <h2 className="text-2xl font-bold text-slate-900">Welcome back, {user?.name?.split(' ')[0]}!</h2>
+        <p className="text-sm text-slate-500">Find the best candidates for your roles.</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="!p-4">
+          <div className="text-xs text-slate-500">Job Openings</div>
+          <div className="text-3xl font-bold text-brand-blue-700 mt-1">{data?.jobOpenings ?? 0}</div>
+          <div className="text-[11px] text-slate-500 mt-1">Active Listings</div>
+        </Card>
+        <Card className="!p-4">
+          <div className="text-xs text-slate-500">New Applicants</div>
+          <div className="text-3xl font-bold text-brand-orange-600 mt-1">{data?.newApplicants ?? 0}</div>
+          <div className="text-[11px] text-slate-500 mt-1">Candidates</div>
+        </Card>
+        <Card className="!p-4">
+          <div className="text-xs text-slate-500">Top Matches</div>
+          <div className="text-3xl font-bold text-brand-green-600 mt-1">{data?.topMatches ?? 0}</div>
+          <div className="text-[11px] text-slate-500 mt-1">Best Fits</div>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card title="Talent Readiness">
-          <div className="flex flex-col items-center">
-            <Gauge value={64} size={180} label="Pipeline Readiness" />
-            <p className="text-xs text-slate-500 text-center mt-3 max-w-xs">
-              Across {candidates.length} candidates in your shortlist.
-            </p>
+        <Card title="Recent Job Listings">
+          <ul className="space-y-3">
+            {jobs.slice(0, 4).map((j) => (
+              <li key={j.id} className="flex items-start gap-2 text-sm">
+                <span className="text-brand-blue-500">📋</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-slate-800 truncate">{j.title}</div>
+                  <div className="text-[11px] text-slate-500">Posted {new Date(j.created_at).toLocaleDateString()}</div>
+                </div>
+              </li>
+            ))}
+            {jobs.length === 0 && <li className="text-slate-400 text-center py-3">No listings yet.</li>}
+          </ul>
+        </Card>
+
+        <Card title="Candidate Matches">
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={matchData} dataKey="value" nameKey="name" outerRadius={65} innerRadius={40}>
+                  {matchData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+                </Pie>
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </Card>
 
-        <Card title="Find Candidates" className="lg:col-span-2">
-          <div className="space-y-3">
-            {candidates.map((c) => (
-              <div
-                key={c.name}
-                className="flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
-              >
-                <img src={c.avatar} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm text-slate-800 truncate">{c.name}</div>
-                  <div className="text-xs text-slate-500 truncate">{c.role}</div>
-                </div>
-                <StatPill label="Match" value={`${c.match}%`} tone={c.match >= 80 ? 'green' : 'orange'} />
-                <Button size="sm" variant="outline" className="w-full sm:w-auto">Invite for Assessment</Button>
-              </div>
-            ))}
+        <Card title="Skills Insights">
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data?.skillsInsights || []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="skill" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </Card>
       </div>
 
-      <Card title="Posted Jobs">
-        {jobs.length === 0 ? (
-          <p className="text-sm text-slate-500">No jobs posted yet.</p>
-        ) : (
-          <div className="grid sm:grid-cols-2 gap-4">
-            {jobs.map((j) => (
-              <div key={j.id} className="p-4 rounded-lg border border-slate-200">
-                <div className="font-semibold text-slate-800">{j.title}</div>
-                <div className="text-xs text-slate-500 mb-1">
-                  {(j.required_skills || []).join(', ') || '—'}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <Card title="Recommended Candidates" className="lg:col-span-2">
+          <div className="space-y-3">
+            {candidates.slice(0, 4).map((c) => (
+              <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition">
+                <div className="w-9 h-9 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold text-xs">
+                  {(c.name || '?')[0]}
                 </div>
-                <div className="text-xs text-slate-400 mb-3">Status: {j.status}</div>
-                <Button size="sm" variant="success">View applicants</Button>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm text-slate-800 truncate">{c.name}</div>
+                  <div className="text-xs text-slate-500 truncate">{c.role_target}</div>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  c.skill_match >= 80 ? 'bg-brand-green-100 text-brand-green-700'
+                  : c.skill_match >= 60 ? 'bg-brand-orange-100 text-brand-orange-700'
+                  : 'bg-slate-200 text-slate-700'
+                }`}>{c.skill_match >= 80 ? 'Skill Fit' : c.skill_match >= 60 ? 'Good Fit' : 'Possible Fit'}</span>
               </div>
             ))}
           </div>
-        )}
-      </Card>
+        </Card>
+
+        <Card title="Hiring Actions">
+          <ul className="space-y-2 text-sm">
+            <li className="flex items-center gap-2">
+              <span className="text-brand-blue-500">✓</span>
+              <Link to="/app/job-listings" className="text-slate-700 hover:underline">Post a Job Opening</Link>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-brand-blue-500">✓</span>
+              <Link to="/app/job-listings" className="text-slate-700 hover:underline">Review Applications</Link>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-brand-blue-500">✓</span>
+              <Link to="/app/candidates" className="text-slate-700 hover:underline">Schedule Interviews</Link>
+            </li>
+          </ul>
+          <Link to="/app/job-listings">
+            <Button className="mt-4 w-full">+ Post a Job</Button>
+          </Link>
+        </Card>
+      </div>
     </div>
   );
 }
