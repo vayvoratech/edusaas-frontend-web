@@ -124,24 +124,8 @@ export default function Signup() {
             />
           </div>
 
-          {errorMsg && (
-            <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-              {errorMsg}
-            </div>
-          )}
-
-          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-            {submitting ? 'Signing up…' : 'Sign up'}
-          </Button>
-
-          <p className="mt-3 text-center text-[11px] text-slate-500">
-            By signing up, you agree to{' '}
-            <span className="text-brand-blue-600">Terms of Service</span> and{' '}
-            <span className="text-brand-blue-600">Privacy Policy</span>.
-          </p>
-
-          <div className="mt-6">
-            <div className="text-xs font-medium text-slate-600 mb-2">or sign up as</div>
+          <div className="mb-6">
+            <div className="text-xs font-medium text-slate-600 mb-2">Sign up as</div>
             <div className="grid grid-cols-2 gap-2">
               {roles.map((r) => (
                 <button
@@ -163,6 +147,22 @@ export default function Signup() {
               ))}
             </div>
           </div>
+
+          {errorMsg && (
+            <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+              {errorMsg}
+            </div>
+          )}
+
+          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+            {submitting ? 'Signing up…' : 'Sign up'}
+          </Button>
+
+          <p className="mt-3 text-center text-[11px] text-slate-500">
+            By signing up, you agree to{' '}
+            <span className="text-brand-blue-600">Terms of Service</span> and{' '}
+            <span className="text-brand-blue-600">Privacy Policy</span>.
+          </p>
         </form>
       </div>
     </div>

@@ -3,17 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 
-const roles = [
-  { id: 'Student', emoji: '🎓', desc: 'Assess skills, follow learning paths, earn certifications.' },
-  { id: 'Educator', emoji: '👩‍🏫', desc: 'Track batch performance and align curriculum.' },
-  { id: 'Employer', emoji: '🏢', desc: 'Find candidates by skill match and post requirements.' },
-  { id: 'Admin', emoji: '⚙️', desc: 'Manage users, permissions, and platform health.' },
-];
-
 export default function Login() {
   const { login, authError } = useAuth();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState('Student');
   const [email, setEmail] = useState('admin@edu.local');
   const [password, setPassword] = useState('admin123');
   const [submitting, setSubmitting] = useState(false);
@@ -21,7 +13,7 @@ export default function Login() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    const ok = await login({ email, password, role: selected });
+    const ok = await login({ email, password });
     setSubmitting(false);
     if (ok) navigate('/app/dashboard');
   };
@@ -92,30 +84,6 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
             />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-xs font-medium text-slate-600 mb-2">Sign in as</label>
-            <div className="grid grid-cols-2 gap-2">
-              {roles.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setSelected(r.id)}
-                  className={`text-left p-3 rounded-lg border-2 transition ${
-                    selected === r.id
-                      ? 'border-brand-blue-500 bg-brand-blue-50'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">{r.emoji}</span>
-                    <span className="font-semibold text-sm text-slate-800">{r.id}</span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 leading-snug">{r.desc}</div>
-                </button>
-              ))}
-            </div>
           </div>
 
           {authError && (

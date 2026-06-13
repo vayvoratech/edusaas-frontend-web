@@ -31,7 +31,8 @@ export default function ManageCourses() {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [status, user?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [status, user?.id]);
 
   const summary = {
     active: courses.filter((c) => c.status === 'active').length,

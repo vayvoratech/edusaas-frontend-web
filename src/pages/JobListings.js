@@ -18,7 +18,8 @@ export default function JobListings() {
       setError(err.response?.data?.error || err.message);
     }
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [user?.id]);
 
   const onSave = async (e) => {
     e.preventDefault();
