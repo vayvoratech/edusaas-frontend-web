@@ -6,8 +6,8 @@ import { Button } from '../components/ui/Button';
 export default function Login() {
   const { login, authError } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@edu.local');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (e) => {
@@ -101,9 +101,6 @@ export default function Login() {
             <Link to="/signup" className="font-semibold text-brand-blue-600 hover:underline">
               Sign up →
             </Link>
-          </div>
-          <div className="mt-2 text-center text-[11px] text-slate-400">
-            Default admin: admin@edu.local / admin123
           </div>
         </form>
       </div>

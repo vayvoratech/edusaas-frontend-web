@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { loginUser, registerUser, tokenStore, userStore } from '../services/api';
+import { loginUser, registerUser, tokenStore, refreshStore, userStore } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -32,8 +32,9 @@ export function AuthProvider({ children }) {
       login: async ({ email, password }) => {
         setAuthError(null);
         try {
-          const { token, user: apiUser } = await loginUser({ email, password });
+          const { token, refreshToken, user: apiUser } = await loginUser({ email, password });
           tokenStore.set(token);
+          if (refreshToken) refreshStore.set(refreshToken);
           userStore.set(apiUser);
           setUser(apiUser);
           setRole(apiToRole(apiUser.role));
@@ -46,8 +47,9 @@ export function AuthProvider({ children }) {
       register: async (data) => {
         setAuthError(null);
         try {
-          const { token, user: apiUser } = await registerUser(data);
+          const { token, refreshToken, user: apiUser } = await registerUser(data);
           tokenStore.set(token);
+          if (refreshToken) refreshStore.set(refreshToken);
           userStore.set(apiUser);
           setUser(apiUser);
           setRole(apiToRole(apiUser.role));

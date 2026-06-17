@@ -2,6 +2,7 @@ import axios from "axios";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5000";
 const TOKEN_KEY = "edu_token";
+const REFRESH_KEY = "edu_refresh";
 const USER_KEY = "edu_user";
 
 const api = axios.create({
@@ -15,12 +16,55 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ---- Token refresh handling ----
+// When a request comes back 401, try once to swap the refresh token for a new
+// access token, then retry the original request. If refresh itself 401s, the
+// user is fully logged out.
+let refreshPromise = null;
+
+async function attemptRefresh() {
+  const refreshToken = localStorage.getItem(REFRESH_KEY);
+  if (!refreshToken) throw new Error("no refresh token");
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${API_BASE}/api/auth/refresh`, { refreshToken })
+      .then((res) => {
+        localStorage.setItem(TOKEN_KEY, res.data.token);
+        if (res.data.refreshToken) {
+          localStorage.setItem(REFRESH_KEY, res.data.refreshToken);
+        }
+        if (res.data.user) {
+          localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
+        }
+        return res.data.token;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
+  async (err) => {
+    const original = err.config;
+    const status = err.response?.status;
+    // Don't refresh on the refresh/login endpoints themselves; that just loops.
+    const url = original?.url || "";
+    const isAuthEndpoint = url.includes("/api/auth/");
+
+    if (status === 401 && !original._retried && !isAuthEndpoint) {
+      try {
+        const newToken = await attemptRefresh();
+        original._retried = true;
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original);
+      } catch (_) {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(REFRESH_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
     }
     return Promise.reject(err);
   }
@@ -31,8 +75,14 @@ export const tokenStore = {
   set: (t) => localStorage.setItem(TOKEN_KEY, t),
   clear: () => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
   },
+};
+
+export const refreshStore = {
+  get: () => localStorage.getItem(REFRESH_KEY),
+  set: (t) => localStorage.setItem(REFRESH_KEY, t),
 };
 
 export const userStore = {
@@ -41,6 +91,7 @@ export const userStore = {
     return raw ? JSON.parse(raw) : null;
   },
   set: (u) => localStorage.setItem(USER_KEY, JSON.stringify(u)),
+  clear: () => localStorage.removeItem(USER_KEY),
 };
 
 // Auth
@@ -48,6 +99,7 @@ export const loginUser = (credentials) =>
   api.post("/api/auth/login", credentials).then((r) => r.data);
 export const registerUser = (data) =>
   api.post("/api/auth/register", data).then((r) => r.data);
+export const fetchMe = () => api.get("/api/auth/me").then((r) => r.data);
 
 // Users
 export const getUserProfile = (id) => api.get(`/api/users/${id}`).then((r) => r.data);
