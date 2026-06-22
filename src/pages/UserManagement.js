@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { getAllUsers, updateUser, deleteUser } from '../services/api';
+import { getAllUsers, updateUser, deleteUser, registerUser } from '../services/api';
 
 const ROLES = ['', 'student', 'educator', 'employer', 'admin'];
 const STATUSES = ['', 'active', 'suspended'];
@@ -9,20 +9,17 @@ const STATUSES = ['', 'active', 'suspended'];
 const fmtDate = (iso) => {
   if (!iso) return '—';
   try {
-    const d = new Date(iso);
-    return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return iso;
   }
 };
 
 const initials = (name) =>
-  (name || '?')
-    .split(' ')
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  (name || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+
+const PWD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -31,9 +28,19 @@ export default function UserManagement() {
   const [role, setRole] = useState('');
   const [status, setStatus] = useState('');
   const [q, setQ] = useState('');
-  const [editing, setEditing] = useState(null);
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  // Modals
+  const [editing, setEditing] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [createDraft, setCreateDraft] = useState({ name: '', email: '', password: '', role: 'student' });
+  const [createError, setCreateError] = useState(null);
+  const [submittingCreate, setSubmittingCreate] = useState(false);
+
+  // Unified confirm modal: { user, action, label, description, danger }
+  const [confirm, setConfirm] = useState(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   const load = async (filters) => {
     setLoading(true);
@@ -48,9 +55,7 @@ export default function UserManagement() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const applyFilters = () => {
     setPage(1);
@@ -61,23 +66,51 @@ export default function UserManagement() {
     });
   };
 
-  const onToggleStatus = async (u) => {
+  const askToggleStatus = (u) => {
     const next = u.status === 'suspended' ? 'active' : 'suspended';
-    try {
-      const updated = await updateUser(u.id, { status: next });
-      setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...updated } : x)));
-    } catch (err) {
-      setError(err.response?.data?.error || err.message);
-    }
+    setConfirm({
+      user: u,
+      action: 'toggle',
+      label: next === 'suspended' ? 'Suspend' : 'Reactivate',
+      title: next === 'suspended' ? 'Suspend this user?' : 'Reactivate this user?',
+      description:
+        next === 'suspended'
+          ? `Are you sure you want to suspend ${u.name}? They won't be able to sign in until reactivated.`
+          : `Reactivate ${u.name}? They'll be able to sign in again immediately.`,
+      danger: next === 'suspended',
+      next,
+    });
   };
 
-  const onDelete = async (u) => {
-    if (!window.confirm(`Delete ${u.name}?`)) return;
+  const askDelete = (u) => {
+    setConfirm({
+      user: u,
+      action: 'delete',
+      label: 'Delete',
+      title: 'Delete this user?',
+      description: `Are you sure you want to delete ${u.name}? This can't be undone.`,
+      danger: true,
+    });
+  };
+
+  const runConfirm = async () => {
+    if (!confirm) return;
+    setConfirmBusy(true);
     try {
-      await deleteUser(u.id);
-      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+      if (confirm.action === 'delete') {
+        await deleteUser(confirm.user.id);
+        setUsers((prev) => prev.filter((x) => x.id !== confirm.user.id));
+      } else if (confirm.action === 'toggle') {
+        const updated = await updateUser(confirm.user.id, { status: confirm.next });
+        setUsers((prev) =>
+          prev.map((x) => (x.id === confirm.user.id ? { ...x, ...updated } : x))
+        );
+      }
+      setConfirm(null);
     } catch (err) {
       setError(err.response?.data?.error || err.message);
+    } finally {
+      setConfirmBusy(false);
     }
   };
 
@@ -93,6 +126,35 @@ export default function UserManagement() {
       setEditing(null);
     } catch (err) {
       setError(err.response?.data?.error || err.message);
+    }
+  };
+
+  const onCreate = async (e) => {
+    e.preventDefault();
+    setCreateError(null);
+    const d = createDraft;
+    if (!d.name.trim()) return setCreateError('Name is required');
+    if (!EMAIL_RE.test(d.email.trim())) return setCreateError('Enter a valid email');
+    if (!PWD_RE.test(d.password)) {
+      return setCreateError(
+        'Password must be at least 8 chars with uppercase, lowercase, and a digit.'
+      );
+    }
+    setSubmittingCreate(true);
+    try {
+      await registerUser({
+        name: d.name.trim(),
+        email: d.email.trim().toLowerCase(),
+        password: d.password,
+        role: d.role,
+      });
+      setCreating(false);
+      setCreateDraft({ name: '', email: '', password: '', role: 'student' });
+      await load();
+    } catch (err) {
+      setCreateError(err.response?.data?.error || err.message);
+    } finally {
+      setSubmittingCreate(false);
     }
   };
 
@@ -115,7 +177,7 @@ export default function UserManagement() {
             onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
             className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-56 outline-none focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100"
           />
-          <Button variant="primary">Add New User</Button>
+          <Button variant="primary" onClick={() => setCreating(true)}>+ Add New User</Button>
         </div>
       </div>
 
@@ -206,25 +268,28 @@ export default function UserManagement() {
                     </td>
                     <td className="px-5 py-3 text-slate-600">{fmtDate(u.last_login)}</td>
                     <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2 flex-wrap">
                         <button
-                          className="text-xs px-2 py-1 rounded border border-slate-300 hover:bg-slate-100"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-brand-blue-200 text-brand-blue-600 bg-white hover:bg-brand-blue-50 text-xs font-medium"
                           onClick={() => setEditing({ ...u })}
                         >
                           ✏ Edit
                         </button>
                         <button
-                          className="text-xs px-2 py-1 rounded border border-slate-300 hover:bg-slate-100"
-                          onClick={() => onToggleStatus(u)}
-                          title={u.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium ${
+                            u.status === 'suspended'
+                              ? 'border border-brand-green-200 text-brand-green-700 bg-white hover:bg-brand-green-50'
+                              : 'border border-amber-200 text-amber-700 bg-white hover:bg-amber-50'
+                          }`}
+                          onClick={() => askToggleStatus(u)}
                         >
-                          {u.status === 'suspended' ? '↻' : '⏸'}
+                          {u.status === 'suspended' ? '↻ Reactivate' : '⏸ Suspend'}
                         </button>
                         <button
-                          className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
-                          onClick={() => onDelete(u)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-600 text-white hover:bg-red-700 text-xs font-medium shadow-sm"
+                          onClick={() => askDelete(u)}
                         >
-                          🗑
+                          🗑 Delete
                         </button>
                       </div>
                     </td>
@@ -237,7 +302,7 @@ export default function UserManagement() {
 
         <div className="flex items-center justify-between px-5 py-3 text-xs text-slate-500 border-t border-slate-100">
           <div>
-            Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, users.length)} of{' '}
+            Showing {users.length === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, users.length)} of{' '}
             {users.length} users
           </div>
           <div className="flex items-center gap-1">
@@ -273,10 +338,12 @@ export default function UserManagement() {
         </div>
       </Card>
 
+      {/* Edit user modal */}
       {editing && (
-        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm grid place-items-center z-50 p-4 animate-fade-in" onClick={() => setEditing(null)}>
           <form
             onSubmit={onSaveEdit}
+            onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
           >
             <h3 className="font-semibold text-lg mb-4">Edit user</h3>
@@ -319,6 +386,107 @@ export default function UserManagement() {
               <Button type="submit">Save</Button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Create user modal */}
+      {creating && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm grid place-items-center z-50 p-4 animate-fade-in" onClick={() => !submittingCreate && setCreating(false)}>
+          <form
+            onSubmit={onCreate}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+          >
+            <h3 className="font-semibold text-lg mb-4">Add new user</h3>
+            <div className="mb-3">
+              <label className="text-xs text-slate-500">Full name</label>
+              <input
+                value={createDraft.name}
+                onChange={(e) => setCreateDraft({ ...createDraft, name: e.target.value })}
+                autoFocus
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
+              />
+            </div>
+            <div className="mb-3">
+              <label className="text-xs text-slate-500">Email</label>
+              <input
+                type="email"
+                value={createDraft.email}
+                onChange={(e) => setCreateDraft({ ...createDraft, email: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
+              />
+            </div>
+            <div className="mb-3">
+              <label className="text-xs text-slate-500">Temporary password</label>
+              <input
+                type="text"
+                value={createDraft.password}
+                onChange={(e) => setCreateDraft({ ...createDraft, password: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1 font-mono"
+                placeholder="Min 8 chars, mixed case + digit"
+              />
+            </div>
+            <div className="mb-5">
+              <label className="text-xs text-slate-500">Role</label>
+              <select
+                value={createDraft.role}
+                onChange={(e) => setCreateDraft({ ...createDraft, role: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
+              >
+                {ROLES.slice(1).map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+            {createError && (
+              <div className="p-3 mb-3 rounded-lg bg-red-50 text-red-600 text-sm">{createError}</div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setCreating(false)} disabled={submittingCreate}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submittingCreate}>
+                {submittingCreate ? 'Creating…' : 'Create user'}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Unified confirm modal (delete or suspend) */}
+      {confirm && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm grid place-items-center z-50 p-4 animate-fade-in" onClick={() => !confirmBusy && setConfirm(null)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
+          >
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 shrink-0 rounded-full grid place-items-center ${
+                confirm.danger ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+              }`}>
+                {confirm.action === 'delete' ? '🗑' : confirm.next === 'suspended' ? '⏸' : '↻'}
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900">{confirm.title}</h3>
+                <p className="text-sm text-slate-600 mt-1">{confirm.description}</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <Button variant="outline" onClick={() => setConfirm(null)} disabled={confirmBusy}>
+                Cancel
+              </Button>
+              <button
+                type="button"
+                onClick={runConfirm}
+                disabled={confirmBusy}
+                className={`px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-60 ${
+                  confirm.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-blue-600 hover:bg-brand-blue-700'
+                }`}
+              >
+                {confirmBusy ? 'Working…' : `Yes, ${confirm.label.toLowerCase()}`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

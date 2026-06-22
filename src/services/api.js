@@ -153,6 +153,18 @@ export const updateJob = (id, data) =>
 export const deleteJob = (id) => api.delete(`/api/jobs/${id}`).then((r) => r.data);
 export const applyJob = (jobId) =>
   api.post(`/api/jobs/${jobId}/apply`).then((r) => r.data);
+export const inviteCandidate = (jobId, studentId, message) =>
+  api.post(`/api/jobs/${jobId}/invite`, { student_id: studentId, message }).then((r) => r.data);
+
+// Course assignments (educator → student)
+export const assignCourse = (courseId, { student_ids, due_date, note }) =>
+  api.post(`/api/courses/${courseId}/assign`, { student_ids, due_date, note }).then((r) => r.data);
+export const getMyAssignments = () =>
+  api.get('/api/me/assignments').then((r) => r.data);
+export const getCourseAssignments = (courseId) =>
+  api.get(`/api/courses/${courseId}/assignments`).then((r) => r.data);
+export const cancelAssignment = (assignmentId) =>
+  api.post(`/api/assignments/${assignmentId}/cancel`).then((r) => r.data);
 export const getJobApplications = (jobId) =>
   api.get(`/api/jobs/${jobId}/applications`).then((r) => r.data);
 

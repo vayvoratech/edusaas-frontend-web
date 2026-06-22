@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { getStudentCandidates, getCourses } from '../services/api';
+import { getStudentCandidates, getCourses, assignCourse } from '../services/api';
+import { downloadCsv, todayStamp } from '../utils/exports';
 
 const initials = (name) =>
   (name || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
@@ -14,10 +15,53 @@ export default function ViewLearners() {
   const [q, setQ] = useState('');
   const [error, setError] = useState(null);
 
+  // Assign-course modal state
+  const [assignTo, setAssignTo] = useState(null);          // learner row being assigned to
+  const [assignCourseId, setAssignCourseId] = useState('');
+  const [assignDue, setAssignDue] = useState('');
+  const [assignNote, setAssignNote] = useState('');
+  const [assignBusy, setAssignBusy] = useState(false);
+  const [assignError, setAssignError] = useState(null);
+  const [assignDone, setAssignDone] = useState(false);
+
   useEffect(() => {
     getStudentCandidates().then(setLearners).catch((e) => setError(e.response?.data?.error || e.message));
-    getCourses({ status: 'active' }).then(setCourses).catch(() => {});
+    getCourses({ status: 'active' }).then((cs) => {
+      setCourses(cs);
+      if (cs[0]) setAssignCourseId(cs[0].id);
+    }).catch(() => {});
   }, []);
+
+  const openAssign = (l) => {
+    setAssignTo(l);
+    setAssignDue('');
+    setAssignNote(`Hi ${l.name?.split(' ')[0] || 'there'}, this course will help you advance.`);
+    setAssignError(null);
+    setAssignDone(false);
+    if (!assignCourseId && courses[0]) setAssignCourseId(courses[0].id);
+  };
+
+  const submitAssign = async (e) => {
+    e.preventDefault();
+    if (!assignCourseId) {
+      setAssignError('Pick a course first.');
+      return;
+    }
+    setAssignBusy(true);
+    setAssignError(null);
+    try {
+      await assignCourse(assignCourseId, {
+        student_ids: [assignTo.id],
+        due_date: assignDue || null,
+        note: assignNote || null,
+      });
+      setAssignDone(true);
+    } catch (err) {
+      setAssignError(err.response?.data?.error || err.message);
+    } finally {
+      setAssignBusy(false);
+    }
+  };
 
   // Decorate with fake-but-deterministic per-learner stats so the table looks real
   const decorated = learners
@@ -37,7 +81,19 @@ export default function ViewLearners() {
           <h2 className="text-2xl font-bold text-slate-900">Learners</h2>
           <p className="text-sm text-slate-500">Track learner progress, send feedback, export reports.</p>
         </div>
-        <Button variant="outline">Export List</Button>
+        <Button
+          variant="outline"
+          disabled={decorated.length === 0}
+          onClick={() => {
+            const rows = [
+              ['Name', 'Email', 'Course', 'Progress %', 'Score', 'Engagement'],
+              ...decorated.map((l) => [l.name, l.email, l.course, l.progress, l.score, l.engagement]),
+            ];
+            downloadCsv(`learners_${todayStamp()}.csv`, rows);
+          }}
+        >
+          Export List
+        </Button>
       </div>
 
       {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
@@ -131,8 +187,16 @@ export default function ViewLearners() {
                     }`}>{l.engagement}</span>
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <button className="text-xs px-2 py-1 rounded border border-slate-300 mr-1">View Profile</button>
-                    <button className="text-xs px-2 py-1 rounded border border-slate-300">Send Feedback</button>
+                    <div className="inline-flex flex-wrap gap-1 justify-end">
+                      <button className="text-xs px-2.5 py-1 rounded border border-slate-300 hover:bg-slate-50">View Profile</button>
+                      <button
+                        onClick={() => openAssign(l)}
+                        className="text-xs px-2.5 py-1 rounded bg-brand-blue-600 text-white hover:bg-brand-blue-700 shadow-sm"
+                      >
+                        + Assign course
+                      </button>
+                      <button className="text-xs px-2.5 py-1 rounded border border-slate-300 hover:bg-slate-50">Feedback</button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -140,6 +204,85 @@ export default function ViewLearners() {
           </tbody>
         </table>
       </Card>
+
+      {assignTo && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm grid place-items-center z-50 p-4 animate-fade-in"
+          onClick={() => !assignBusy && setAssignTo(null)}
+        >
+          <form
+            onSubmit={submitAssign}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+          >
+            <h3 className="font-semibold text-lg">Assign course to {assignTo.name}</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              They&apos;ll see this in their dashboard and get a notification.
+            </p>
+
+            {courses.length === 0 ? (
+              <div className="p-3 mb-3 rounded-lg bg-amber-50 text-amber-700 text-sm">
+                You have no active courses. Create one first.
+              </div>
+            ) : (
+              <div className="mb-3">
+                <label className="text-xs text-slate-500">Course</label>
+                <select
+                  value={assignCourseId}
+                  onChange={(e) => setAssignCourseId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
+                >
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}{c.difficulty ? ` · ${c.difficulty}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="mb-3">
+              <label className="text-xs text-slate-500">Due date (optional)</label>
+              <input
+                type="date"
+                value={assignDue}
+                onChange={(e) => setAssignDue(e.target.value)}
+                className="block w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
+              />
+            </div>
+
+            <div className="mb-5">
+              <label className="text-xs text-slate-500">Note (optional)</label>
+              <textarea
+                rows={3}
+                value={assignNote}
+                onChange={(e) => setAssignNote(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
+              />
+            </div>
+
+            {assignError && (
+              <div className="p-3 mb-3 rounded-lg bg-red-50 text-red-600 text-sm">{assignError}</div>
+            )}
+            {assignDone && (
+              <div className="p-3 mb-3 rounded-lg bg-brand-green-50 text-brand-green-700 text-sm">
+                ✓ Course assigned. {assignTo.name} will see it on their dashboard.
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setAssignTo(null)} disabled={assignBusy}>
+                {assignDone ? 'Close' : 'Cancel'}
+              </Button>
+              {!assignDone && (
+                <Button type="submit" disabled={assignBusy || courses.length === 0}>
+                  {assignBusy ? 'Assigning…' : 'Assign'}
+                </Button>
+              )}
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

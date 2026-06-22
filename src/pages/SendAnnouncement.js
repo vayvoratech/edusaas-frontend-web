@@ -10,6 +10,8 @@ const fmtRel = (iso) => {
   return `${Math.round(diff / 1440)}d ago`;
 };
 
+const DRAFT_KEY = 'edu_announcement_draft';
+
 export default function SendAnnouncement() {
   const [title, setTitle] = useState('');
   const [audience, setAudience] = useState('all');
@@ -19,13 +21,39 @@ export default function SendAnnouncement() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [sentOk, setSentOk] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [recent, setRecent] = useState([]);
 
   const load = async () => {
     try { setRecent(await getAnnouncements()); }
     catch (_) {}
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // restore draft if present
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        setTitle(d.title || '');
+        setAudience(d.audience || 'all');
+        setMessage(d.message || '');
+        setSchedule(d.schedule || 'send-now');
+        setScheduledAt(d.scheduledAt || '');
+      }
+    } catch (_) {}
+  }, []);
+
+  const saveDraft = () => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, audience, message, schedule, scheduledAt }));
+      setDraftSaved(true);
+      setTimeout(() => setDraftSaved(false), 2500);
+    } catch (_) {
+      setError('Could not save draft.');
+    }
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -43,6 +71,7 @@ export default function SendAnnouncement() {
       });
       setSentOk(true);
       setTitle(''); setMessage('');
+      localStorage.removeItem(DRAFT_KEY);
       load();
     } catch (err) {
       setError(err.response?.data?.error || err.message);
@@ -114,13 +143,27 @@ export default function SendAnnouncement() {
 
             {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
             {sentOk && <div className="p-3 rounded-lg bg-brand-green-50 text-brand-green-700 text-sm">✓ Announcement sent.</div>}
+            {draftSaved && <div className="p-3 rounded-lg bg-brand-blue-50 text-brand-blue-700 text-sm">💾 Draft saved locally. It will be restored next time you open this page.</div>}
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button type="submit" disabled={sending}>
                 {sending ? 'Sending…' : schedule === 'send-now' ? 'Send Now' : 'Schedule'}
               </Button>
-              <Button type="button" variant="outline">Save Draft</Button>
-              <Button type="button" variant="outline">Preview</Button>
+              <Button type="button" variant="outline" onClick={saveDraft}>Save Draft</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (!title.trim() && !message.trim()) {
+                    setError('Add a title or message to preview.');
+                    return;
+                  }
+                  setError(null);
+                  setPreviewing(true);
+                }}
+              >
+                Preview
+              </Button>
             </div>
           </form>
         </Card>
@@ -143,6 +186,36 @@ export default function SendAnnouncement() {
           </ul>
         </Card>
       </div>
+
+      {previewing && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm grid place-items-center z-50 p-4 animate-fade-in"
+          onClick={() => setPreviewing(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6"
+          >
+            <div className="text-xs uppercase text-slate-400 mb-2">Preview</div>
+            <h3 className="text-xl font-bold text-slate-900">
+              {title || <span className="text-slate-400 italic">Untitled announcement</span>}
+            </h3>
+            <div className="text-[11px] text-slate-500 mt-1">
+              Audience: {audience} · {schedule === 'send-now'
+                ? 'Sending immediately'
+                : scheduledAt
+                ? `Scheduled for ${new Date(scheduledAt).toLocaleString()}`
+                : 'Scheduled (no date set)'}
+            </div>
+            <div className="mt-4 whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">
+              {message || <span className="text-slate-400 italic">No message body yet.</span>}
+            </div>
+            <div className="flex justify-end mt-5">
+              <Button onClick={() => setPreviewing(false)}>Close preview</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -37,12 +37,13 @@ export default function LearningModule() {
     : Math.round((lessons.filter((l) => progress[l.id]?.completion_flag).length / lessons.length) * 100);
   const activeLesson = lessons.find((l) => l.id === activeLessonId);
 
-  const onComplete = async () => {
+  const onToggleComplete = async () => {
     if (!activeLesson) return;
+    const current = !!progress[activeLesson.id]?.completion_flag;
     try {
       const updated = await updateProgress(activeLesson.id, {
-        completion_flag: true,
-        watched_duration: (activeLesson.duration || 0) * 60,
+        completion_flag: !current,
+        watched_duration: current ? 0 : (activeLesson.duration || 0) * 60,
       });
       setProgress((prev) => ({ ...prev, [activeLesson.id]: updated }));
     } catch (err) {
@@ -95,10 +96,15 @@ export default function LearningModule() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-4">
-                <Button onClick={onComplete}>
-                  {progress[activeLesson.id]?.completion_flag ? '✓ Completed' : 'Mark Complete'}
+                <Button
+                  onClick={onToggleComplete}
+                  variant={progress[activeLesson.id]?.completion_flag ? 'outline' : 'primary'}
+                >
+                  {progress[activeLesson.id]?.completion_flag
+                    ? '↺ Mark as incomplete'
+                    : '✓ Mark complete'}
                 </Button>
-                <Button variant="outline">⬇ Download</Button>
+                {/* Download hidden until real video hosting (S3/Azure Blob/Vimeo) is wired. */}
               </div>
             </>
           )}

@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import {
   getStudentDashboard, getMyTasks, getMyAchievements, getMyRecommendations,
+  getMyAssignments,
 } from '../services/api';
 
 const fmtRel = (iso) => {
@@ -32,12 +33,14 @@ export default function StudentDashboard() {
   const [tasks, setTasks] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [recs, setRecs] = useState([]);
+  const [assignments, setAssignments] = useState([]);
 
   useEffect(() => {
     getStudentDashboard().then(setDash).catch(() => {});
     getMyTasks({ status: 'pending' }).then(setTasks).catch(() => {});
     getMyAchievements().then(setAchievements).catch(() => {});
     getMyRecommendations().then(setRecs).catch(() => {});
+    getMyAssignments().then(setAssignments).catch(() => {});
   }, []);
 
   const nextDeadline = tasks[0];
@@ -140,6 +143,68 @@ export default function StudentDashboard() {
           </Link>
         ))}
       </div>
+
+      {assignments.length > 0 && (
+        <Card
+          title="Assigned to You"
+          action={<span className="text-xs text-slate-500">{assignments.length} from your educators</span>}
+        >
+          <ul className="space-y-2">
+            {assignments.map((a) => {
+              const overdue =
+                a.due_date && a.status !== 'completed' && new Date(a.due_date) < new Date();
+              return (
+                <li
+                  key={a.id}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50"
+                >
+                  <div className="text-2xl">📚</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-800 truncate">
+                      {a.course?.title || 'Course'}
+                    </div>
+                    <div className="text-xs text-slate-500 truncate">
+                      Assigned by {a.educator_name || 'your educator'}
+                      {a.due_date && (
+                        <>
+                          {' · '}
+                          <span className={overdue ? 'text-red-600 font-medium' : ''}>
+                            Due {new Date(a.due_date).toLocaleDateString()}
+                            {overdue && ' (overdue)'}
+                          </span>
+                        </>
+                      )}
+                      {!a.due_date && ' · No due date'}
+                    </div>
+                    {a.note && (
+                      <div className="text-[11px] text-slate-500 italic mt-1 truncate">
+                        “{a.note}”
+                      </div>
+                    )}
+                  </div>
+                  <span
+                    className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                      a.status === 'completed'
+                        ? 'bg-brand-green-50 text-brand-green-700'
+                        : a.status === 'in-progress'
+                        ? 'bg-brand-blue-50 text-brand-blue-700'
+                        : 'bg-amber-50 text-amber-700'
+                    }`}
+                  >
+                    {a.status}
+                  </span>
+                  <Link
+                    to={`/app/courses/${a.course_id}`}
+                    className="text-xs px-2.5 py-1 rounded bg-brand-blue-600 text-white hover:bg-brand-blue-700"
+                  >
+                    Start
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
 
       {recs.length > 0 && (
         <Card title="Recommended for You" action={<Link to="/app/recommendations" className="text-xs text-brand-blue-600 hover:underline">See all →</Link>}>

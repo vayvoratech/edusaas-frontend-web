@@ -88,6 +88,29 @@ export default function CoursesPage() {
 
       {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
 
+      {courses.length === 0 && !error && (
+        <Card>
+          <div className="text-center py-10">
+            <div className="text-5xl mb-3">📚</div>
+            <h3 className="font-semibold text-slate-800">No courses available</h3>
+            <p className="text-sm text-slate-500 mt-1">
+              {category || difficulty
+                ? 'No courses match the current filters. Try clearing them.'
+                : 'No courses have been published yet. Check back soon.'}
+            </p>
+            {(category || difficulty) && (
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => { setCategory(''); setDifficulty(''); load(); }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {courses.map((c) => {
           const enrolled = enrolledIds.has(c.id);

@@ -85,7 +85,11 @@ export default function JobListings() {
                   {(j.required_skills || []).length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
                       {j.required_skills.map((s) => (
-                        <span key={s} className="text-[11px] px-2 py-0.5 rounded-full bg-brand-blue-100 text-brand-blue-700">
+                        <span
+                          key={s}
+                          title={s}
+                          className="text-[11px] px-2 py-0.5 rounded-full bg-brand-blue-100 text-brand-blue-700 truncate max-w-[140px]"
+                        >
                           {s}
                         </span>
                       ))}
@@ -112,11 +116,20 @@ export default function JobListings() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center z-50 p-4">
-          <form onSubmit={onSave} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm grid place-items-center z-50 p-4 animate-fade-in"
+          onClick={() => setEditing(null)}
+        >
+          <form
+            onSubmit={onSave}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+          >
             <h3 className="font-semibold text-lg mb-4">{editing.id ? 'Edit job' : 'Post a job'}</h3>
             <div className="mb-3">
-              <label className="text-xs text-slate-500">Title</label>
+              <label className="text-xs text-slate-500">
+                Title <span className="text-red-500">*</span>
+              </label>
               <input
                 value={editing.title || ''}
                 onChange={(e) => setEditing({ ...editing, title: e.target.value })}

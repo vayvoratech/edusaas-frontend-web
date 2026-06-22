@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { useAuth } from '../context/AuthContext';
 
 const TABS = ['Account', 'Notifications', 'Privacy', 'Preferences'];
+const PREFS_KEY = 'edu_user_prefs';
 
 function Toggle({ checked, onChange }) {
   return (
@@ -34,21 +36,58 @@ function Row({ title, desc, children }) {
   );
 }
 
+const defaults = {
+  profile_visibility: 'classmates',
+  dark_mode: false,
+  learning_reminders: true,
+  language: 'en-US',
+  time_zone: 'GMT-05:00',
+  weekly_digest: true,
+  activity_visible: true,
+  show_progress: true,
+  theme: 'Light',
+};
+
+const loadPrefs = () => {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
+  } catch {
+    return defaults;
+  }
+};
+
 export default function StudentSettings() {
+  const { user } = useAuth();
   const [tab, setTab] = useState('Account');
-  const [draft, setDraft] = useState({
-    profile_visibility: 'classmates',
-    email: 'priya.arnone@email.com',
-    dark_mode: false,
-    learning_reminders: true,
-    language: 'en-US',
-    time_zone: 'GMT-05:00',
-    weekly_digest: true,
-    activity_visible: true,
-    show_progress: true,
-  });
+  const initial = loadPrefs();
+  const [draft, setDraft] = useState({ ...initial, email: user?.email || '' });
+  const [saved, setSaved] = useState(null); // 'ok' | 'error' | null
 
   const set = (k, v) => setDraft((p) => ({ ...p, [k]: v }));
+
+  // Apply dark mode immediately so toggling is WYSIWYG.
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', !!draft.dark_mode);
+  }, [draft.dark_mode]);
+
+  const onSave = () => {
+    try {
+      // eslint-disable-next-line no-unused-vars
+      const { email, ...prefsToStore } = draft;
+      localStorage.setItem(PREFS_KEY, JSON.stringify(prefsToStore));
+      setSaved('ok');
+      setTimeout(() => setSaved(null), 2500);
+    } catch {
+      setSaved('error');
+    }
+  };
+
+  const onCancel = () => {
+    const stored = loadPrefs();
+    setDraft({ ...stored, email: user?.email || '' });
+    document.documentElement.classList.toggle('dark', !!stored.dark_mode);
+  };
 
   return (
     <div className="space-y-6">
@@ -88,27 +127,17 @@ export default function StudentSettings() {
                   <option value="public">Public</option>
                 </select>
               </Row>
-              <Row title="Email Address">
-                <div className="flex gap-2">
-                  <input
-                    value={draft.email}
-                    onChange={(e) => set('email', e.target.value)}
-                    className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-64"
-                  />
-                  <Button variant="outline">Update</Button>
-                </div>
+              <Row title="Email Address" desc="Read-only — contact admin to change">
+                <input
+                  value={draft.email}
+                  readOnly
+                  className="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-sm w-64"
+                />
               </Row>
-              <Row title="Change Password">
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-64"
-                  />
-                  <Button variant="outline">Change</Button>
-                </div>
+              <Row title="Change Password" desc="Reset link via email coming soon">
+                <Button variant="outline" disabled>Change</Button>
               </Row>
-              <Row title="Enable Dark Mode">
+              <Row title="Enable Dark Mode" desc="Switches the entire app to dark theme">
                 <Toggle checked={draft.dark_mode} onChange={(v) => set('dark_mode', v)} />
               </Row>
               <Row title="Learning Reminders" desc="Receive task reminders">
@@ -164,7 +193,11 @@ export default function StudentSettings() {
           {tab === 'Preferences' && (
             <div>
               <Row title="Theme">
-                <select className="px-3 py-2 rounded-lg border border-slate-300 text-sm min-w-[140px]">
+                <select
+                  value={draft.theme}
+                  onChange={(e) => set('theme', e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-slate-300 text-sm min-w-[140px]"
+                >
                   <option>Light</option>
                   <option>Dark</option>
                   <option>SaaS Blue-White</option>
@@ -174,9 +207,15 @@ export default function StudentSettings() {
           )}
         </div>
 
-        <div className="flex justify-end gap-2 px-5 py-4 bg-slate-50 border-t border-slate-100">
-          <Button variant="outline">Cancel</Button>
-          <Button>Save Changes</Button>
+        <div className="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50 border-t border-slate-100">
+          {saved === 'ok' && (
+            <span className="text-xs text-brand-green-700 mr-auto">✓ Saved</span>
+          )}
+          {saved === 'error' && (
+            <span className="text-xs text-red-600 mr-auto">Failed to save</span>
+          )}
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button onClick={onSave}>Save Changes</Button>
         </div>
       </Card>
     </div>

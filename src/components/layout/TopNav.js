@@ -146,7 +146,13 @@ export function TopNav({ onOpenNav = () => {} }) {
                 >
                   My Profile
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50">
+                <button
+                  onClick={() => {
+                    setOpenMenu(false);
+                    navigate('/app/settings');
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50"
+                >
                   Settings
                 </button>
                 <div className="border-t border-slate-100 my-1" />

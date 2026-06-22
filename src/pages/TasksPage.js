@@ -14,12 +14,83 @@ const daysUntil = (iso) => {
   return diff;
 };
 
+const TrashIcon = ({ className = '' }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M3 6h18" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+  </svg>
+);
+
+const EditIcon = ({ className = '' }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState(null);
+  // task currently queued for deletion (drives the confirm modal)
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  // task currently being edited (drives the edit modal)
+  const [editing, setEditing] = useState(null);
+  const [editDraft, setEditDraft] = useState({ title: '', due_date: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const openEdit = (t) => {
+    setEditing(t);
+    setEditDraft({
+      title: t.title || '',
+      due_date: t.due_date ? t.due_date.slice(0, 10) : '',
+    });
+  };
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    if (!editing) return;
+    if (!editDraft.title.trim()) return;
+    setSavingEdit(true);
+    try {
+      const updated = await updateTask(editing.id, {
+        title: editDraft.title.trim(),
+        due_date: editDraft.due_date || null,
+      });
+      setTasks((prev) => prev.map((x) => (x.id === editing.id ? { ...x, ...updated } : x)));
+      setEditing(null);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const load = async () => {
     try { setTasks(await getMyTasks()); }
@@ -49,13 +120,17 @@ export default function TasksPage() {
     }
   };
 
-  const onRemove = async (t) => {
-    if (!window.confirm(`Delete "${t.title}"?`)) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
     try {
-      await deleteTask(t.id);
-      setTasks((prev) => prev.filter((x) => x.id !== t.id));
+      await deleteTask(pendingDelete.id);
+      setTasks((prev) => prev.filter((x) => x.id !== pendingDelete.id));
+      setPendingDelete(null);
     } catch (err) {
       setError(err.response?.data?.error || err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -122,7 +197,9 @@ export default function TasksPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-slate-800 truncate">{t.title}</div>
-                    <div className="text-xs text-slate-500">Due {fmtDate(t.due_date)}</div>
+                    <div className="text-xs text-slate-500">
+                      {t.due_date ? `Due ${fmtDate(t.due_date)}` : 'No due date'}
+                    </div>
                   </div>
                   {d !== null && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -132,10 +209,22 @@ export default function TasksPage() {
                     </span>
                   )}
                   <button
-                    onClick={() => onRemove(t)}
-                    className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={() => openEdit(t)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-brand-blue-200 text-brand-blue-600 bg-white hover:bg-brand-blue-50 transition text-xs font-medium"
+                    aria-label={`Edit ${t.title}`}
+                    title="Edit task"
                   >
-                    🗑
+                    <EditIcon className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setPendingDelete(t)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-600 text-white hover:bg-red-700 transition text-xs font-medium shadow-sm"
+                    aria-label={`Delete ${t.title}`}
+                    title="Delete task"
+                  >
+                    <TrashIcon className="w-3.5 h-3.5" />
+                    Delete
                   </button>
                 </li>
               );
@@ -157,15 +246,142 @@ export default function TasksPage() {
                 />
                 <span className="line-through flex-1 truncate">{t.title}</span>
                 <button
-                  onClick={() => onRemove(t)}
-                  className="text-xs px-2 py-1 rounded border border-slate-200 hover:bg-slate-50"
+                  onClick={() => openEdit(t)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-brand-blue-200 text-brand-blue-600 bg-white hover:bg-brand-blue-50 transition text-xs font-medium"
+                  aria-label={`Edit ${t.title}`}
+                  title="Edit task"
                 >
-                  🗑
+                  <EditIcon className="w-3.5 h-3.5" />
+                  Edit
+                </button>
+                <button
+                  onClick={() => setPendingDelete(t)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-600 text-white hover:bg-red-700 transition text-xs font-medium shadow-sm"
+                  aria-label={`Delete ${t.title}`}
+                  title="Delete task"
+                >
+                  <TrashIcon className="w-3.5 h-3.5" />
+                  Delete
                 </button>
               </li>
             ))}
           </ul>
         </Card>
+      )}
+
+      {/* Edit-task modal */}
+      {editing && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm grid place-items-center z-50 p-4 animate-fade-in"
+          onClick={() => !savingEdit && setEditing(null)}
+        >
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={saveEdit}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-task-title"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 shrink-0 rounded-full bg-brand-blue-100 text-brand-blue-600 grid place-items-center">
+                <EditIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 id="edit-task-title" className="font-semibold text-slate-900">
+                  Edit task
+                </h3>
+                <p className="text-sm text-slate-500">Update the title or due date.</p>
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="text-xs text-slate-500">Title</label>
+              <input
+                value={editDraft.title}
+                onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })}
+                autoFocus
+                required
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none"
+              />
+            </div>
+            <div className="mb-5">
+              <label className="text-xs text-slate-500">Due date</label>
+              <input
+                type="date"
+                value={editDraft.due_date}
+                onChange={(e) => setEditDraft({ ...editDraft, due_date: e.target.value })}
+                className="block w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditing(null)}
+                disabled={savingEdit}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingEdit}>
+                {savingEdit ? 'Saving…' : 'Save changes'}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Confirm-delete modal */}
+      {pendingDelete && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm grid place-items-center z-50 p-4 animate-fade-in"
+          onClick={() => !deleting && setPendingDelete(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-delete-title"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 shrink-0 rounded-full bg-red-100 text-red-600 grid place-items-center">
+                <TrashIcon className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 id="confirm-delete-title" className="font-semibold text-slate-900">
+                  Delete this task?
+                </h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  Are you sure you want to delete{' '}
+                  <span className="font-medium text-slate-800">
+                    &ldquo;{pendingDelete.title}&rdquo;
+                  </span>
+                  ? This can&apos;t be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-5">
+              <Button
+                variant="outline"
+                onClick={() => setPendingDelete(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleting ? 'Deleting…' : 'Yes, delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

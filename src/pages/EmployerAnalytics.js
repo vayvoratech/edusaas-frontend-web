@@ -4,7 +4,9 @@ import {
   XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
 import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
 import { getEmployerDashboard } from '../services/api';
+import { downloadCsv, todayStamp, printStyleHtml } from '../utils/exports';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444'];
 
@@ -19,11 +21,40 @@ export default function EmployerAnalytics() {
     { name: 'Possible Match', value: data.candidateMatches.possible },
   ] : [];
 
+  const onExportCsv = () => {
+    const rows = [
+      ['EduSaaS — Employer Analytics Export'],
+      ['Generated', new Date().toLocaleString()],
+      [],
+      ['Headline', 'Value'],
+      ['Job Openings', data?.jobOpenings ?? 0],
+      ['New Applicants', data?.newApplicants ?? 0],
+      ['Top Matches', data?.topMatches ?? 0],
+      [],
+      ['Section: Candidate Matches'],
+      ['Bucket', 'Count'],
+      ...matchData.map((r) => [r.name, r.value]),
+      [],
+      ['Section: Skills Insights'],
+      ['Skill', 'Score'],
+      ...(data?.skillsInsights || []).map((r) => [r.skill, r.value]),
+    ];
+    downloadCsv(`employer_analytics_${todayStamp()}.csv`, rows);
+  };
+  const onExportPdf = () => window.print();
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Hiring Analytics</h2>
-        <p className="text-sm text-slate-500">Job performance, candidate matches, and skills demand.</p>
+    <div className="space-y-6" id="print-area">
+      <style>{printStyleHtml}</style>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Hiring Analytics</h2>
+          <p className="text-sm text-slate-500">Job performance, candidate matches, and skills demand.</p>
+        </div>
+        <div className="flex gap-2 no-print">
+          <Button variant="outline" onClick={onExportPdf} disabled={!data}>📄 Export PDF</Button>
+          <Button onClick={onExportCsv} disabled={!data}>⬇ Export CSV</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

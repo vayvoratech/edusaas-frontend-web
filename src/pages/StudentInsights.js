@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, CartesianGrid, Legend,
@@ -7,6 +7,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getStudentDashboard, fetchGapReport } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { downloadCsv, todayStamp, printStyleHtml } from '../utils/exports';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444'];
 
@@ -14,6 +15,7 @@ export default function StudentInsights() {
   const { user } = useAuth();
   const [dash, setDash] = useState(null);
   const [gap, setGap] = useState(null);
+  const printRef = useRef(null);
 
   useEffect(() => {
     getStudentDashboard().then(setDash).catch(() => {});
@@ -29,16 +31,45 @@ export default function StudentInsights() {
     skill: s, value: 90 - i * 15,
   }));
 
+  const onExportCsv = () => {
+    const rows = [
+      ['EduSaaS — Student Insights Export'],
+      ['Generated', new Date().toLocaleString()],
+      ['User', user?.name || '—', user?.email || ''],
+      [],
+      ['Section: Skill Gap Analysis'],
+      ['Skill', 'Score'],
+      ...skillGapData.map((r) => [r.skill, r.value]),
+      [],
+      ['Section: Learner Proficiency'],
+      ['Level', 'Percentage'],
+      ...learnerProf.map((r) => [r.name, r.value]),
+      [],
+      ['Section: Engagement Trends'],
+      ['Week', 'Progress'],
+      ...(dash?.learningProgress || []).map((r) => [r.week, r.value]),
+      [],
+      ['Section: Recent Activity'],
+      ['Title', 'When'],
+      ...(dash?.recentActivity || []).map((r) => [r.title, r.when]),
+    ];
+    downloadCsv(`insights_${todayStamp()}.csv`, rows);
+  };
+
+  const onExportPdf = () => window.print();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" id="print-area" ref={printRef}>
+      <style>{printStyleHtml}</style>
+
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Insights</h2>
           <p className="text-sm text-slate-500">Your performance, gaps and engagement trends.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline">📄 Export PDF</Button>
-          <Button>⬇ Export CSV</Button>
+        <div className="flex gap-2 no-print">
+          <Button variant="outline" onClick={onExportPdf}>📄 Export PDF</Button>
+          <Button onClick={onExportCsv}>⬇ Export CSV</Button>
         </div>
       </div>
 

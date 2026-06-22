@@ -6,6 +6,7 @@ import {
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getEducatorDashboard } from '../services/api';
+import { downloadCsv, todayStamp, printStyleHtml } from '../utils/exports';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b'];
 
@@ -16,6 +17,35 @@ export default function EducatorInsights() {
     getEducatorDashboard().then(setData).catch(() => setData(null));
   }, []);
 
+  const onExportCsv = () => {
+    const rows = [
+      ['EduSaaS — Educator Insights Export'],
+      ['Generated', new Date().toLocaleString()],
+      [],
+      ['Headline', 'Value'],
+      ['Enrolled Learners', data?.enrolledLearners ?? 0],
+      ['Active Courses', data?.activeCourses ?? 0],
+      ['Avg Completion %', data?.avgCompletion ?? 0],
+      ['Avg Rating', data?.avgRating ?? 0],
+      [],
+      ['Section: Skill Gap Analysis'],
+      ['Skill', 'Score'],
+      ...(data?.skillGapAnalysis || []).map((r) => [r.skill, r.value]),
+      [],
+      ['Section: Learner Proficiency'],
+      ['Level', 'Percentage'],
+      ['Basic', data?.learnerProficiency?.basic ?? 0],
+      ['Intermediate', data?.learnerProficiency?.intermediate ?? 0],
+      ['Advanced', data?.learnerProficiency?.advanced ?? 0],
+      [],
+      ['Section: Learner Performance'],
+      ['Week', 'Technical Skills', 'Engagement'],
+      ...(data?.learnerPerformance || []).map((r) => [r.week, r.technical, r.engagement]),
+    ];
+    downloadCsv(`educator_insights_${todayStamp()}.csv`, rows);
+  };
+  const onExportPdf = () => window.print();
+
   const proficiencyData = data?.learnerProficiency
     ? [
         { name: 'Basic', value: data.learnerProficiency.basic },
@@ -24,16 +54,18 @@ export default function EducatorInsights() {
       ]
     : [];
 
+  const hasData = !!data;
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" id="print-area">
+      <style>{printStyleHtml}</style>
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Insights & Reports</h2>
           <p className="text-sm text-slate-500">Learner performance, engagement, and skill gaps.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline">📄 Export PDF</Button>
-          <Button>⬇ Export CSV</Button>
+        <div className="flex gap-2 no-print">
+          <Button variant="outline" onClick={onExportPdf} disabled={!hasData}>📄 Export PDF</Button>
+          <Button onClick={onExportCsv} disabled={!hasData}>⬇ Export CSV</Button>
         </div>
       </div>
 
