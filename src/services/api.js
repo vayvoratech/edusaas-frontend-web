@@ -26,17 +26,21 @@ async function attemptRefresh() {
   const refreshToken = localStorage.getItem(REFRESH_KEY);
   if (!refreshToken) throw new Error("no refresh token");
   if (!refreshPromise) {
+    const token = localStorage.getItem(TOKEN_KEY); // Get the expired token
     refreshPromise = axios
-      .post(`${API_BASE}/api/auth/refresh`, { refreshToken })
+      .post(`${API_BASE}/api/auth/refresh`, { refreshToken }, {
+        // The refresh endpoint often needs the expired token to identify the user session
+        headers: { Authorization: `Bearer ${token}` },
+      })
       .then((res) => {
-        localStorage.setItem(TOKEN_KEY, res.data.token);
+        localStorage.setItem(TOKEN_KEY, res.data.accessToken);
         if (res.data.refreshToken) {
           localStorage.setItem(REFRESH_KEY, res.data.refreshToken);
         }
         if (res.data.user) {
           localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
         }
-        return res.data.token;
+        return res.data.accessToken;
       })
       .finally(() => {
         refreshPromise = null;
@@ -101,6 +105,15 @@ export const registerUser = (data) =>
   api.post("/api/auth/register", data).then((r) => r.data);
 export const fetchMe = () => api.get("/api/auth/me").then((r) => r.data);
 
+export const forgotPassword = (email) =>
+  api.post("/api/auth/forgot-password", { email }).then((r) => r.data);
+
+export const verifyOtp = (data) =>
+  api.post("/api/auth/verify-otp", data).then((r) => r.data);
+
+export const resetPassword = (data) =>
+  api.post("/api/auth/reset-password", data).then((r) => r.data);
+
 // Users
 export const getUserProfile = (id) => api.get(`/api/users/${id}`).then((r) => r.data);
 export const saveUserProfile = (id, data) =>
@@ -113,6 +126,13 @@ export const submitAssessment = (data) =>
   api.post("/api/assessments", data).then((r) => r.data);
 export const getAssessmentResults = (id) =>
   api.get(`/api/assessments/${id}/results`).then((r) => r.data);
+
+// Initial Skill Assessment
+export const getInitialAssessmentQuestions = () =>
+  api.get("/api/assessments/questions").then((r) => r.data);
+
+export const submitInitialAssessment = (answers) =>
+  api.post("/api/assessments/initial", { answers }).then((r) => r.data);
 
 // Gap report
 export const fetchGapReport = (userId) =>
@@ -157,8 +177,8 @@ export const inviteCandidate = (jobId, studentId, message) =>
   api.post(`/api/jobs/${jobId}/invite`, { student_id: studentId, message }).then((r) => r.data);
 
 // Course assignments (educator → student)
-export const assignCourse = (courseId, { student_ids, due_date, note }) =>
-  api.post(`/api/courses/${courseId}/assign`, { student_ids, due_date, note }).then((r) => r.data);
+export const assignCourse = (courseId,{userId,due_date,note,}) =>
+    api.post(`/api/courses/${courseId}/assign`, {userId,due_date,note,}).then((r) => r.data);
 export const getMyAssignments = () =>
   api.get('/api/me/assignments').then((r) => r.data);
 export const getCourseAssignments = (courseId) =>

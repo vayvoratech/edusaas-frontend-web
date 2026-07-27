@@ -32,8 +32,13 @@ export function AuthProvider({ children }) {
       login: async ({ email, password }) => {
         setAuthError(null);
         try {
-          const { token, refreshToken, user: apiUser } = await loginUser({ email, password });
-          tokenStore.set(token);
+          const {
+            accessToken,
+            refreshToken,
+            user: apiUser,
+          } = await loginUser({ email, password });
+
+          tokenStore.set(accessToken);
           if (refreshToken) refreshStore.set(refreshToken);
           userStore.set(apiUser);
           setUser(apiUser);
@@ -44,21 +49,37 @@ export function AuthProvider({ children }) {
           return false;
         }
       },
+
       register: async (data) => {
         setAuthError(null);
         try {
-          const { token, refreshToken, user: apiUser } = await registerUser(data);
-          tokenStore.set(token);
-          if (refreshToken) refreshStore.set(refreshToken);
+          const {
+            accessToken,
+            refreshToken,
+            user: apiUser,
+          } = await registerUser(data);
+
+          tokenStore.set(accessToken);
+
+          if (refreshToken) {
+            refreshStore.set(refreshToken);
+          }
+
           userStore.set(apiUser);
           setUser(apiUser);
           setRole(apiToRole(apiUser.role));
+
           return true;
         } catch (err) {
-          setAuthError(err.response?.data?.error || err.message || 'Register failed');
+          setAuthError(
+            err.response?.data?.error ||
+            err.message ||
+            "Register failed"
+          );
           return false;
         }
       },
+
       logout: () => {
         tokenStore.clear();
         userStore.clear?.();

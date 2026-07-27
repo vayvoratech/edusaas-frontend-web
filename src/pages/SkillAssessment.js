@@ -9,6 +9,8 @@ export default function SkillAssessment() {
   const navigate = useNavigate();
   const [idx, setIdx] = useState(0);
   const total = assessmentBank.length;
+  console.log("assessmentBank:", assessmentBank);
+  console.log("Length:", assessmentBank?.length);
   const q = assessmentBank[idx];
 
   const [answer, setAnswer] = useState(q.starter);

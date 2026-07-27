@@ -1,3 +1,4 @@
+// This component renders the signup page, allowing new users to register by providing their details and choosing a role.
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -8,8 +9,18 @@ const roles = [
   { id: 'educator', label: 'Educator', emoji: '👩‍🏫', desc: 'Create courses, track students and skill gaps.' },
   { id: 'employer', label: 'Employer', emoji: '🏢', desc: 'Post candidate jobs to reach and upskill students.' },
   // Admin signup is intentionally hidden — admins are provisioned, not self-registered.
-  // { id: 'admin', label: 'Admin', emoji: '⚙️', desc: 'Manage users, courses, and platform settings.' },
+  { id: 'admin', label: 'Admin', emoji: '⚙️', desc: 'Manage users, courses, and platform settings.' },
 ];
+
+const careerGoals = [
+  'Software Developer',
+  'MERN Stack Developer',
+  'Java Full Stack',
+  'Data Analyst',
+  "AI/ML Engineer"
+];
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Signup() {
   const { register, authError } = useAuth();
@@ -19,18 +30,37 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [role, setRole] = useState('student');
+  const [careerGoal, setCareerGoal] = useState(careerGoals[0]);
   const [submitting, setSubmitting] = useState(false);
   const [clientError, setClientError] = useState(null);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  const [touched, setTouched] = useState({});
+
+  const passwordCriteria = [
+    { label: 'At least 8 characters', test: (p) => p.length >= 8 },
+    { label: 'At least one uppercase letter', test: (p) => /[A-Z]/.test(p) },
+    { label: 'At least one number', test: (p) => /\d/.test(p) },
+    { label: 'At least one special character', test: (p) => /[^A-Za-z0-9]/.test(p) },
+  ];
+
+  const isPasswordValid = passwordCriteria.every(criterion => criterion.test(password));
+
+  const handleBlur = (field) => setTouched(prev => ({ ...prev, [field]: true }));
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setClientError(null);
     if (!name.trim()) return setClientError('Full name is required');
-    if (password.length < 6) return setClientError('Password must be at least 6 characters');
+    if (!EMAIL_REGEX.test(email)) return setClientError('Enter valid mailID');
+
+    if (!isPasswordValid) {
+      return setClientError('Password does not meet all the requirements.');
+    }
+
     if (password !== confirm) return setClientError('Passwords do not match');
 
     setSubmitting(true);
-    const ok = await register({ name: name.trim(), email: email.trim(), password, role });
+    const ok = await register({ name: name.trim(), email: email.trim(), password, role, career_goal: role === 'student' ? careerGoal : undefined });
     setSubmitting(false);
     if (ok) navigate('/app/dashboard');
   };
@@ -94,35 +124,65 @@ export default function Signup() {
               placeholder="Full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => handleBlur('name')}
               className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
             />
+            {touched.name && !name.trim() && <p className="text-xs text-red-600 mt-1">Full name is required</p>}
           </div>
-          <div className="mb-4">
+          <div className="mb-4 h-14">
             <input
               type="email"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => handleBlur('email')}
               className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
             />
+            {touched.email && !email.trim() && <p className="text-xs text-red-600 mt-1">Email is required</p>}
+            {touched.email && email.trim() && !EMAIL_REGEX.test(email) && <p className="text-xs text-red-600 mt-1">Enter valid mailID</p>}
           </div>
-          <div className="mb-4">
+          <div className="mb-2 h-14">
             <input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={() => { setIsPasswordFocused(false); handleBlur('password'); }}
               className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
             />
+            {touched.password && !password.trim() && <p className="text-xs text-red-600 mt-1">Password is required</p>}
           </div>
-          <div className="mb-4">
+
+          {(isPasswordFocused || password.length > 0) && (
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 px-1">
+              {passwordCriteria.map((criterion, index) => (
+                <div key={index} className={`flex items-center text-xs transition-colors ${criterion.test(password) ? 'text-green-600' : 'text-slate-500'}`}>
+                  {criterion.test(password) ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1.5 flex-shrink-0">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1.5 flex-shrink-0">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM6.75 9.25a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  <span>{criterion.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mb-4 h-14">
             <input
               type="password"
               placeholder="Confirm password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
+              onBlur={() => handleBlur('confirm')}
               className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
             />
+            {touched.confirm && !confirm.trim() && <p className="text-xs text-red-600 mt-1">Please confirm your password</p>}
           </div>
 
           <div className="mb-6">
@@ -148,6 +208,26 @@ export default function Signup() {
               ))}
             </div>
           </div>
+
+          {role === 'student' && (
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                What is your career goal?
+              </label>
+              <select
+                value={careerGoal}
+                onChange={(e) => setCareerGoal(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
+              >
+                {careerGoals.map((goal) => (
+                  <option key={goal} value={goal}>
+                    {goal}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-500 mt-1">This helps us recommend the right courses for you.</p>
+            </div>
+          )}
 
           {errorMsg && (
             <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">

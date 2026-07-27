@@ -12,6 +12,7 @@ import {
   getMyAssignments,
 } from '../services/api';
 
+// Helper function to format relative time from an ISO string.
 const fmtRel = (iso) => {
   if (!iso) return '—';
   const diff = (new Date() - new Date(iso)) / 60000;
@@ -20,6 +21,7 @@ const fmtRel = (iso) => {
   return `${Math.round(diff / 1440)}d ago`;
 };
 
+// Data for the main navigation cards on the dashboard.
 const moduleCards = [
   { to: '/app/learning', emoji: '💬', title: 'Learning Module', sub: 'Continue your video lessons' },
   { to: '/app/achievements', emoji: '🏆', title: 'Achievements', sub: 'View your badges and certificates' },
@@ -29,12 +31,14 @@ const moduleCards = [
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  // State for dashboard data, tasks, achievements, recommendations, and assignments.
   const [dash, setDash] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [recs, setRecs] = useState([]);
   const [assignments, setAssignments] = useState([]);
 
+  // Fetch all necessary data when the component mounts.
   useEffect(() => {
     getStudentDashboard().then(setDash).catch(() => {});
     getMyTasks({ status: 'pending' }).then(setTasks).catch(() => {});
@@ -43,23 +47,58 @@ export default function StudentDashboard() {
     getMyAssignments().then(setAssignments).catch(() => {});
   }, []);
 
+  // Get the next upcoming task deadline.
   const nextDeadline = tasks[0];
 
   return (
     <div className="space-y-6">
+      {/* Welcome card with user info, readiness score, and main CTAs. */}
       <Card className="bg-gradient-to-r from-brand-blue-500 via-brand-blue-600 to-brand-blue-700 text-white border-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-wider text-white/70">Welcome back</div>
             <h2 className="text-2xl font-bold">
-              {user?.name?.split(' ')[0] || user?.name}, let's close those skill gaps. 🚀
+              {user?.name?.split(' ')[0] || user?.name}, aspiring {user?.career_goal}
+              <p className='text-[17px]'>let's close those skill gaps. 🚀</p>
             </h2>
-            <div className="text-sm text-white/80 mt-1">
-              You're {dash?.skillsReadiness ?? 0}% ready · {dash?.coursesEnrolled ?? 0} active courses.
-            </div>
+           <div className="text-sm text-white/80 mt-1">
+            {dash?.assessmentCompleted ? (
+              <>Readiness Score:
+                <span className="font-bold">
+                  {" "}
+                  {dash?.readinessScore ?? 0}%
+                </span>
+                {" • "}
+                {dash?.coursesEnrolled ?? 0} active courses
+              </>
+            ) : (
+              <>
+                Complete your Initial Skill Assessment to personalize your learning path.
+              </>
+            )}
+
+          </div>
+           <div className="flex items-center gap-2">
+              {!dash?.assessmentCompleted ? (
+                  <Link to="/app/initial-assessment">
+                      <Button variant="accent">
+                          Start Skill Assessment
+                      </Button>
+                  </Link>
+              ) : (
+                  <Link to="/app/learning-paths">
+                      <Button variant="accent">
+                          View Learning Path
+                      </Button>
+                  </Link>
+              )}
+              <Link to = "/app/courses">
+              <Button variant="accent">Explore courses</Button>
+              </Link>
+          </div>
           </div>
           <div className="flex items-center gap-4">
-            <ProgressRing value={dash?.skillsReadiness ?? 0} size={88} />
+            <ProgressRing value={dash?.assessmentCompleted? dash?.readinessScore ?? 0 : 0} size={88} />
             <Link to="/app/courses">
               <Button variant="accent">Continue Learning →</Button>
             </Link>
@@ -67,6 +106,7 @@ export default function StudentDashboard() {
         </div>
       </Card>
 
+      {/* Key metric summary cards. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="!p-4">
           <div className="text-xs text-slate-500">Courses Enrolled</div>
@@ -90,15 +130,17 @@ export default function StudentDashboard() {
         </Card>
       </div>
 
+      {/* Learning progress chart and recent activity feed. */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card title="Learning Progress" className="lg:col-span-2">
+          <p className="text-xs text-slate-500 -mt-2 mb-2">Lessons completed per week</p>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dash?.learningProgress || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip formatter={(v) => [v, 'Lessons completed']} />
                 <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
@@ -131,6 +173,7 @@ export default function StudentDashboard() {
         </div>
       </div>
 
+      {/* Navigation cards to other parts of the application. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {moduleCards.map((m) => (
           <Link key={m.to} to={m.to}>
@@ -144,6 +187,7 @@ export default function StudentDashboard() {
         ))}
       </div>
 
+      {/* List of courses assigned by educators. */}
       {assignments.length > 0 && (
         <Card
           title="Assigned to You"
@@ -206,6 +250,7 @@ export default function StudentDashboard() {
         </Card>
       )}
 
+      {/* List of recommended courses for the student. */}
       {recs.length > 0 && (
         <Card title="Recommended for You" action={<Link to="/app/recommendations" className="text-xs text-brand-blue-600 hover:underline">See all →</Link>}>
           <ul className="space-y-2 text-sm">

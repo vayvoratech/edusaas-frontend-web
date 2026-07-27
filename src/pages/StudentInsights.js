@@ -47,7 +47,7 @@ export default function StudentInsights() {
       [],
       ['Section: Engagement Trends'],
       ['Week', 'Progress'],
-      ...(dash?.learningProgress || []).map((r) => [r.week, r.value]),
+      ...(dash?.engagementTrends || []).map((r) => [r.week, r.value]),
       [],
       ['Section: Recent Activity'],
       ['Title', 'When'],
@@ -106,13 +106,14 @@ export default function StudentInsights() {
       </div>
 
       <Card title="Engagement Trends">
+        <p className="text-xs text-slate-500 -mt-2 mb-2">Hours watched per week</p>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dash?.learningProgress || []}>
+            <LineChart data={dash?.engagementTrends || []}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="week" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <Tooltip formatter={(v) => [`${v} hrs`, 'Watched']} />
               <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>

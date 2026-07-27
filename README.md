@@ -1,6 +1,49 @@
-# Getting Started with Create React App
+# Vayvora Edu SaaS Web Application
+
+This project is the frontend for the Vayvora Education SaaS platform, providing a comprehensive learning and course management experience for students, educators, and employers.
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+
+## Features
+
+*   **User Authentication:** Secure login and signup for different roles (Student, Educator, Employer).
+*   **Student Dashboard:** Personalized overview of learning progress, tasks, achievements, and recommendations.
+*   **Course Browsing & Enrollment:** Students can explore and enroll in various courses.
+*   **Initial Skill Assessment:** Helps personalize learning paths for students.
+*   **Course Management (Educators):** Tools for educators to create, edit, and manage their courses and lessons.
+*   **Responsive Design:** Optimized for various screen sizes.
+
+## Technologies Used
+
+*   React.js
+*   React Router DOM
+*   Tailwind CSS
+*   Recharts (for data visualization)
+*   Axios (for API communication)
+*   Context API (for state management)
+
+## Project Setup
+
+To get the project up and running locally:
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd edutech_saas_web
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
+3.  **Configure Environment Variables:**
+    Create a `.env` file in the root of the project. You'll need to define your API base URL.
+    ```
+    REACT_APP_API_BASE_URL=http://localhost:5000/api
+    ```
+4.  **Run the application:**
+
 
 ## Available Scripts
 

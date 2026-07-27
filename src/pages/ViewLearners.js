@@ -39,6 +39,8 @@ export default function ViewLearners() {
     setAssignError(null);
     setAssignDone(false);
     if (!assignCourseId && courses[0]) setAssignCourseId(courses[0].id);
+    console.log(assignTo);
+    
   };
 
   const submitAssign = async (e) => {
@@ -50,7 +52,13 @@ export default function ViewLearners() {
     setAssignBusy(true);
     setAssignError(null);
     try {
-      await assignCourse(assignCourseId, {
+     await assignCourse(assignCourseId, {
+        userId: assignTo.id,
+        due_date: assignDue || null,
+        note: assignNote || null,
+    });
+
+     await assignCourse(assignCourseId, {
         student_ids: [assignTo.id],
         due_date: assignDue || null,
         note: assignNote || null,
