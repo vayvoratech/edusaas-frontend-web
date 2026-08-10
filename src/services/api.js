@@ -114,6 +114,13 @@ export const verifyOtp = (data) =>
 export const resetPassword = (data) =>
   api.post("/api/auth/reset-password", data).then((r) => r.data);
 
+// services/domainRoleService.js
+export const getDomainRoles = async () => {
+    const res = await api.get("/api/domain-roles");
+    return res.data.data;
+};
+
+
 // Users
 export const getUserProfile = (id) => api.get(`/api/users/${id}`).then((r) => r.data);
 export const saveUserProfile = (id, data) =>
@@ -127,12 +134,22 @@ export const submitAssessment = (data) =>
 export const getAssessmentResults = (id) =>
   api.get(`/api/assessments/${id}/results`).then((r) => r.data);
 
-// Initial Skill Assessment
-export const getInitialAssessmentQuestions = () =>
-  api.get("/api/assessments/questions").then((r) => r.data);
+// Initial Adaptive Skill Assessment
 
-export const submitInitialAssessment = (answers) =>
-  api.post("/api/assessments/initial", { answers }).then((r) => r.data);
+// Start a new initial quiz session
+export const startInitialQuiz = () => api
+    .post("/api/assessments/initial-quiz/start")
+    .then((r) => r.data);
+
+
+// Submit one answer and receive the next adaptive question
+export const submitInitialQuizAnswer = ({sessionId, questionId,answer,}) => api
+    .post("/api/assessments/initial-quiz/answer", {
+      session_id: sessionId,
+      question_id: questionId,
+      answer,
+    })
+    .then((r) => r.data);
 
 // Gap report
 export const fetchGapReport = (userId) =>

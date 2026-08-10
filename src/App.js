@@ -40,6 +40,7 @@ import Candidates from './pages/Candidates';
 import EmployerAnalytics from './pages/EmployerAnalytics';
 
 import Placeholder from './pages/Placeholder';
+import Community from './pages/Community';
 
 function RoleDashboard() {
   const { role } = useAuth();
@@ -73,6 +74,7 @@ export default function App() {
             {/* Shared */}
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<StudentOrAdminSettings />} />
+            <Route path="community" element={<Community />} />
 
             {/* Student */}
             {/* Student */}

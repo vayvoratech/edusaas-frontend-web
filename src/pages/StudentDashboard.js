@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
+    LineChart,
+    Line,
+    ResponsiveContainer,
+    CartesianGrid,
+    XAxis,
+    YAxis,
+    Tooltip,
+    Legend,
 } from 'recharts';
 import { Card } from '../components/ui/Card';
 import { ProgressRing } from '../components/ui/ProgressRing';
@@ -50,6 +57,7 @@ export default function StudentDashboard() {
   // Get the next upcoming task deadline.
   const nextDeadline = tasks[0];
 
+
   return (
     <div className="space-y-6">
       {/* Welcome card with user info, readiness score, and main CTAs. */}
@@ -58,7 +66,8 @@ export default function StudentDashboard() {
           <div>
             <div className="text-xs uppercase tracking-wider text-white/70">Welcome back</div>
             <h2 className="text-2xl font-bold">
-              {user?.name?.split(' ')[0] || user?.name}, aspiring {user?.career_goal}
+             {user?.name?.split(" ")[0] || user?.name}
+             {dash?.domainRole && `, aspiring ${dash.domainRole}`}
               <p className='text-[17px]'>let's close those skill gaps. 🚀</p>
             </h2>
            <div className="text-sm text-white/80 mt-1">
@@ -80,22 +89,25 @@ export default function StudentDashboard() {
           </div>
            <div className="flex items-center gap-2">
               {!dash?.assessmentCompleted ? (
-                  <Link to="/app/initial-assessment">
-                      <Button variant="accent">
-                          Start Skill Assessment
-                      </Button>
-                  </Link>
+                <Link to="/app/initial-assessment">
+                  <Button variant="accent">
+                    Start Skill Assessment
+                  </Button>
+                </Link>
               ) : (
-                  <Link to="/app/learning-paths">
-                      <Button variant="accent">
-                          View Learning Path
-                      </Button>
-                  </Link>
+                <Link to="/app/learning-paths">
+                  <Button variant="accent">
+                    View Learning Path
+                  </Button>
+                </Link>
               )}
-              <Link to = "/app/courses">
-              <Button variant="accent">Explore courses</Button>
+
+              <Link to="/app/recommendations">
+                <Button variant="accent">
+                  View Recommendations
+                </Button>
               </Link>
-          </div>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <ProgressRing value={dash?.assessmentCompleted? dash?.readinessScore ?? 0 : 0} size={88} />
@@ -131,24 +143,77 @@ export default function StudentDashboard() {
       </div>
 
       {/* Learning progress chart and recent activity feed. */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card title="Learning Progress" className="lg:col-span-2">
-          <p className="text-xs text-slate-500 -mt-2 mb-2">Lessons completed per week</p>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dash?.learningProgress || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip formatter={(v) => [v, 'Lessons completed']} />
-                <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+      {/* Learning progress chart and recent activity feed. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch">
+
+        <Card title="Learning Analytics" className="lg:col-span-2 flex flex-col">
+          <div className="h-72 overflow-hidden -mt-4">
+            <div className="overflow-x-auto overflow-y-hidden h-full">
+              <div
+                style={{
+                  minWidth: Math.max((dash?.learningAnalytics?.length || 4) * 120, 600),
+                  height: '100%',
+                }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={dash?.learningAnalytics || []}
+                    margin={{ top: 0, right: 20, left: 10, bottom: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, 100]} unit="%" ticks={[0, 20, 40, 60, 80, 100]} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: 12,
+                        border: 'none',
+                        boxShadow: '0 10px 25px rgba(0,0,0,.12)',
+                      }}
+                    />
+                    <Legend verticalAlign="top" height={35} wrapperStyle={{ paddingTop: 0 }} />
+
+                    <Line
+                      type="monotone"
+                      dataKey="readiness"
+                      name="Readiness"
+                      stroke="#f97316"
+                      strokeWidth={3}
+                      dot={{ r: 6, strokeWidth: 2, fill: '#fff' }}
+                      activeDot={{ r: 9 }}
+                      animationDuration={1200}
+                      animationEasing="ease-in-out"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="lessonPercentage"
+                      name="Lessons"
+                      stroke="#22c55e"
+                      strokeWidth={3}
+                      dot={{ r: 6, strokeWidth: 2, fill: '#fff' }}
+                      activeDot={{ r: 9 }}
+                      animationDuration={1200}
+                      animationEasing="ease-in-out"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="assignmentPercentage"
+                      name="Assignments"
+                      stroke="#2563eb"
+                      strokeWidth={3}
+                      dot={{ r: 6, strokeWidth: 2, fill: '#fff' }}
+                      activeDot={{ r: 9 }}
+                      animationDuration={1200}
+                      animationEasing="ease-in-out"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         </Card>
 
-        <div className="space-y-4 sm:space-y-6">
-          <Card title="Recent Activity">
+        <div className="flex flex-col gap-4 sm:gap-6 h-full">
+          <Card title="Recent Activity" className="flex-1 flex flex-col">
             <ul className="space-y-2 text-sm">
               {(dash?.recentActivity || []).map((a) => (
                 <li key={a.id} className="flex items-center gap-2">
@@ -160,7 +225,7 @@ export default function StudentDashboard() {
             </ul>
           </Card>
 
-          <Card title="Next Deadline">
+          <Card title="Next Deadline" className="flex-1 flex flex-col justify-center">
             {nextDeadline ? (
               <div>
                 <div className="font-semibold text-slate-800">{nextDeadline.title}</div>
@@ -171,6 +236,7 @@ export default function StudentDashboard() {
             )}
           </Card>
         </div>
+
       </div>
 
       {/* Navigation cards to other parts of the application. */}

@@ -1,227 +1,546 @@
 import { useEffect, useState } from "react";
-import { getInitialAssessmentQuestions, submitInitialAssessment,} from "../services/api";
+import {
+  startInitialQuiz,
+  submitInitialQuizAnswer,
+} from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 const InitialAssessment = () => {
-    // State to manage loading status of the assessment data
-    const [loading, setLoading] = useState(true);
-    // State to store the user's career goal
-    const [careerGoal, setCareerGoal] = useState("");
-    // State to store the list of skills related to the career goal
-    const [skills, setSkills] = useState([]);
-    // State to store all assessment questions
-    const [questions, setQuestions] = useState([]);
-    // State to track the current question being displayed
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    // State to store user's answers, mapping question ID to selected option index
-    const [answers, setAnswers] = useState({});
-    // State to manage the submission process
-    const [submitting, setSubmitting] = useState(false);
-    // Hook for navigation
-    const navigate = useNavigate()
+  const navigate = useNavigate();
 
-    // Effect hook to load assessment questions when the component mounts
+  // Quiz loading/submission
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  // Quiz session
+  const [sessionId, setSessionId] = useState(null);
+
+  // Domain selected during signup
+  const [domain, setDomain] = useState(null);
+
+  // Current skill
+  const [skill, setSkill] = useState(null);
+  const [assessment, setAssessment] = useState(null);
+
+  // Current adaptive question
+  const [question, setQuestion] = useState(null);
+
+  // Selected answer: A / B / C / D
+  const [selectedAnswer, setSelectedAnswer] = useState("");
+
+  // Current skill progress
+  const [questionsAnswered, setQuestionsAnswered] = useState(0);
+
+
+
+  // ----------------------------------------------------
+  // Start initial quiz when page loads
+  // ----------------------------------------------------
   useEffect(() => {
     loadAssessment();
-    }, []);
+  }, []);
 
-    // Function to fetch initial assessment questions from the API
-    const loadAssessment = async () => {
+  const loadAssessment = async () => {
     try {
-        const data = await getInitialAssessmentQuestions();
+      setLoading(true);
+      setError("");
 
-        setCareerGoal(data.careerGoal);
-        setSkills(data.skills);
+      const response = await startInitialQuiz();
 
-        const flattened = [];
-        // Flatten the questions object into a single array for easier navigation
+      console.log("Initial Quiz Started:", response);
 
-        Object.entries(data.questions).forEach(([skill, skillQuestions]) => {
-        skillQuestions.forEach((question) => {
-            flattened.push({
-            ...question,
-            skill,
-            });
-        });
-        });
+      const quiz = response.data;
 
-            setQuestions(flattened);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+      setSessionId(quiz.session_id);
+      setDomain(quiz.domain);
+      setAssessment(quiz.assessment);
+      setSkill(quiz.skill);
+      setQuestion(quiz.question);
 
-    // Function to handle the submission of the assessment
-    const handleSubmit = async () => {
+      setQuestionsAnswered(0);
+      setSelectedAnswer("");
+    } catch (err) {
+      console.error("Failed to start initial quiz:", err);
+
+      setError(
+        err.response?.data?.error ||
+          "Failed to start the initial assessment."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ----------------------------------------------------
+  // Submit current answer
+  // ----------------------------------------------------
+  const handleNext = async () => {
+    if (!selectedAnswer || !question || !sessionId) {
+      return;
+    }
+
     try {
-        setSubmitting(true);
+      setSubmitting(true);
+      setError("");
 
-        const payload = Object.entries(answers).map(
-        ([questionId, selectedIndex]) => ({
-            questionId,
-            selectedIndex,
-        })
+      const response = await submitInitialQuizAnswer({
+        sessionId,
+        questionId: question.question_id,
+        answer: selectedAnswer,
+      });
+
+      console.log("Initial Quiz Answer Response:", response);
+
+      const result = response.data;
+      setAssessment(result.assessment);
+
+      // ------------------------------------------------
+      // Entire assessment completed
+      // ------------------------------------------------
+      if (result.assessment_completed) {
+        // alert(
+        //   `Initial assessment completed!\n\nReadiness Score: ${result.readiness_score}%`
+        // );
+
+        navigate("/app/dashboard");
+
+        return;
+      }
+
+      // ------------------------------------------------
+      // Skill completed -> backend moved to next skill
+      // ------------------------------------------------
+      if (result.skill_completed && result.next_skill) {
+        setSkill(result.next_skill);
+
+        setQuestionsAnswered(
+          result.progress?.current ?? 0
         );
 
-        const response = await submitInitialAssessment(payload);
+        setQuestion(result.question);
 
-        console.log("Assessment Submitted:", response);
-        alert("Assessment submitted successfully!");
-        // Navigate to the dashboard after successful submission
-        navigate("/app/dashboard");
-        
-    } catch (error) {
-        console.error(error);
-        alert("Failed to submit assessment.");
+        setSelectedAnswer("");
+
+        return;
+      }
+
+      // ------------------------------------------------
+      // Continue current skill
+      // ------------------------------------------------
+      setQuestionsAnswered(
+        result.progress?.current ?? 0
+      );
+
+      setQuestion(result.question);
+
+      setSelectedAnswer("");
+    } catch (err) {
+      console.error("Failed to submit answer:", err);
+
+      setError(
+        err.response?.data?.error ||
+          "Failed to submit the answer."
+      );
     } finally {
-        setSubmitting(false);
+      setSubmitting(false);
     }
-    };
+  };
 
-    // Get the current question based on the index
-    const currentQuestion = questions[currentQuestionIndex];
-    // Calculate the progress percentage for the progress bar
-    const progress =
-    questions.length === 0
-        ? 0
-        : ((currentQuestionIndex + 1) / questions.length) * 100;
+  // ----------------------------------------------------
+  // Convert backend question into UI options
+  // ----------------------------------------------------
+  const options = question
+    ? [
+        {
+          key: "A",
+          text: question.option_a,
+        },
+        {
+          key: "B",
+          text: question.option_b,
+        },
+        {
+          key: "C",
+          text: question.option_c,
+        },
+        {
+          key: "D",
+          text: question.option_d,
+        },
+      ]
+    : [];
 
-    return(
-        <>
-        <div className="min-h-screen bg-gray-100 py-10">
-            <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+  // Each skill currently has 10 questions
+  const questionNumber = assessment?.overall_question ?? 1;
 
-                <h1 className="text-3xl font-bold">
-                Initial Skill Assessment
-                </h1>
-                {/* Description of the assessment */}
-                <p className="mt-2 text-gray-500">
-                Complete this assessment to personalize your learning path.
-                </p>
-                {/* Display career goal and skills */}
-                <div className="mt-6">
-                <p>
-                    <strong>Career Goal:</strong> {careerGoal}
-                </p>
-                {/* Display skills, joined by a comma */}
-                <p className="mt-2">
-                    <strong>Skills:</strong> {skills.join(", ")}
-                </p>
+  const skillProgress =
+    assessment
+        ? (
+            (questionNumber -
+             assessment.current_skill_index *
+             assessment.questions_per_skill)
+            /
+            assessment.questions_per_skill
+          ) * 100
+        : 0;
+
+  // ----------------------------------------------------
+  // Loading screen
+  // ----------------------------------------------------
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 py-10">
+        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+          <div className="text-center py-10">
+            Loading assessment...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // Start error
+  // ----------------------------------------------------
+  if (error && !question) {
+    return (
+      <div className="min-h-screen bg-gray-100 py-10">
+        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+
+          <h1 className="text-3xl font-bold">
+            Initial Skill Assessment
+          </h1>
+
+          <div className="mt-8 rounded-lg bg-red-50 border border-red-200 p-4 text-red-700">
+            {error}
+          </div>
+
+          <button
+            onClick={loadAssessment}
+            className="mt-6 px-6 py-2 rounded bg-blue-600 text-white"
+          >
+            Try Again
+          </button>
+
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 py-10">
+
+      <div className="max-w-6xl mx-auto">
+
+        {/* ------------------------------------------------ */}
+        {/* Heading */}
+        {/* ------------------------------------------------ */}
+
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
+
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+
+            <h1 className="text-3xl font-bold">
+              Initial Skill Assessment
+            </h1>
+
+            {domain?.domain_name && (
+              <span className="text-sm font-medium text-gray-500">
+                <strong className="text-gray-700">Domain:</strong>{" "}
+                {domain.domain_name}
+              </span>
+            )}
+
+          </div>
+
+          <p className="mt-2 text-gray-500">
+            Complete this assessment to personalize your learning path.
+          </p>
+
+          {error && (
+            <div className="mt-6 rounded-lg bg-red-50 border border-red-200 p-4 text-red-700">
+              {error}
+            </div>
+          )}
+
+        </div>
+
+        {/* ------------------------------------------------ */}
+        {/* Main layout: question (left) + roadmap (right) */}
+        {/* ------------------------------------------------ */}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+          {/* ------------------------------------------------ */}
+          {/* Question column */}
+          {/* ------------------------------------------------ */}
+
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-8">
+
+            {question ? (
+              <>
+                <div>
+
+                  <div className="flex justify-between mb-2">
+
+                    <span>
+
+                      Question
+
+                      {" "}
+
+                      {questionsAnswered + 1}
+
+                      {" / "}
+
+                      {assessment?.questions_per_skill}
+
+                    </span>
+
+                    <span className="font-semibold">
+                      {skill?.skill_name}
+                    </span>
+
+                  </div>
+
+                  {/* Progress bar */}
+
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all"
+                      style={{
+                        width: `${skillProgress}%`,
+                      }}
+                    />
+
+                  </div>
+
                 </div>
-                {/* Conditional rendering based on loading state and existence of questions */}
-                {loading ? (
-                <div className="mt-10 text-center">
-                    Loading assessment...
-                </div>
-                ) : currentQuestion ? (
-                <>
-                    <div className="mt-8">
 
-                    {/* Question navigation and skill display */}
-                    <div className="flex justify-between mb-2">
-                        <span>
-                        Question {currentQuestionIndex + 1} of {questions.length}
-                        </span>
-                        <span className="font-semibold capitalize">
-                        {currentQuestion.skill}
-                        </span>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                        className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${progress}%` }}
+                {/* ------------------------------------------------ */}
+                {/* Question text */}
+                {/* ------------------------------------------------ */}
+
+                <div className="mt-8">
+
+                  <h2 className="text-xl font-semibold">
+                    {question.question_text}
+                  </h2>
+
+                  {/* ------------------------------------------------ */}
+                  {/* Options */}
+                  {/* ------------------------------------------------ */}
+
+                  <div className="mt-6 space-y-4">
+
+                    {options.map((option) => (
+
+                      <label
+                        key={option.key}
+                        className={`block border rounded-lg p-4 cursor-pointer transition ${
+                          selectedAnswer === option.key
+                            ? "border-blue-600 bg-blue-50"
+                            : "border-gray-300 hover:border-blue-400"
+                        }`}
+                      >
+
+                        <input
+                          type="radio"
+                          name={`question-${question.question_id}`}
+                          value={option.key}
+                          checked={
+                            selectedAnswer === option.key
+                          }
+                          onChange={() =>
+                            setSelectedAnswer(option.key)
+                          }
+                          disabled={submitting}
+                          className="mr-3"
                         />
 
-                    </div>
+                        <span className="font-semibold mr-2">
+                          {option.key}.
+                        </span>
 
-                    </div>
+                        {option.text}
 
-                    {/* Current question text */}
-                    <div className="mt-8">
-                    <h2 className="text-xl font-semibold">
-                        {currentQuestion.text}
-                    </h2>
-                    {/* Options for the current question */}
-                    <div className="mt-6 space-y-4">
-                        {currentQuestion.options.map((option, index) => (
-                        // Each option is a clickable label
-                        <label
-                            key={index}
-                            className={`block border rounded-lg p-4 cursor-pointer transition ${
-                            answers[currentQuestion.id] === index
-                                ? "border-blue-600 bg-blue-50"
-                                : "border-gray-300 hover:border-blue-400"
-                            }`}
-                        > {/* Radio button for selecting an option */}
+                      </label>
 
-                            <input
-                            type="radio"
-                            name={currentQuestion.id}
-                            checked={answers[currentQuestion.id] === index}
-                            onChange={() =>
-                                setAnswers((prev) => ({
-                                ...prev,
-                                [currentQuestion.id]: index,
-                                }))
-                            }
-                            className="mr-3"
-                            />
+                    ))}
 
-                            {/* Option text */}
-                            {option}
-                        </label>
-                        ))}
-                    </div>
-                    </div>
-                   {/* Navigation buttons (Previous, Next, Submit) */}
-                   <div className="mt-10 flex justify-between">
-                    {/* Previous button, disabled if on the first question */}
-                    <button
-                        disabled={currentQuestionIndex === 0}
-                        onClick={() =>
-                        setCurrentQuestionIndex((prev) => prev - 1)
-                        }
-                        className="px-6 py-2 rounded bg-gray-300 disabled:opacity-50"
-                    >
-                        Previous
-                    </button>
-                    {/* Next button, displayed if not on the last question */}
-                    {currentQuestionIndex < questions.length - 1 ? (
-                        <button
-                        onClick={() =>
-                            setCurrentQuestionIndex((prev) => prev + 1)
-                        }
-                        disabled={answers[currentQuestion.id] === undefined}
-                        className="px-6 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
-                        >
-                        Next
-                        </button>
-                    // Submit button, displayed if on the last question
-                    ) : (
-                        <button
-                        onClick={handleSubmit}
-                        disabled={
-                            answers[currentQuestion.id] === undefined ||
-                            submitting
-                        }
-                        className="px-6 py-2 rounded bg-green-600 text-white disabled:opacity-50"
-                        >
-                        {/* Button text changes based on submission status */}
-                        {submitting ? "Submitting..." : "Submit Assessment"}
-                        </button>
-                    )}
-                    </div>
-                </>
-                ) : (
-                <p>No questions found.</p>
-                )}
+                  </div>
+
+                </div>
+
+                {/* ------------------------------------------------ */}
+                {/* Navigation */}
+                {/* ------------------------------------------------ */}
+
+                <div className="mt-10 flex justify-end">
+
+                  <button
+                    onClick={handleNext}
+                    disabled={
+                      !selectedAnswer ||
+                      submitting
+                    }
+                    className="px-6 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
+                  >
+                    {submitting
+                      ? "Submitting..."
+                      : "Next"}
+                  </button>
+
+                </div>
+
+              </>
+            ) : (
+              <p>
+                No question available.
+              </p>
+            )}
+
+          </div>
+
+          {/* ------------------------------------------------ */}
+          {/* Sidebar: progress + roadmap */}
+          {/* ------------------------------------------------ */}
+
+          <aside className="lg:col-span-1 lg:sticky lg:top-10 space-y-6">
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+
+                <p className="font-semibold">
+
+                    Overall Progress
+
+                </p>
+
+                <p className="text-sm text-gray-500 mt-1">
+
+                    Question {assessment?.overall_question}
+
+                    {" / "}
+
+                    {assessment?.total_questions}
+
+                </p>
+
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+
+                    <div
+
+                        className="bg-blue-600 h-2 rounded-full"
+
+                        style={{
+
+                            width: `${
+                                assessment
+                                    ? (
+                                        assessment.overall_question /
+                                        assessment.total_questions
+                                      ) * 100
+                                    : 0
+                            }%`
+
+                        }}
+
+                    />
+
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-100">
+
+                    <p className="text-sm">
+
+                        <strong>Current Skill:</strong>{" "}
+
+                        {skill?.skill_name}
+
+                    </p>
+
+                    <p className="text-sm text-gray-500">
+
+                        Question
+
+                        {" "}
+
+                        {questionsAnswered + 1}
+
+                        {" / "}
+
+                        {assessment?.questions_per_skill}
+
+                    </p>
+
+                </div>
+
             </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+
+                <h3 className="font-semibold mb-3">
+
+                    Assessment Roadmap
+
+                </h3>
+
+                <div className="space-y-2">
+
+                    {assessment?.skills?.map((item) => (
+
+                        <div
+                            key={item.skill_id}
+                            className="flex justify-between items-center border rounded-lg px-4 py-2 text-sm"
+                        >
+
+                            <span
+                                className={
+                                    item.status === "current"
+                                        ? "font-semibold text-gray-900"
+                                        : "text-gray-700"
+                                }
+                            >
+
+                                {item.skill_name}
+
+                            </span>
+
+                            <span
+                                className={
+                                    item.status === "completed"
+                                        ? "text-green-600"
+
+                                        : item.status === "current"
+
+                                        ? "text-blue-600"
+
+                                        : "text-gray-400"
+                                }
+                            >
+
+                                {item.status}
+
+                            </span>
+
+                        </div>
+
+                    ))}
+
+                </div>
+
             </div>
-        </>
-    )
+
+          </aside>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
 };
 
 export default InitialAssessment;
