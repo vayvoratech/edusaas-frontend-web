@@ -1,5 +1,4 @@
 name: CI Pipeline
-
 on:
   push:
     branches: [main]
@@ -21,3 +20,5 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        - name: Checkout code
+          uses: actions/checkout@v4
