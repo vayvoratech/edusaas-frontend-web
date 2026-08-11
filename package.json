@@ -2,5 +2,6 @@
   "scripts": {
     "lint": "eslint ."
     "build": "..."
+     "test": "jest"
   }
 }
