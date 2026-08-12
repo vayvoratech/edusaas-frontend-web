@@ -278,9 +278,13 @@ export default function GapReport() {
         <div className="space-y-4">
           {breakdown.map((b) => {
 
-            const percentage = Math.round(
-              (b.student_level / b.required_level) * 100
-            );
+            
+
+            const percentage = Math.min(
+              100,
+              Math.max(0, Number(b.student_level/b.required_level)*100)
+            )
+
 
             const color = `hsl(${percentage * 1.2}, 80%, 45%)`;
 

@@ -141,7 +141,6 @@ export const startInitialQuiz = () => api
     .post("/api/assessments/initial-quiz/start")
     .then((r) => r.data);
 
-
 // Submit one answer and receive the next adaptive question
 export const submitInitialQuizAnswer = ({sessionId, questionId,answer,}) => api
     .post("/api/assessments/initial-quiz/answer", {
@@ -150,6 +149,20 @@ export const submitInitialQuizAnswer = ({sessionId, questionId,answer,}) => api
       answer,
     })
     .then((r) => r.data);
+  
+// Send heartbeat while the initial quiz is active
+export const heartbeatInitialQuiz = (sessionId) => api
+  .post("/api/assessments/initial-quiz/heartbeat", {
+    session_id: sessionId,
+  })
+  .then((r) => r.data);
+
+// Pause the initial quiz session
+export const pauseInitialQuiz = (sessionId) => api
+  .post("/api/assessments/initial-quiz/pause", {
+    session_id: sessionId,
+  })
+  .then((r) => r.data);
 
 // Gap report
 export const fetchGapReport = (userId) =>

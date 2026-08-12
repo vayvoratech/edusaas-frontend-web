@@ -1,46 +1,65 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   startInitialQuiz,
   submitInitialQuizAnswer,
+  heartbeatInitialQuiz,
+  pauseInitialQuiz,
 } from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 const InitialAssessment = () => {
   const navigate = useNavigate();
 
-  // Quiz loading/submission
-  const [loading, setLoading] = useState(true);
+  // ----------------------------------------------------
+  // Page state
+  // ----------------------------------------------------
+  const [page, setPage] = useState("instructions");
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // ----------------------------------------------------
   // Quiz session
+  // ----------------------------------------------------
   const [sessionId, setSessionId] = useState(null);
 
-  // Domain selected during signup
-  const [domain, setDomain] = useState(null);
+  // ----------------------------------------------------
+  // Timer / Resume state
+  // ----------------------------------------------------
+  const [resumed, setResumed] = useState(false);
+  const [assessmentActive, setAssessmentActive] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
 
-  // Current skill
+  // ----------------------------------------------------
+  // Domain / skill / question
+  // ----------------------------------------------------
+  const [domain, setDomain] = useState(null);
   const [skill, setSkill] = useState(null);
+  const [question, setQuestion] = useState(null);
   const [assessment, setAssessment] = useState(null);
 
-  // Current adaptive question
-  const [question, setQuestion] = useState(null);
-
-  // Selected answer: A / B / C / D
+  // ----------------------------------------------------
+  // Answer
+  // ----------------------------------------------------
   const [selectedAnswer, setSelectedAnswer] = useState("");
 
-  // Current skill progress
+  // ----------------------------------------------------
+  // Progress
+  // ----------------------------------------------------
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
 
-
+  const [skillQuestionsAnswered, setSkillQuestionsAnswered] = useState(0);
 
   // ----------------------------------------------------
-  // Start initial quiz when page loads
+  // Start assessment
+  //
+  // IMPORTANT:
+  // The old component started the assessment automatically
+  // when the page loaded.
+  //
+  // The new component waits until the student explicitly
+  // clicks Start / Resume Assessment.
   // ----------------------------------------------------
-  useEffect(() => {
-    loadAssessment();
-  }, []);
-
   const loadAssessment = async () => {
     try {
       setLoading(true);
@@ -54,18 +73,37 @@ const InitialAssessment = () => {
 
       setSessionId(quiz.session_id);
       setDomain(quiz.domain);
-      setAssessment(quiz.assessment);
       setSkill(quiz.skill);
       setQuestion(quiz.question);
+      setAssessment(quiz.assessment);
 
-      setQuestionsAnswered(0);
+      const overallAnswered =
+        quiz.assessment?.overall_question
+          ? Math.max(quiz.assessment.overall_question - 1, 0)
+          : 0;
+
+      setQuestionsAnswered(overallAnswered);
+
+      setSkillQuestionsAnswered(overallAnswered % 10);
+
+      // Store whether this is a resumed assessment.
+      setResumed(Boolean(quiz.resumed));
+
+      // Store the server-authoritative remaining time.
+      setRemainingSeconds(quiz.timer?.remaining_seconds ?? 0);
+
+      // The quiz is loaded, but the student must
+      // explicitly click Start / Resume before answering.
+      setAssessmentActive(false);
+
       setSelectedAnswer("");
+
+      setPage("quiz");
     } catch (err) {
       console.error("Failed to start initial quiz:", err);
 
       setError(
-        err.response?.data?.error ||
-          "Failed to start the initial assessment."
+        err.response?.data?.error || "Failed to start the initial assessment."
       );
     } finally {
       setLoading(false);
@@ -75,7 +113,7 @@ const InitialAssessment = () => {
   // ----------------------------------------------------
   // Submit current answer
   // ----------------------------------------------------
-  const handleNext = async () => {
+  const handleNext = useCallback(async () => {
     if (!selectedAnswer || !question || !sessionId) {
       return;
     }
@@ -93,33 +131,32 @@ const InitialAssessment = () => {
       console.log("Initial Quiz Answer Response:", response);
 
       const result = response.data;
-      setAssessment(result.assessment);
+
+      if (result.assessment) {
+        setAssessment(result.assessment);
+      }
 
       // ------------------------------------------------
       // Entire assessment completed
       // ------------------------------------------------
       if (result.assessment_completed) {
-        // alert(
-        //   `Initial assessment completed!\n\nReadiness Score: ${result.readiness_score}%`
-        // );
-
-        navigate("/app/dashboard");
-
+        setPage("completed");
         return;
       }
 
       // ------------------------------------------------
-      // Skill completed -> backend moved to next skill
+      // Skill completed -> move to next skill
       // ------------------------------------------------
       if (result.skill_completed && result.next_skill) {
         setSkill(result.next_skill);
 
+        setSkillQuestionsAnswered(0);
+
         setQuestionsAnswered(
-          result.progress?.current ?? 0
+          Math.max((result.assessment?.overall_question ?? 1) - 1, 0)
         );
 
         setQuestion(result.question);
-
         setSelectedAnswer("");
 
         return;
@@ -128,27 +165,157 @@ const InitialAssessment = () => {
       // ------------------------------------------------
       // Continue current skill
       // ------------------------------------------------
-      setQuestionsAnswered(
-        result.progress?.current ?? 0
-      );
+      if (result.progress) {
+        const currentProgress =
+          result.progress.current ??
+          result.progress.questions_answered ??
+          0;
+
+        setSkillQuestionsAnswered(currentProgress);
+      }
+
+      if (result.assessment) {
+        setQuestionsAnswered(
+          Math.max((result.assessment.overall_question ?? 1) - 1, 0)
+        );
+      }
 
       setQuestion(result.question);
-
       setSelectedAnswer("");
     } catch (err) {
       console.error("Failed to submit answer:", err);
 
       setError(
-        err.response?.data?.error ||
-          "Failed to submit the answer."
+        err.response?.data?.error || "Failed to submit the answer."
       );
     } finally {
       setSubmitting(false);
     }
+  }, [selectedAnswer, question, sessionId]);
+
+  // ----------------------------------------------------
+  // Start / Resume assessment
+  // ----------------------------------------------------
+  const handleStartAssessment = () => {
+    setError("");
+    setAssessmentActive(true);
   };
 
   // ----------------------------------------------------
-  // Convert backend question into UI options
+  // Countdown timer
+  // ----------------------------------------------------
+  useEffect(() => {
+    if (!assessmentActive) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setRemainingSeconds((previous) => {
+        if (previous <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+
+        return previous - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [assessmentActive]);
+
+  // ----------------------------------------------------
+  // Server heartbeat
+  // ----------------------------------------------------
+  useEffect(() => {
+    if (!assessmentActive || !sessionId) {
+      return;
+    }
+
+    const heartbeatTimer = setInterval(async () => {
+      try {
+        const response = await heartbeatInitialQuiz(sessionId);
+        const data = response.data;
+
+        if (typeof data.remaining_seconds === "number") {
+          setRemainingSeconds(data.remaining_seconds);
+        }
+      } catch (err) {
+        console.error("Assessment heartbeat failed:", err);
+      }
+    }, 10000);
+
+    return () => {
+      clearInterval(heartbeatTimer);
+    };
+  }, [assessmentActive, sessionId]);
+
+  // ----------------------------------------------------
+  // Pause assessment when leaving the assessment page
+  // ----------------------------------------------------
+  useEffect(() => {
+    if (!assessmentActive || !sessionId) {
+      return;
+    }
+
+    const handlePageHide = () => {
+      pauseInitialQuiz(sessionId).catch((err) => {
+        console.error("Failed to pause assessment:", err);
+      });
+    };
+
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [assessmentActive, sessionId]);
+
+  // ----------------------------------------------------
+  // Keyboard support
+  //
+  // A/B/C/D selects an option.
+  // Enter submits the answer.
+  // ----------------------------------------------------
+  useEffect(() => {
+    if (page !== "quiz" || !assessmentActive) {
+      return;
+    }
+
+    const handleKeyDown = (event) => {
+      if (submitting) {
+        return;
+      }
+
+      const key = event.key.toUpperCase();
+
+      if (["A", "B", "C", "D"].includes(key)) {
+        setSelectedAnswer(key);
+      }
+
+      if (event.key === "Enter" && selectedAnswer) {
+        handleNext();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    page,
+    selectedAnswer,
+    submitting,
+    question,
+    sessionId,
+    assessmentActive,
+    handleNext,
+  ]);
+
+  // ----------------------------------------------------
+  // Convert question into UI options
   // ----------------------------------------------------
   const options = question
     ? [
@@ -171,374 +338,484 @@ const InitialAssessment = () => {
       ]
     : [];
 
-  // Each skill currently has 10 questions
-  const questionNumber = assessment?.overall_question ?? 1;
+  // ----------------------------------------------------
+  // Timer display
+  // ----------------------------------------------------
+  const formatTime = (seconds) => {
+    const safeSeconds = Math.max(0, Number(seconds) || 0);
 
-  const skillProgress =
-    assessment
-        ? (
-            (questionNumber -
-             assessment.current_skill_index *
-             assessment.questions_per_skill)
-            /
-            assessment.questions_per_skill
-          ) * 100
-        : 0;
+    const minutes = Math.floor(safeSeconds / 60);
+    const secs = safeSeconds % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(
+      2,
+      "0"
+    )}`;
+  };
 
   // ----------------------------------------------------
-  // Loading screen
+  // Progress
   // ----------------------------------------------------
-  if (loading) {
+  const currentQuestionNumber = skillQuestionsAnswered + 1;
+  const skillProgress = Math.min((skillQuestionsAnswered / 10) * 100, 100);
+
+  const overallQuestionNumber = questionsAnswered + 1;
+  const overallTotalQuestions = assessment?.total_questions || 50;
+  const overallProgress = Math.min(
+    (questionsAnswered / overallTotalQuestions) * 100,
+    100
+  );
+
+  // ----------------------------------------------------
+  // Instructions screen
+  // ----------------------------------------------------
+  if (page === "instructions") {
     return (
-      <div className="min-h-screen bg-gray-100 py-10">
-        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
-          <div className="text-center py-10">
-            Loading assessment...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ----------------------------------------------------
-  // Start error
-  // ----------------------------------------------------
-  if (error && !question) {
-    return (
-      <div className="min-h-screen bg-gray-100 py-10">
-        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
-
-          <h1 className="text-3xl font-bold">
-            Initial Skill Assessment
-          </h1>
-
-          <div className="mt-8 rounded-lg bg-red-50 border border-red-200 p-4 text-red-700">
-            {error}
-          </div>
-
-          <button
-            onClick={loadAssessment}
-            className="mt-6 px-6 py-2 rounded bg-blue-600 text-white"
-          >
-            Try Again
-          </button>
-
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-100 py-10">
-
-      <div className="max-w-6xl mx-auto">
-
-        {/* ------------------------------------------------ */}
-        {/* Heading */}
-        {/* ------------------------------------------------ */}
-
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
-
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-
-            <h1 className="text-3xl font-bold">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
+          <div className="text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
               Initial Skill Assessment
             </h1>
 
-            {domain?.domain_name && (
-              <span className="text-sm font-medium text-gray-500">
-                <strong className="text-gray-700">Domain:</strong>{" "}
-                {domain.domain_name}
-              </span>
-            )}
-
+            <p className="mt-3 text-gray-500">
+              Complete this assessment to personalize your learning path.
+            </p>
           </div>
 
-          <p className="mt-2 text-gray-500">
-            Complete this assessment to personalize your learning path.
-          </p>
-
-          {error && (
-            <div className="mt-6 rounded-lg bg-red-50 border border-red-200 p-4 text-red-700">
-              {error}
+          {/* Assessment information */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-xl bg-blue-50 border border-blue-100 p-5">
+              <p className="text-sm text-gray-500">Assessment</p>
+              <p className="mt-1 font-semibold text-gray-900">
+                Adaptive Skill Assessment
+              </p>
             </div>
-          )}
 
+            <div className="rounded-xl bg-gray-50 border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">Questions</p>
+              <p className="mt-1 font-semibold text-gray-900">10 per skill</p>
+            </div>
+
+            <div className="rounded-xl bg-gray-50 border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">Format</p>
+              <p className="mt-1 font-semibold text-gray-900">
+                Multiple Choice
+              </p>
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-gray-900">
+              Before you begin
+            </h2>
+
+            <div className="mt-4 space-y-3 text-gray-600">
+              <div className="flex gap-3">
+                <span className="font-bold text-blue-600">1.</span>
+                <p>
+                  Answer each question by selecting one of the four available
+                  options.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="font-bold text-blue-600">2.</span>
+                <p>
+                  The assessment is adaptive, so the next question may change
+                  based on your previous answer.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="font-bold text-blue-600">3.</span>
+                <p>
+                  Your answers are submitted to the server one question at a
+                  time.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="font-bold text-blue-600">4.</span>
+                <p>
+                  If you leave an assessment that is still in progress, the
+                  backend can resume the existing quiz session.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-10 text-center">
+            <button
+              onClick={loadAssessment}
+              disabled={loading}
+              className="px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Loading..." : "Load Assessment"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // Completed screen
+  // ----------------------------------------------------
+  if (page === "completed") {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
+          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
+            ✓
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Assessment Completed!
+          </h1>
+          <p className="mt-4 text-gray-600">
+            You have successfully completed your initial skill assessment. We
+            will use your results to personalize your learning roadmap.
+          </p>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // Quiz screen
+  // ----------------------------------------------------
+  return (
+    <div className="min-h-screen bg-gray-100 py-6 md:py-10 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                Initial Skill Assessment
+              </h1>
+
+              <p className="mt-1 text-gray-500">
+                Complete the assessment to personalize your learning path.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-8">
+              <div className="text-right">
+                <p className="text-sm text-gray-500">Domain</p>
+
+                <p className="font-semibold text-gray-900">
+                  {domain?.domain_name || "Not available"}
+                </p>
+              </div>
+
+              {assessmentActive && (
+                <div className="text-center">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Time Remaining
+                  </p>
+
+                  <p
+                    className={`text-3xl font-bold ${
+                      remainingSeconds <= 300
+                        ? "text-red-600"
+                        : "text-gray-900"
+                    }`}
+                  >
+                    {formatTime(remainingSeconds)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* ------------------------------------------------ */}
-        {/* Main layout: question (left) + roadmap (right) */}
-        {/* ------------------------------------------------ */}
+        {/* Error */}
+        {error && (
+          <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-4 text-red-700">
+            {error}
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* Start / Resume */}
+        {!assessmentActive ? (
+          <div className="mt-6 bg-white rounded-xl shadow-sm p-8 text-center">
+            <h2 className="text-2xl font-bold text-gray-900">
+              {resumed ? "Resume Skill Assessment" : "Start Skill Assessment"}
+            </h2>
 
-          {/* ------------------------------------------------ */}
-          {/* Question column */}
-          {/* ------------------------------------------------ */}
+            <p className="mt-3 text-gray-500 max-w-2xl mx-auto">
+              {resumed
+                ? "Your previous progress has been saved. You will continue from the same question with the remaining time."
+                : "Your assessment is ready. Once you continue, the timer will be active."}
+            </p>
 
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-8">
-
-            {question ? (
-              <>
-                <div>
-
-                  <div className="flex justify-between mb-2">
-
-                    <span>
-
-                      Question
-
-                      {" "}
-
-                      {questionsAnswered + 1}
-
-                      {" / "}
-
-                      {assessment?.questions_per_skill}
-
-                    </span>
-
-                    <span className="font-semibold">
-                      {skill?.skill_name}
-                    </span>
-
-                  </div>
-
-                  {/* Progress bar */}
-
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all"
-                      style={{
-                        width: `${skillProgress}%`,
-                      }}
-                    />
-
-                  </div>
-
+            <button
+              type="button"
+              onClick={handleStartAssessment}
+              className="mt-6 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+            >
+              {resumed ? "Resume Skill Assessment" : "Start Skill Assessment"}
+            </button>
+          </div>
+        ) : question ? (
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* =================================================
+                QUESTION CARD
+            ================================================= */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 md:p-8">
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-sm text-gray-500">
+                  Question{" "}
+                  <span className="font-semibold text-gray-700">
+                    {currentQuestionNumber}
+                  </span>{" "}
+                  / 10
                 </div>
 
-                {/* ------------------------------------------------ */}
-                {/* Question text */}
-                {/* ------------------------------------------------ */}
+                <div className="font-semibold text-gray-900">
+                  {skill?.skill_name || "Current Skill"}
+                </div>
+              </div>
 
-                <div className="mt-8">
+              {/* Skill progress */}
+              <div className="mt-4">
+                <div className="flex justify-between text-xs text-gray-500 mb-2">
+                  <span>Skill Progress</span>
 
-                  <h2 className="text-xl font-semibold">
-                    {question.question_text}
-                  </h2>
+                  <span>{Math.round(skillProgress)}%</span>
+                </div>
 
-                  {/* ------------------------------------------------ */}
-                  {/* Options */}
-                  {/* ------------------------------------------------ */}
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                    style={{
+                      width: `${skillProgress}%`,
+                    }}
+                  />
+                </div>
+              </div>
 
-                  <div className="mt-6 space-y-4">
+              {/* Question */}
+              <div className="mt-10">
+                <p className="text-sm font-semibold text-blue-600">
+                  Question {currentQuestionNumber}
+                </p>
 
-                    {options.map((option) => (
+                <h2 className="mt-2 text-xl md:text-2xl font-semibold text-gray-900 leading-relaxed">
+                  {question.question_text}
+                </h2>
+              </div>
 
-                      <label
-                        key={option.key}
-                        className={`block border rounded-lg p-4 cursor-pointer transition ${
-                          selectedAnswer === option.key
-                            ? "border-blue-600 bg-blue-50"
-                            : "border-gray-300 hover:border-blue-400"
-                        }`}
-                      >
+              {/* Options */}
+              <div className="mt-8 space-y-4">
+                {options.map((option) => (
+                  <label
+                    key={option.key}
+                    className={`block border rounded-xl p-5 cursor-pointer transition ${
+                      selectedAnswer === option.key
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-300 bg-white hover:border-blue-400 hover:bg-gray-50"
+                    } ${
+                      submitting ? "cursor-not-allowed opacity-70" : ""
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <input
+                        type="radio"
+                        name={`question-${question.question_id}`}
+                        value={option.key}
+                        checked={selectedAnswer === option.key}
+                        onChange={() => setSelectedAnswer(option.key)}
+                        disabled={submitting}
+                        className="mt-1"
+                      />
 
-                        <input
-                          type="radio"
-                          name={`question-${question.question_id}`}
-                          value={option.key}
-                          checked={
-                            selectedAnswer === option.key
-                          }
-                          onChange={() =>
-                            setSelectedAnswer(option.key)
-                          }
-                          disabled={submitting}
-                          className="mr-3"
-                        />
-
-                        <span className="font-semibold mr-2">
+                      <div>
+                        <span className="font-bold text-gray-900 mr-2">
                           {option.key}.
                         </span>
 
-                        {option.text}
+                        <span className="text-gray-700">{option.text}</span>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
 
-                      </label>
-
-                    ))}
-
-                  </div>
-
-                </div>
-
-                {/* ------------------------------------------------ */}
-                {/* Navigation */}
-                {/* ------------------------------------------------ */}
-
-                <div className="mt-10 flex justify-end">
-
-                  <button
-                    onClick={handleNext}
-                    disabled={
-                      !selectedAnswer ||
-                      submitting
-                    }
-                    className="px-6 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
-                  >
-                    {submitting
-                      ? "Submitting..."
-                      : "Next"}
-                  </button>
-
-                </div>
-
-              </>
-            ) : (
-              <p>
-                No question available.
-              </p>
-            )}
-
-          </div>
-
-          {/* ------------------------------------------------ */}
-          {/* Sidebar: progress + roadmap */}
-          {/* ------------------------------------------------ */}
-
-          <aside className="lg:col-span-1 lg:sticky lg:top-10 space-y-6">
-
-            <div className="bg-white rounded-xl shadow-lg p-6">
-
-                <p className="font-semibold">
-
-                    Overall Progress
-
+              {/* Navigation */}
+              <div className="mt-10 flex justify-between items-center">
+                <p className="text-sm text-gray-400">
+                  Select an answer and click Next.
                 </p>
 
-                <p className="text-sm text-gray-500 mt-1">
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!selectedAnswer || submitting}
+                  className="px-7 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? "Submitting..." : "Next"}
+                </button>
+              </div>
+            </div>
 
-                    Question {assessment?.overall_question}
+            {/* =================================================
+                RIGHT SIDEBAR
+            ================================================= */}
+            <div className="space-y-6">
+              {/* Overall Progress */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Overall Progress
+                </h2>
 
-                    {" / "}
+                <div className="mt-3 flex justify-between text-sm text-gray-500">
+                  <span>
+                    Question {overallQuestionNumber} / {overallTotalQuestions}
+                  </span>
 
-                    {assessment?.total_questions}
+                  <span>{Math.round(overallProgress)}%</span>
+                </div>
 
-                </p>
-
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-
-                    <div
-
-                        className="bg-blue-600 h-2 rounded-full"
-
-                        style={{
-
-                            width: `${
-                                assessment
-                                    ? (
-                                        assessment.overall_question /
-                                        assessment.total_questions
-                                      ) * 100
-                                    : 0
-                            }%`
-
-                        }}
-
-                    />
-
+                <div className="mt-2 w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                    style={{
+                      width: `${overallProgress}%`,
+                    }}
+                  />
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-sm text-gray-500">Current Skill</p>
 
-                    <p className="text-sm">
+                  <p className="mt-1 font-semibold text-gray-900">
+                    {skill?.skill_name || "Not available"}
+                  </p>
 
-                        <strong>Current Skill:</strong>{" "}
+                  <p className="text-sm text-gray-500">
+                    Question {currentQuestionNumber} / 10
+                  </p>
+                </div>
+              </div>
 
-                        {skill?.skill_name}
+              {/* Assessment Roadmap */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Assessment Roadmap
+                  </h2>
 
-                    </p>
-
-                    <p className="text-sm text-gray-500">
-
-                        Question
-
-                        {" "}
-
-                        {questionsAnswered + 1}
-
-                        {" / "}
-
-                        {assessment?.questions_per_skill}
-
-                    </p>
-
+                  <span className="text-sm text-gray-400">
+                    {assessment?.total_skills || 0} skills
+                  </span>
                 </div>
 
-            </div>
+                <div className="mt-5 space-y-3">
+                  {assessment?.skills?.map((item, index) => {
+                    const isCurrent = item.skill_id === skill?.skill_id;
 
-            <div className="bg-white rounded-xl shadow-lg p-6">
+                    const isCompleted = item.status === "completed";
 
-                <h3 className="font-semibold mb-3">
-
-                    Assessment Roadmap
-
-                </h3>
-
-                <div className="space-y-2">
-
-                    {assessment?.skills?.map((item) => (
-
-                        <div
-                            key={item.skill_id}
-                            className="flex justify-between items-center border rounded-lg px-4 py-2 text-sm"
-                        >
-
-                            <span
-                                className={
-                                    item.status === "current"
-                                        ? "font-semibold text-gray-900"
-                                        : "text-gray-700"
-                                }
+                    return (
+                      <div
+                        key={item.skill_id}
+                        className={`rounded-lg border p-4 transition ${
+                          isCurrent
+                            ? "border-blue-500 bg-blue-50"
+                            : isCompleted
+                            ? "border-green-200 bg-green-50"
+                            : "border-gray-200 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                                isCompleted
+                                  ? "bg-green-100 text-green-600"
+                                  : isCurrent
+                                  ? "bg-blue-100 text-blue-600"
+                                  : "bg-gray-100 text-gray-500"
+                              }`}
                             >
+                              {isCompleted ? "✓" : index + 1}
+                            </div>
 
-                                {item.skill_name}
-
+                            <span className="font-medium text-gray-800">
+                              {item.skill_name}
                             </span>
+                          </div>
 
-                            <span
-                                className={
-                                    item.status === "completed"
-                                        ? "text-green-600"
-
-                                        : item.status === "current"
-
-                                        ? "text-blue-600"
-
-                                        : "text-gray-400"
-                                }
-                            >
-
-                                {item.status}
-
-                            </span>
-
+                          <span
+                            className={`text-sm font-medium ${
+                              isCompleted
+                                ? "text-green-600"
+                                : isCurrent
+                                ? "text-blue-600"
+                                : "text-gray-400"
+                            }`}
+                          >
+                            {isCompleted
+                              ? "completed"
+                              : isCurrent
+                              ? "current"
+                              : "upcoming"}
+                          </span>
                         </div>
 
-                    ))}
+                        {isCurrent && (
+                          <div className="mt-3">
+                            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                              <span>Progress</span>
 
+                              <span>{Math.round(skillProgress)}%</span>
+                            </div>
+
+                            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${skillProgress}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {isCompleted && (
+                          <div className="mt-3">
+                            <div className="w-full h-1.5 bg-green-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-green-500 rounded-full"
+                                style={{
+                                  width: "100%",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-
+              </div>
             </div>
-
-          </aside>
-
-        </div>
-
+          </div>
+        ) : (
+          <div className="mt-6 bg-white rounded-xl shadow-sm p-8 text-center">
+            <p className="text-gray-500">No question available.</p>
+          </div>
+        )}
       </div>
-
     </div>
   );
 };
