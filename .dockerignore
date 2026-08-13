@@ -3,5 +3,8 @@ build
 .git
 .gitignore
 .env
+.env.dev
+.env.prod
+.env.qa
 .env.local
 npm-debug.log
