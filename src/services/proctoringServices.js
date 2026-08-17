@@ -454,7 +454,7 @@ class ProctoringService {
     this.frameInterval = null;
   }
 
-  sendFrame() {
+ sendFrame() {
     if (!this.running) {
       return;
     }
@@ -511,7 +511,7 @@ class ProctoringService {
         error
       );
     }
-  }
+  } 
 
   // BROWSER MONITORING
   enableBrowserMonitoring() {

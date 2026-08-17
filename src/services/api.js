@@ -150,6 +150,14 @@ export const submitInitialQuizAnswer = ({sessionId, questionId,answer,}) => api
     })
     .then((r) => r.data);
   
+// Activate (start/resume) the initial quiz timer — call this at the
+// moment the student clicks "Start/Resume Assessment", NOT on page load.
+export const activateInitialQuiz = (sessionId) => api
+  .post("/api/assessments/initial-quiz/activate", {
+    session_id: sessionId,
+  })
+  .then((r) => r.data);
+
 // Send heartbeat while the initial quiz is active
 export const heartbeatInitialQuiz = (sessionId) => api
   .post("/api/assessments/initial-quiz/heartbeat", {

@@ -2,8 +2,10 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import {
   startInitialQuiz,
+  activateInitialQuiz,
   submitInitialQuizAnswer,
   heartbeatInitialQuiz,
+  pauseInitialQuiz,
   pauseInitialQuizOnUnload
 } from "../services/api";
 import ProctoringService from "../services/proctoringServices";
@@ -68,6 +70,11 @@ const InitialAssessment = () => {
   const navigate = useNavigate();
   const proctoringRef = useRef(null);
 
+  const assessmentActiveRef = useRef(false)
+  const sessionIdRef = useRef(null)
+  const skipAutoPauseRef = useRef(false)
+  const pauseSentRef = useRef(false)
+
   useEffect(() => {
     proctoringRef.current =
       new ProctoringService({
@@ -79,6 +86,7 @@ const InitialAssessment = () => {
           console.log("AI proctoring started:", data);
           setError("");
           setAssessmentActive(true);
+          setPage("quiz")
         },
 
         onResult: (data) => {
@@ -116,12 +124,19 @@ const InitialAssessment = () => {
         onTerminate: async (data) => {
           console.error("Assessment terminated:", data);
 
+          skipAutoPauseRef.current = true;
+
           setAssessmentActive(false);
 
           await exitAssessmentFullscreen();
 
+          if (proctoringRef.current) {
+            proctoringRef.current.cleanup();
+          }
+
           setPage("terminated");
         },
+
         onDisconnected: () => {
           console.log("Proctoring WebSocket disconnected.");
         },
@@ -150,6 +165,16 @@ const InitialAssessment = () => {
   const [proctoringWarning, setProctoringWarning] = useState(null);
 
   // ----------------------------------------------------
+  // Tab-switch blocking overlay — purely client-side and instant,
+  // so it doesn't depend on a round trip through the AI proctoring
+  // websocket. ProctoringService still separately reports TAB_SWITCH
+  // to the backend for violation-count escalation (warning/pause/
+  // terminate); this overlay is just the immediate UX block.
+  // ----------------------------------------------------
+  const [tabSwitchAlert, setTabSwitchAlert] = useState(false);
+  const tabSwitchCountRef = useRef(0);
+
+  // ----------------------------------------------------
   // Quiz session  
   // ----------------------------------------------------
   const [sessionId, setSessionId] = useState(null);
@@ -160,6 +185,14 @@ const InitialAssessment = () => {
   const [resumed, setResumed] = useState(false);
   const [assessmentActive, setAssessmentActive] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  useEffect(() => {
+    assessmentActiveRef.current = assessmentActive;
+  }, [assessmentActive]);
 
   // ----------------------------------------------------
   // Domain / skill / question
@@ -196,6 +229,7 @@ const InitialAssessment = () => {
       const quiz = response.data;
 
       setSessionId(quiz.session_id);
+      pauseSentRef.current = false; // CRITICAL: Reset so assessment can pause again if resumed
       setDomain(quiz.domain);
       setSkill(quiz.skill);
       setQuestion(quiz.question);
@@ -215,7 +249,7 @@ const InitialAssessment = () => {
 
       setAssessmentActive(false);
       setSelectedAnswer("");
-      setPage("quiz");
+      setPage("ready");
     } catch (err) {
       console.error("Failed to start initial quiz:", err);
       setError(
@@ -227,9 +261,6 @@ const InitialAssessment = () => {
     }
   };
 
-  useEffect(() => {
-    loadAssessment();
-  }, [])
 
   useEffect(() => {
     if (page !== "quiz") return;
@@ -277,6 +308,7 @@ const InitialAssessment = () => {
       if (result.assessment_completed) {
         console.log("Assessment completed:", result);
        
+        skipAutoPauseRef.current = true
         setAssessmentActive(false);
 
         await exitAssessmentFullscreen();
@@ -321,6 +353,22 @@ const InitialAssessment = () => {
       setSelectedAnswer("");
     } catch (err) {
       console.error("Failed to submit answer:", err);
+
+      if (err.response?.status === 409) {
+        // Most commonly ASSESSMENT_TIME_EXPIRED — the server-side
+        // deadline passed. Move to the expired screen instead of
+        // leaving the student stuck on a question they can't submit.
+        skipAutoPauseRef.current = true;
+        setAssessmentActive(false);
+        await exitAssessmentFullscreen();
+        if (proctoringRef.current) proctoringRef.current.cleanup();
+        setPage("expired");
+        setError(
+          err.response?.data?.error || "Your assessment session has ended."
+        );
+        return;
+      }
+
       setError(
         err.response?.data?.error || "Failed to submit the answer."
       );
@@ -338,12 +386,40 @@ const InitialAssessment = () => {
       setError("Assessment session not found.");
       return;
     }
-     await enterAssessmentFullscreen();
+
+    setError("");
+    setProctoringWarning(null);
+
+    /*
+     * Activate the server-side timer FIRST, before fullscreen/camera.
+     * This is the exact moment the exam clock starts (or resumes) —
+     * not when the "Resume Assessment" screen was loaded, and not
+     * after however long the camera permission dialog takes.
+     *
+     * It also must happen before proctoring connects, since the
+     * proctoring gateway requires the session to already be
+     * "In Progress" server-side.
+     */
+    let activatedRemaining = null;
+    try {
+      const activateResponse = await activateInitialQuiz(sessionId);
+      activatedRemaining = activateResponse?.data?.remaining_seconds;
+
+      if (typeof activatedRemaining === "number") {
+        setRemainingSeconds(activatedRemaining);
+      }
+    } catch (err) {
+      console.error("Failed to activate assessment session:", err);
+      setError(
+        err.response?.data?.error ||
+          "Unable to resume the assessment. Please try again."
+      );
+      return;
+    }
+
+    await enterAssessmentFullscreen();
 
     try {
-      setError("");
-      setProctoringWarning(null);
-
       await proctoringRef.current.start(sessionId);
 
       console.log("Proctoring connection established. Waiting for AI...");
@@ -353,10 +429,57 @@ const InitialAssessment = () => {
 
       await exitAssessmentFullscreen();
 
+      // The timer is already running server-side at this point (we
+      // just activated it above). If proctoring fails to connect
+      // (camera permission denied, etc.), hand the time back instead
+      // of silently burning it while the student retries.
+      try {
+        await pauseInitialQuiz(sessionId);
+      } catch (pauseErr) {
+        console.error(
+          "Failed to restore paused state after a failed start:",
+          pauseErr
+        );
+      }
+
       setError(
         err.message || // Keep existing error message logic
           "Unable to start proctoring. Please check your camera permission and try again."
       );
+    }
+  };
+
+  // ----------------------------------------------------
+  // Pause the assessment and navigate away
+  // This is the PRIMARY pause mechanism for normal SPA navigation
+  // (button clicks / in-app navigation). It awaits the pause request
+  // before navigating so we don't race the unmount cleanup below.
+  // ----------------------------------------------------
+  const handleExitAssessmentToDashboard = async () => {
+    const currentSessionId = sessionIdRef.current;
+
+    if (!currentSessionId || pauseSentRef.current) {
+      // Already paused or no session - just navigate
+      navigate("/app/dashboard");
+      return;
+    }
+
+    if (!assessmentActiveRef.current) {
+      // Assessment not active - just navigate
+      navigate("/app/dashboard");
+      return;
+    }
+
+    try {
+      pauseSentRef.current = true; // Prevent duplicate pause requests
+      console.log("Pausing assessment before exit...");
+      await pauseInitialQuiz(currentSessionId);
+      console.log("Assessment paused successfully");
+    } catch (err) {
+      console.error("Failed to pause assessment before exit:", err);
+    } finally {
+      // Navigate regardless of pause success/failure
+      navigate("/app/dashboard");
     }
   };
 
@@ -377,25 +500,68 @@ const InitialAssessment = () => {
     return () => clearInterval(timer);
   }, [assessmentActive]);
 
-  // Enforce fullscreen while the assessment is active
+  // Time's up — act on it immediately client-side instead of waiting
+  // for the next heartbeat or answer submission to come back 409.
   useEffect(() => {
-    if (!assessmentActive) return;
+    if (!assessmentActive || remainingSeconds > 0) return;
 
-    const handleFullscreenChange = () => {
-      if (document.fullscreenElement) return;
+    console.warn("Assessment time expired.");
+    skipAutoPauseRef.current = true; // time is genuinely over, nothing to pause
+    setAssessmentActive(false);
 
-      console.warn("Assessment exited fullscreen.");
-
-      setAssessmentActive(false);
+    (async () => {
+      await exitAssessmentFullscreen();
 
       if (proctoringRef.current) {
         proctoringRef.current.cleanup();
       }
 
-      setPage("terminated");
-      setError(
-        "The assessment was terminated because fullscreen mode was exited."
-      );
+      setPage("expired");
+      setError("Your assessment time has expired.");
+    })();
+  }, [remainingSeconds, assessmentActive]);
+
+  // Enforce fullscreen while the assessment is active
+  useEffect(() => {
+    if (!assessmentActive) return;
+
+    const handleFullscreenChange = async () => {
+      if (document.fullscreenElement) return;
+
+      if (!assessmentActiveRef.current) return;
+
+      console.warn("Assessment exited fullscreen. Pausing assessment.");
+
+      const currentSessionId = sessionIdRef.current;
+
+      if (!currentSessionId || pauseSentRef.current) return;
+
+      try {
+        pauseSentRef.current = true;
+
+        await pauseInitialQuiz(currentSessionId);
+
+        setAssessmentActive(false);
+
+        if (proctoringRef.current) {
+          proctoringRef.current.cleanup();
+        }
+
+        // Keep the existing quiz page.
+        // The Resume screen will appear because assessmentActive=false.
+        setResumed(true);
+        setError("");
+      } catch (err) {
+        console.error("Failed to pause assessment after fullscreen exit:", err);
+
+        // Do not silently continue the assessment if the server did not
+        // successfully save the paused state.
+        setAssessmentActive(false);
+        setError(
+          err.response?.data?.error ||
+          "Unable to pause the assessment. Please try again."
+        );
+      }
     };
 
     document.addEventListener(
@@ -407,6 +573,33 @@ const InitialAssessment = () => {
       document.removeEventListener(
         "fullscreenchange",
         handleFullscreenChange
+      );
+    };
+  }, [assessmentActive]);
+
+  // Tab-switch blocking overlay. Fires the instant the tab is hidden
+  // (switched away from, minimized, etc.) — the overlay is then shown
+  // on top of the quiz until the student explicitly acknowledges it,
+  // blocking further interaction in the meantime. The exam clock
+  // deliberately keeps running through this — pausing it would let
+  // students "stop the clock" by tab-switching, which defeats the
+  // point of a timed test.
+  useEffect(() => {
+    if (!assessmentActive) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        tabSwitchCountRef.current += 1;
+        setTabSwitchAlert(true);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
       );
     };
   }, [assessmentActive]);
@@ -423,22 +616,64 @@ const InitialAssessment = () => {
         if (typeof data.remaining_seconds === "number") {
           setRemainingSeconds(data.remaining_seconds);
         }
+
+        // Session was flipped away from "In Progress" by something
+        // else server-side (e.g. proctoring auto-terminated it).
+        // Stop the client instead of leaving it ticking uselessly.
+        if (data.active === false) {
+          skipAutoPauseRef.current = true;
+          setAssessmentActive(false);
+          await exitAssessmentFullscreen();
+          if (proctoringRef.current) proctoringRef.current.cleanup();
+          setPage("expired");
+          setError("Your assessment session is no longer active.");
+        }
       } catch (err) {
         console.error("Assessment heartbeat failed:", err);
+
+        const status = err.response?.status;
+
+        // The server is authoritative on time. If it says the session
+        // has expired or is gone, stop immediately instead of leaving
+        // the student stuck on a clock that can no longer submit.
+        if (status === 409 || status === 404 || status === 403) {
+          skipAutoPauseRef.current = true;
+          setAssessmentActive(false);
+          await exitAssessmentFullscreen();
+          if (proctoringRef.current) proctoringRef.current.cleanup();
+          setPage("expired");
+          setError(
+            err.response?.data?.error || "Your assessment session has ended."
+          );
+        }
       }
     }, 10000);
 
     return () => clearInterval(heartbeatTimer);
   }, [assessmentActive, sessionId]);
 
-  // Handle page hide / unmount pause
+  // Pagehide fallback: Use keepalive for browser refresh/tab close only.
+  // Normal SPA navigation should use handleExitAssessmentToDashboard() instead,
+  // since that can properly await the pause request before navigating.
   useEffect(() => {
-    if (!assessmentActive || !sessionId) return;
-
     const handlePageHide = () => {
-      if (!sessionId || !assessmentActive) return;
+      const currentSessionId = sessionIdRef.current;
 
-      pauseInitialQuizOnUnload(sessionId);
+      if (
+        !currentSessionId ||
+        !assessmentActiveRef.current ||
+        skipAutoPauseRef.current ||
+        pauseSentRef.current
+      ) {
+        return;
+      }
+
+      // Only use keepalive fetch for unload (browser refresh/tab close).
+      // This is a best-effort fallback and may not complete.
+      console.log("Page hiding - attempting keepalive pause as fallback");
+      pauseSentRef.current = true
+      pauseInitialQuizOnUnload(currentSessionId);
+
 
       if (proctoringRef.current) {
         proctoringRef.current.cleanup();
@@ -450,14 +685,40 @@ const InitialAssessment = () => {
     return () => {
       window.removeEventListener("pagehide", handlePageHide);
     };
-  }, [assessmentActive, sessionId]);
+  }, []);
+
+  // React unmount cleanup - fallback only.
+  // NOTE: this should NOT be relied upon as the primary pause mechanism,
+  // because we cannot reliably wait for an async API call during unmount.
+  // Uses the keepalive-based request for the same reason as the pagehide
+  // handler above.
+  useEffect(() => {
+    return () => {
+      const currentSessionId = sessionIdRef.current;
+
+      if (
+        !currentSessionId ||
+        !assessmentActiveRef.current ||
+        skipAutoPauseRef.current ||
+        pauseSentRef.current
+      ) {
+        return;
+      }
+      pauseSentRef.current = true
+      pauseInitialQuizOnUnload(currentSessionId);
+
+      if (proctoringRef.current) {
+        proctoringRef.current.cleanup();
+      }
+    };
+  }, []);
 
   // Keyboard shortcut support
   useEffect(() => {
     if (page !== "quiz" || !assessmentActive) return;
 
     const handleKeyDown = (event) => {
-      if (submitting) return;
+      if (submitting || tabSwitchAlert) return;
 
       const key = event.key.toUpperCase();
 
@@ -473,7 +734,7 @@ const InitialAssessment = () => {
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [page, selectedAnswer, submitting, handleNext, assessmentActive]);
+  }, [page, selectedAnswer, submitting, handleNext, assessmentActive, tabSwitchAlert]);
 
   const formatTime = (seconds) => {
     const safeSeconds = Math.max(0, Number(seconds) || 0);
@@ -481,6 +742,29 @@ const InitialAssessment = () => {
     const secs = safeSeconds % 60;
 
     return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
+  const requestCameraPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false,
+      });
+
+      // Immediately stop the temporary permission stream.
+      stream.getTracks().forEach((track) => track.stop());
+
+      setError("");
+      return true;
+    } catch (err) {
+      console.error("Camera permission denied:", err);
+
+      setError(
+        "Camera permission is required to continue the assessment."
+      );
+
+      return false;
+    }
   };
 
   const currentSkillQuestion = skillQuestionsAnswered + 1;
@@ -502,7 +786,6 @@ const InitialAssessment = () => {
       (questionsAnswered / totalQuestions) * 100
     )
   );
-
 
   // Instructions Screen
   if (page === "instructions") {
@@ -570,17 +853,26 @@ const InitialAssessment = () => {
           </div>
 
           <div className="mt-10 text-center">
-            {loading && (
-              <p className="text-sm text-gray-500">
-                Checking your assessment status...
-              </p>
-            )}
-
             {error && (
-              <p className="mt-3 text-sm text-red-600">
+              <p className="mb-4 text-sm text-red-600">
                 {error}
               </p>
             )}
+
+            <button
+              type="button"
+              onClick={ async () => {
+                const cameraGranted = await requestCameraPermission();
+                if(!cameraGranted){
+                  return
+                }
+                await loadAssessment()
+              }}
+              disabled={loading}
+              className="w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white hover:bg-emerald-800 transition disabled:opacity-50"
+            >
+              {loading ? "Loading Assessment..." : "Load Assessment"}
+            </button>
           </div>
         </div>
       </div>
@@ -604,7 +896,7 @@ const InitialAssessment = () => {
 
           
           <button
-            onClick={() => navigate("/app/dashboard")}
+            onClick={() => handleExitAssessmentToDashboard()}
             className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
           >
             Go to Dashboard
@@ -632,7 +924,35 @@ const InitialAssessment = () => {
           </p>
 
           <button
-            onClick={() => navigate("/app/dashboard")}
+            onClick={() => handleExitAssessmentToDashboard()}
+            className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Expired Screen
+  if (page === "expired") {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
+          <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
+            !
+          </div>
+
+          <h1 className="text-3xl font-bold text-gray-900">
+            Assessment Time Expired
+          </h1>
+
+          <p className="mt-4 text-gray-600">
+            {error || "Your assessment time has expired."}
+          </p>
+
+          <button
+            onClick={() => handleExitAssessmentToDashboard()}
             className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
           >
             Go to Dashboard
@@ -645,6 +965,39 @@ const InitialAssessment = () => {
   // Quiz screen
   return (
     <>
+      {/* Tab-switch blocking overlay */}
+      {tabSwitchAlert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4">
+          <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-2xl">
+            <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+              !
+            </div>
+
+            <h2 className="text-xl font-bold text-slate-900">
+              Return to the Assessment
+            </h2>
+
+            <p className="mt-3 text-sm text-slate-600">
+              You switched away from the assessment tab or window. This has
+              been recorded as a proctoring violation. Complete the test
+              first — you must stay on this tab until you finish.
+            </p>
+
+            <p className="mt-2 text-xs text-slate-400">
+              Tab switches detected: {tabSwitchCountRef.current}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setTabSwitchAlert(false)}
+              className="mt-6 w-full rounded-full bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition"
+            >
+              Return to Assessment
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 4. Assessment Viewport (non-scrolling) */}
       <div className="h-[calc(100vh-80px)] overflow-hidden bg-[#f5f7f6]">
 
@@ -668,7 +1021,7 @@ const InitialAssessment = () => {
         </div>
 
         {/* Start / Resume Prompt View */}
-        {!assessmentActive ? (
+        {page === "ready" ? (
           <div className="h-full flex items-center justify-center p-6">
             <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900">
@@ -781,28 +1134,28 @@ const InitialAssessment = () => {
                           letter="A"
                           text={question?.option_a}
                           selected={selectedAnswer === "A"}
-                          disabled={submitting}
+                          disabled={submitting || tabSwitchAlert}
                           onClick={() => setSelectedAnswer("A")}
                         />
                         <AnswerOption
                           letter="B"
                           text={question?.option_b}
                           selected={selectedAnswer === "B"}
-                          disabled={submitting}
+                          disabled={submitting || tabSwitchAlert}
                           onClick={() => setSelectedAnswer("B")}
                         />
                         <AnswerOption
                           letter="C"
                           text={question?.option_c}
                           selected={selectedAnswer === "C"}
-                          disabled={submitting}
+                          disabled={submitting || tabSwitchAlert}
                           onClick={() => setSelectedAnswer("C")}
                         />
                         <AnswerOption
                           letter="D"
                           text={question?.option_d}
                           selected={selectedAnswer === "D"}
-                          disabled={submitting}
+                          disabled={submitting || tabSwitchAlert}
                           onClick={() => setSelectedAnswer("D")}
                         />
                       </div>
@@ -821,7 +1174,7 @@ const InitialAssessment = () => {
 
                     <button
                       type="button"
-                      disabled={!selectedAnswer || submitting}
+                      disabled={!selectedAnswer || submitting || tabSwitchAlert}
                       onClick={handleNext}
                       className={`rounded-full px-6 py-3 text-sm font-semibold transition ${
                         selectedAnswer
