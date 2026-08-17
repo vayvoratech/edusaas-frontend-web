@@ -164,6 +164,30 @@ export const pauseInitialQuiz = (sessionId) => api
   })
   .then((r) => r.data);
 
+export const pauseInitialQuizOnUnload = (sessionId) => {
+  if (!sessionId) return;
+
+  const token = localStorage.getItem(TOKEN_KEY);
+
+  if (!token) return;
+
+  fetch(`${API_BASE}/api/assessments/initial-quiz/pause`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      session_id: sessionId,
+    }),
+    keepalive: true,
+  }).catch(() => {
+    // Page is unloading; no recovery is possible here.
+  });
+};
+
+
+
 // Gap report
 export const fetchGapReport = (userId) =>
   api.get(`/api/gap-report/${userId}`).then((r) => r.data);

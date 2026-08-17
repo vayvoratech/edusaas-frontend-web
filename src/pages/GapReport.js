@@ -4,7 +4,6 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Gauge } from '../components/ui/Gauge';
 import { SkillBar } from '../components/ui/SkillBar';
-import { gapReport } from '../mocks/data';
 import { useAuth } from '../context/AuthContext';
 import { fetchGapReport } from '../services/api';
 
@@ -19,12 +18,15 @@ export default function GapReport() {
     fetchGapReport(user.id).then(setLive).catch(() => { /* fall back to mock */ });
   }, [user?.id]);
 
-  const readiness = live?.readiness_score ?? gapReport.readiness;
-  const needs = live?.missing_skills?.length
-    ? live.missing_skills.map((name) => ({ name }))
-    : gapReport.needsImprovement;
+  const readiness = live?.readiness_score ?? 0;
+
+  const needs = (live?.missing_skills ?? []).map((name) => ({
+    name,
+  }));
 
   const breakdown = live?.recommendations?.skill_gap ?? [];
+  const strengths = breakdown.filter((skill) => skill.status === "Ready")
+
 
   const hasGapReport = live && breakdown.length > 0
   if (!hasGapReport) {
@@ -78,11 +80,6 @@ export default function GapReport() {
     );
   }
 
-
-  const strengths =
-    breakdown.length > 0
-      ? breakdown.filter(skill => skill.status === "Ready")
-      : gapReport.strengths;
   
   const getReadinessCategory = (score) => {
     if (score >= 80)
@@ -277,22 +274,13 @@ export default function GapReport() {
       >
         <div className="space-y-4">
           {breakdown.map((b) => {
-
-            
-
-            const percentage = Math.min(
-              100,
-              Math.max(0, Number(b.student_level/b.required_level)*100)
-            )
-
-
+            const percentage = Math.min( 100, Math.max(0, Number(b.student_level/b.required_level)*100))
             const color = `hsl(${percentage * 1.2}, 80%, 45%)`;
-
             return (
               <SkillBar
                 key={b.skill_id}
                 name={b.skill_name}
-                value={percentage}
+                value={percentage.toFixed(2)}
                 color={color}
               />
             );
@@ -305,7 +293,6 @@ export default function GapReport() {
         title={
           <div className="flex items-center justify-between w-full">
             <span>Detailed Skill Breakdown</span>
-
             <span className="text-sm font-normal text-slate-500 inline-block ms-5" >
               {breakdown.length} Skills Analyzed
             </span>
