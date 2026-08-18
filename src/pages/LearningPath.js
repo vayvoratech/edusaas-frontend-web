@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { learningPath } from '../mocks/data';
 import { getCourses, getMyEnrollments, enrollCourse } from '../services/api';
 
 const icons = { aws: '☁️', devops: '⚙️', k8s: '🐳', default: '📘' };
@@ -47,29 +46,20 @@ export default function LearningPath() {
   };
 
   // Live courses if loaded; otherwise fall back to mock learning path steps
-  const items = courses
-    ? courses.map((c) => ({
-        id: c.id,
-        title: c.title,
-        provider: c.provider,
-        duration: c.category,
-        icon: pickIcon(c),
-        enrolled: enrolledIds.has(c.id),
-      }))
-    : learningPath.steps.map((s, i) => ({
-        id: `mock-${i}`,
-        title: s.title,
-        provider: s.provider,
-        duration: s.duration,
-        icon: icons[s.icon] || icons.default,
-        enrolled: s.status === 'enrolled',
-      }));
+ const items = (courses || []).map((c) => ({
+    id: c.id,
+    title: c.title,
+    provider: c.provider,
+    duration: c.category,
+    icon: pickIcon(c),
+    enrolled: enrolledIds.has(c.id),
+  }));
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900">
-          Your Learning Path to {learningPath.targetRole}
+          Your Learning 
         </h2>
         <p className="text-sm text-slate-500">
           A curated sequence to close your skill gaps in the right order.
@@ -119,7 +109,7 @@ export default function LearningPath() {
               Suggested Project
             </div>
             <h3 className="font-bold text-lg text-slate-900">
-              {learningPath.suggestedProject}
+              Suggested project wil appear here
             </h3>
             <p className="text-sm text-slate-600 mt-1">
               Apply what you&apos;ve learned with a hands-on project employers will recognize.

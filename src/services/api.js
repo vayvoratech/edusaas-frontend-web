@@ -141,7 +141,6 @@ export const startInitialQuiz = () => api
     .post("/api/assessments/initial-quiz/start")
     .then((r) => r.data);
 
-
 // Submit one answer and receive the next adaptive question
 export const submitInitialQuizAnswer = ({sessionId, questionId,answer,}) => api
     .post("/api/assessments/initial-quiz/answer", {
@@ -150,6 +149,52 @@ export const submitInitialQuizAnswer = ({sessionId, questionId,answer,}) => api
       answer,
     })
     .then((r) => r.data);
+  
+// Activate (start/resume) the initial quiz timer — call this at the
+// moment the student clicks "Start/Resume Assessment", NOT on page load.
+export const activateInitialQuiz = (sessionId) => api
+  .post("/api/assessments/initial-quiz/activate", {
+    session_id: sessionId,
+  })
+  .then((r) => r.data);
+
+// Send heartbeat while the initial quiz is active
+export const heartbeatInitialQuiz = (sessionId) => api
+  .post("/api/assessments/initial-quiz/heartbeat", {
+    session_id: sessionId,
+  })
+  .then((r) => r.data);
+
+// Pause the initial quiz session
+export const pauseInitialQuiz = (sessionId) => api
+  .post("/api/assessments/initial-quiz/pause", {
+    session_id: sessionId,
+  })
+  .then((r) => r.data);
+
+export const pauseInitialQuizOnUnload = (sessionId) => {
+  if (!sessionId) return;
+
+  const token = localStorage.getItem(TOKEN_KEY);
+
+  if (!token) return;
+
+  fetch(`${API_BASE}/api/assessments/initial-quiz/pause`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      session_id: sessionId,
+    }),
+    keepalive: true,
+  }).catch(() => {
+    // Page is unloading; no recovery is possible here.
+  });
+};
+
+
 
 // Gap report
 export const fetchGapReport = (userId) =>
