@@ -32,25 +32,23 @@ const InitialAssessment = () => {
   // Current skill progress
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
 
+const [assessmentStarted, setAssessmentStarted] = useState(false);
 
+const [assessmentCompleted, setAssessmentCompleted] = useState(false);
 
   // ----------------------------------------------------
   // Start initial quiz when page loads
   // ----------------------------------------------------
-  useEffect(() => {
-    loadAssessment();
-  }, []);
-
+ 
   const loadAssessment = async () => {
     try {
       setLoading(true);
       setError("");
+const response = await startInitialQuiz();
 
-      const response = await startInitialQuiz();
+console.log("Initial Quiz Started:", response);
 
-      console.log("Initial Quiz Started:", response);
-
-      const quiz = response.data;
+const quiz = response.data;  
 
       setSessionId(quiz.session_id);
       setDomain(quiz.domain);
@@ -98,15 +96,10 @@ const InitialAssessment = () => {
       // ------------------------------------------------
       // Entire assessment completed
       // ------------------------------------------------
-      if (result.assessment_completed) {
-        // alert(
-        //   `Initial assessment completed!\n\nReadiness Score: ${result.readiness_score}%`
-        // );
-
-        navigate("/app/dashboard");
-
-        return;
-      }
+    if (result.assessment_completed) {
+  setAssessmentCompleted(true);
+  return;
+}
 
       // ------------------------------------------------
       // Skill completed -> backend moved to next skill
@@ -185,6 +178,42 @@ const InitialAssessment = () => {
           ) * 100
         : 0;
 
+        const skillIcons = {
+  Python: "🐍",
+  SQL: "🗄️",
+  "Machine Learning": "🤖",
+  "Deep Learning": "🧠",
+  Git: "🔧",
+};
+
+        if (!assessmentStarted) {
+  return (
+    <div className="min-h-screen bg-gray-100 py-10">
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8 text-center">
+
+        <h1 className="text-3xl font-bold">
+          Initial Skill Assessment
+        </h1>
+
+        <p className="mt-4 text-gray-500">
+          Complete this assessment to personalize your learning path.
+        </p>
+
+        <button
+          onClick={() => {
+            setAssessmentStarted(true);
+            loadAssessment();
+          }}
+          className="mt-8 px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700"
+        >
+          Start Skill Assessment
+        </button>
+
+      </div>
+    </div>
+  );
+}
+
   // ----------------------------------------------------
   // Loading screen
   // ----------------------------------------------------
@@ -227,7 +256,35 @@ const InitialAssessment = () => {
       </div>
     );
   }
+     //completion screen
+if (assessmentCompleted) {
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+      <div className="bg-white rounded-xl shadow-lg p-10 text-center max-w-md">
 
+        <div className="text-green-600 text-5xl mb-4">
+          ✓
+        </div>
+
+        <h1 className="text-2xl font-bold text-gray-900">
+          Assessment Submitted Successfully!
+        </h1>
+
+        <p className="mt-3 text-gray-500">
+          You have successfully completed all 50 questions.
+        </p>
+
+        <button
+          onClick={() => navigate("/app/dashboard")}
+          className="mt-6 px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700"
+        >
+          Go to Dashboard
+        </button>
+
+      </div>
+    </div>
+  );
+}
   return (
     <div className="min-h-screen bg-gray-100 py-10">
 
@@ -489,7 +546,19 @@ const InitialAssessment = () => {
 
                 <div className="space-y-2">
 
-                    {assessment?.skills?.map((item) => (
+                    {[...(assessment?.skills || [])]
+  .sort((a, b) => {
+    const order = [
+      "Python",
+      "SQL",
+      "Machine Learning",
+      "Deep Learning",
+      "Git",
+    ];
+
+    return order.indexOf(a.skill_name) - order.indexOf(b.skill_name);
+  })
+  .map((item) => (
 
                         <div
                             key={item.skill_id}
@@ -503,9 +572,8 @@ const InitialAssessment = () => {
                                         : "text-gray-700"
                                 }
                             >
-
-                                {item.skill_name}
-
+  
+                                {skillIcons[item.skill_name] || "📚"} {item.skill_name}
                             </span>
 
                             <span

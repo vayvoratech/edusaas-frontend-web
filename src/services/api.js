@@ -184,12 +184,20 @@ export const getMyEnrollments = () => api.get("/api/enrollments").then((r) => r.
 
 // Jobs
 export const getJobs = (params = {}) => api.get("/api/jobs", { params }).then((r) => r.data);
+
+export const getJobById = (id) =>
+  api.get(`/api/jobs/${id}`).then((r) => r.data);
+
 export const createJob = (data) => api.post("/api/jobs", data).then((r) => r.data);
+
 export const updateJob = (id, data) =>
   api.patch(`/api/jobs/${id}`, data).then((r) => r.data);
+
 export const deleteJob = (id) => api.delete(`/api/jobs/${id}`).then((r) => r.data);
+
 export const applyJob = (jobId) =>
   api.post(`/api/jobs/${jobId}/apply`).then((r) => r.data);
+
 export const inviteCandidate = (jobId, studentId, message) =>
   api.post(`/api/jobs/${jobId}/invite`, { student_id: studentId, message }).then((r) => r.data);
 
@@ -198,12 +206,18 @@ export const assignCourse = (courseId,{userId,due_date,note,}) =>
     api.post(`/api/courses/${courseId}/assign`, {userId,due_date,note,}).then((r) => r.data);
 export const getMyAssignments = () =>
   api.get('/api/me/assignments').then((r) => r.data);
+
 export const getCourseAssignments = (courseId) =>
   api.get(`/api/courses/${courseId}/assignments`).then((r) => r.data);
+
 export const cancelAssignment = (assignmentId) =>
   api.post(`/api/assignments/${assignmentId}/cancel`).then((r) => r.data);
+
 export const getJobApplications = (jobId) =>
   api.get(`/api/jobs/${jobId}/applications`).then((r) => r.data);
+
+export const getEligibleStudents = (jobId) =>
+  api.get(`/api/jobs/${jobId}/eligible-students`).then((r) => r.data);
 
 // Notifications
 export const getNotifications = () => api.get("/api/notifications").then((r) => r.data);
@@ -263,4 +277,7 @@ export const getEducatorDashboard = () =>
 export const getEmployerDashboard = () =>
   api.get("/api/dashboard/employer").then((r) => r.data);
 
-export default api;
+export const getRecommendedJobs = () =>
+  api.get("/api/jobs/recommended").then((r) => r.data);
+
+export default api; 

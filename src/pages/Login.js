@@ -119,24 +119,41 @@ export default function Login() {
   };
 
   const onSubmit = async (e) => {
-    e.preventDefault();
-    setClientError(null);
+  e.preventDefault();
+  setClientError(null);
 
-    if (!email.trim()) {
-      return setClientError("Email is required.");
-    }
-    if (!EMAIL_REGEX.test(email)) {
-      return setClientError("Please enter a valid email address.");
-    }
-    if (!password) {
-      return setClientError("Password is required.");
-    }
+  if (!email.trim()) {
+    return setClientError("Email is required.");
+  }
 
+  if (!EMAIL_REGEX.test(email)) {
+    return setClientError("Please enter a valid email address.");
+  }
+
+  if (!password) {
+    return setClientError("Password is required.");
+  }
+
+  try {
     setSubmitting(true);
+
     const ok = await login({ email, password });
+
+    console.log("LOGIN RESULT:", ok);
+
     setSubmitting(false);
-    if (ok) navigate('/app/dashboard');
-  };
+
+    if (ok) {
+      console.log("LOGIN SUCCESS → NAVIGATING TO DASHBOARD");
+      navigate("/app/dashboard");
+    } else {
+      console.log("LOGIN FAILED → NOT NAVIGATING");
+    }
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    setSubmitting(false);
+  }
+};
 
   const errorMsg = clientError || authError;
 

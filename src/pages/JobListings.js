@@ -1,23 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { getJobs, createJob, updateJob, deleteJob } from '../services/api';
+import {
+  getJobs,
+  createJob,
+  updateJob,
+  deleteJob,
+  getDomainRoles
+} from '../services/api';
+
 import { useAuth } from '../context/AuthContext';
 
 export default function JobListings() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState([]);
+  const [domainRoles, setDomainRoles] = useState([]);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
 
   const load = async () => {
-    try {
-      const params = user?.role === 'employer' ? { employer_id: user.id } : {};
-      setJobs(await getJobs(params));
-    } catch (err) {
-      setError(err.response?.data?.error || err.message);
-    }
-  };
+  try {
+    const params = user?.role === 'employer'
+      ? { employer_id: user.id }
+      : {};
+
+    setJobs(await getJobs(params));
+    setDomainRoles(await getDomainRoles());
+  } catch (err) {
+    setError(err.response?.data?.error || err.message);
+  }
+};
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [user?.id]);
 
@@ -130,12 +142,25 @@ export default function JobListings() {
               <label className="text-xs text-slate-500">
                 Title <span className="text-red-500">*</span>
               </label>
-              <input
-                value={editing.title || ''}
-                onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                required
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
-              />
+              <select
+  value={editing.title || ''}
+  onChange={(e) =>
+    setEditing({ ...editing, title: e.target.value })
+  }
+  required
+  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
+>
+  <option value="">Select a job role</option>
+
+  {domainRoles.map((role) => (
+    <option
+      key={role.domain_role_id}
+      value={role.domain_name}
+    >
+      {role.domain_name}
+    </option>
+  ))}
+</select>
             </div>
             <div className="mb-3">
               <label className="text-xs text-slate-500">Description</label>

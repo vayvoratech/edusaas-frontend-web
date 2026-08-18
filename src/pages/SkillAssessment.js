@@ -147,7 +147,7 @@ export default function SkillAssessment() {
           </Button>
           <div className="flex-1" />
           <Button variant="ghost" onClick={() => navigate('/app/gap-report')}>
-            Exit to Gap Report →
+            Exit to Gap Report -
           </Button>
         </div>
 

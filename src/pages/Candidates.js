@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, StatPill } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { getStudentCandidates, getJobs, inviteCandidate, getUserProfile } from '../services/api';
+import { getJobs,  getEligibleStudents, inviteCandidate, getUserProfile } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const initials = (n) => (n || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
@@ -26,28 +26,48 @@ export default function Candidates() {
   const [inviteSent, setInviteSent] = useState(false);
 
   useEffect(() => {
-    getStudentCandidates()
-      .then((users) => {
-        setCandidates(users.map((u, i) => ({
-          ...u,
-          skill_match: 55 + ((i * 13) % 45),
-          role_target: ['Data Analyst', 'UI/UX Designer', 'Software Developer', 'Marketing Specialist'][i % 4],
-        })));
-      })
-      .catch((e) => setError(e.response?.data?.error || e.message));
-    if (user?.id) {
-      getJobs({ employer_id: user.id }).then((js) => {
-        setJobs(js);
-        if (js[0]) setInviteJob(js[0].id);
-      }).catch(() => {});
-    } else {
-      getJobs().then((js) => { setJobs(js); if (js[0]) setInviteJob(js[0].id); }).catch(() => {});
-    }
-  }, [user?.id]);
+  if (!user?.id) return;
 
-  const filtered = candidates.filter((c) =>
-    !q || c.name.toLowerCase().includes(q.toLowerCase()) || c.role_target.toLowerCase().includes(q.toLowerCase())
-  );
+  getJobs({ employer_id: user.id })
+    .then(async (js) => {
+      setJobs(js);
+
+      if (!js.length) {
+        setCandidates([]);
+        return;
+      }
+
+      // Use the employer's first posted job
+      const job = js[0];
+
+      setInviteJob(job.id);
+
+      try {
+        const response = await getEligibleStudents(job.id);
+
+        console.log("ELIGIBLE STUDENTS:", response);
+
+        setCandidates(response.eligible_students || []);
+      } catch (e) {
+        setError(
+          e.response?.data?.error || e.message
+        );
+        setCandidates([]);
+      }
+    })
+    .catch((e) => {
+      setError(
+        e.response?.data?.error || e.message
+      );
+    });
+}, [user?.id]);
+
+ const filtered = candidates.filter((c) =>
+  !q ||
+  c.name?.toLowerCase().includes(q.toLowerCase()) ||
+  c.domain_role?.toLowerCase().includes(q.toLowerCase()) ||
+  c.fit_category?.toLowerCase().includes(q.toLowerCase())
+);
 
   const openView = async (c) => {
     setViewing(c);

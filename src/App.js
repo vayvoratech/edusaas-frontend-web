@@ -11,12 +11,13 @@ import EmployerDashboard from './pages/EmployerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import SkillAssessment from './pages/SkillAssessment';
 import GapReport from './pages/GapReport';
+import { getStudentDashboard } from './services/api';
 import LearningPath from './pages/LearningPath';
 import Profile from './pages/Profile';
 import UserManagement from './pages/UserManagement';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
-
+import JobDetails from "./pages/StudentViewJobs";
 
 // New student pages
 import CoursesPage from './pages/CoursesPage';
@@ -58,6 +59,65 @@ function StudentOrAdminSettings() {
   return role === 'Admin' ? <Settings /> : <StudentSettings />;
 }
 
+
+function StudentAssessmentGuard({ children }) {
+  const { role } = useAuth();
+
+  const [checking, setChecking] = React.useState(true);
+  const [assessmentCompleted, setAssessmentCompleted] = React.useState(false);
+
+  React.useEffect(() => {
+    if (role !== "Student") {
+      setChecking(false);
+      return;
+    }
+
+    getStudentDashboard()
+      .then((data) => {
+        console.log(
+          "GUARD ASSESSMENT STATUS:",
+          data?.assessmentCompleted
+        );
+
+        setAssessmentCompleted(
+          data?.assessmentCompleted === true
+        );
+      })
+      .catch((err) => {
+        console.error("Assessment status check failed:", err);
+        setAssessmentCompleted(false);
+      })
+      .finally(() => {
+        setChecking(false);
+      });
+  }, [role]);
+
+  if (role !== "Student") {
+    return children;
+  }
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">
+          Checking assessment status...
+        </div>
+      </div>
+    );
+  }
+
+  if (assessmentCompleted) {
+    return children;
+  }
+
+  return (
+    <Navigate
+      to="/app/initial-assessment"
+      replace
+    />
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -67,10 +127,25 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          <Route path="/app" element={<AppLayout />}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<RoleDashboard />} />
+           <Route path="/app" element={<AppLayout />}>
+{/* Dashboard */}
+<Route
+  path="dashboard"
+  element={<RoleDashboard />}
+/>
 
+{/* Job Details */}
+<Route
+  path="jobs/:id"
+  element={<JobDetails />}
+/>
+
+{/* /app → /app/dashboard */}
+<Route
+  index
+  element={<Navigate to="dashboard" replace />}
+/>
+             
             {/* Shared */}
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<StudentOrAdminSettings />} />
@@ -78,19 +153,103 @@ export default function App() {
 
             {/* Student */}
             {/* Student */}
-            <Route element={<RoleRoute allowedRoles={["Student"]} />}>
-              <Route path="courses" element={<CoursesPage />} />
-              <Route path="learning" element={<CoursesPage />} />
-              <Route path="learning/:courseId" element={<LearningModule />} />
-              <Route path="achievements" element={<AchievementsPage />} />
-              <Route path="tasks" element={<TasksPage />} />
-              <Route path="recommendations" element={<RecommendationsPage />} />
-              <Route path="my-insights" element={<StudentInsights />} />
-              <Route path="assessments" element={<SkillAssessment />} />
-              <Route  path="initial-assessment" element={<InitialAssessment />}/>
-              <Route path="gap-report" element={<GapReport />} />
-              <Route path="learning-paths" element={<LearningPath />} />
-            </Route>
+           <Route element={<RoleRoute allowedRoles={["Student"]} />}>
+  
+  {/* Assessment is always accessible */}
+  <Route
+    path="assessments"
+    element={<SkillAssessment />}
+  />
+
+  <Route
+    path="initial-assessment"
+    element={<InitialAssessment />}
+  />
+
+  {/* Everything below requires completed assessment */}
+  <Route
+    path="courses"
+    element={
+      <StudentAssessmentGuard>
+        <CoursesPage />
+      </StudentAssessmentGuard>
+    }
+  />
+
+  <Route
+    path="learning"
+    element={
+      <StudentAssessmentGuard>
+        <CoursesPage />
+      </StudentAssessmentGuard>
+    }
+  />
+
+  <Route
+    path="learning/:courseId"
+    element={
+      <StudentAssessmentGuard>
+        <LearningModule />
+      </StudentAssessmentGuard>
+    }
+  />
+
+  <Route
+    path="achievements"
+    element={
+      <StudentAssessmentGuard>
+        <AchievementsPage />
+      </StudentAssessmentGuard>
+    }
+  />
+
+  <Route
+    path="tasks"
+    element={
+      <StudentAssessmentGuard>
+        <TasksPage />
+      </StudentAssessmentGuard>
+    }
+  />
+
+  <Route
+    path="recommendations"
+    element={
+      <StudentAssessmentGuard>
+        <RecommendationsPage />
+      </StudentAssessmentGuard>
+    }
+  />
+
+  <Route
+    path="my-insights"
+    element={
+      <StudentAssessmentGuard>
+        <StudentInsights />
+      </StudentAssessmentGuard>
+    }
+  />
+
+  <Route
+    path="gap-report"
+    element={
+      <StudentAssessmentGuard>
+        <GapReport />
+      </StudentAssessmentGuard>
+    }
+  />
+
+  <Route
+    path="learning-paths"
+    element={
+      <StudentAssessmentGuard>
+        <LearningPath />
+      </StudentAssessmentGuard>
+
+    }
+  />
+
+</Route>
 
             {/* Educator */}
             <Route element={<RoleRoute allowedRoles={["Educator"]} />}>

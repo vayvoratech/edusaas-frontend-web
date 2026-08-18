@@ -7,7 +7,7 @@ import {
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
-  getEmployerDashboard, getJobs, getStudentCandidates,
+  getEmployerDashboard, getJobs, getEligibleStudents,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,22 +20,40 @@ export default function EmployerDashboard() {
   const [candidates, setCandidates] = useState([]);
 
   useEffect(() => {
-    getEmployerDashboard().then(setData).catch(() => {});
-    if (user?.id) {
-      getJobs({ employer_id: user.id }).then(setJobs).catch(() => {});
-    } else {
-      getJobs().then(setJobs).catch(() => {});
-    }
-    getStudentCandidates()
-      .then((users) => {
-        setCandidates(users.map((u, i) => ({
-          ...u,
-          skill_match: 55 + ((i * 13) % 45),
-          role_target: ['Data Analyst', 'UI/UX Designer', 'Software Developer', 'Marketing Specialist'][i % 4],
-        })));
-      })
-      .catch(() => {});
-  }, [user?.id]);
+  getEmployerDashboard().then(setData).catch(() => {});
+
+  if (!user?.id) return;
+
+  getJobs({ employer_id: user.id })
+    .then(async (jobs) => {
+      setJobs(jobs);
+
+      if (!jobs.length) {
+        setCandidates([]);
+        return;
+      }
+
+      // For now, use the employer's first job
+      const job = jobs[0];
+
+      try {
+        const response = await getEligibleStudents(job.id);
+
+        console.log("ELIGIBLE STUDENTS:", response);
+
+        setCandidates(response.eligible_students || []);
+      } catch (err) {
+        console.error("Eligible students error:", err);
+        setCandidates([]);
+      }
+    })
+    .catch((err) => {
+      console.error("Jobs error:", err);
+      setJobs([]);
+      setCandidates([]);
+    });
+}, [user?.id]);
+  
 
   const matchData = data?.candidateMatches ? [
     { name: 'Strong', value: data.candidateMatches.strong },
