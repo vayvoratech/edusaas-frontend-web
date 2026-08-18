@@ -142,14 +142,22 @@ export const startInitialQuiz = () => api
     .then((r) => r.data);
 
 // Submit one answer and receive the next adaptive question
-export const submitInitialQuizAnswer = ({sessionId, questionId,answer,}) => api
+export const submitInitialQuizAnswer = ({sessionId, questionId, answer}) => api
     .post("/api/assessments/initial-quiz/answer", {
       session_id: sessionId,
       question_id: questionId,
       answer,
     })
     .then((r) => r.data);
-  
+
+// Activate (start/resume) the initial quiz timer — call this at the
+// moment the student clicks "Start/Resume Assessment", NOT on page load.
+export const activateInitialQuiz = (sessionId) => api
+  .post("/api/assessments/initial-quiz/activate", {
+    session_id: sessionId,
+  })
+  .then((r) => r.data);
+
 // Send heartbeat while the initial quiz is active
 export const heartbeatInitialQuiz = (sessionId) => api
   .post("/api/assessments/initial-quiz/heartbeat", {
@@ -163,6 +171,29 @@ export const pauseInitialQuiz = (sessionId) => api
     session_id: sessionId,
   })
   .then((r) => r.data);
+
+// Pause using keepalive fetch — safe to call during page unload / tab close
+export const pauseInitialQuizOnUnload = (sessionId) => {
+  if (!sessionId) return;
+
+  const token = localStorage.getItem(TOKEN_KEY);
+
+  if (!token) return;
+
+  fetch(`${API_BASE}/api/assessments/initial-quiz/pause`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      session_id: sessionId,
+    }),
+    keepalive: true,
+  }).catch(() => {
+    // Page is unloading; no recovery is possible here.
+  });
+};
 
 // Gap report
 export const fetchGapReport = (userId) =>
@@ -207,8 +238,8 @@ export const inviteCandidate = (jobId, studentId, message) =>
   api.post(`/api/jobs/${jobId}/invite`, { student_id: studentId, message }).then((r) => r.data);
 
 // Course assignments (educator → student)
-export const assignCourse = (courseId,{userId,due_date,note,}) =>
-    api.post(`/api/courses/${courseId}/assign`, {userId,due_date,note,}).then((r) => r.data);
+export const assignCourse = (courseId, {userId, due_date, note}) =>
+    api.post(`/api/courses/${courseId}/assign`, {userId, due_date, note}).then((r) => r.data);
 export const getMyAssignments = () =>
   api.get('/api/me/assignments').then((r) => r.data);
 export const getCourseAssignments = (courseId) =>

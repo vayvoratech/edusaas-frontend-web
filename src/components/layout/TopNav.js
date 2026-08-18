@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { notifications } from '../../mocks/data';
+import { getNotifications } from '../../services/api';
 
 const initials = (name) =>
   (name || '?')
@@ -14,9 +14,18 @@ const initials = (name) =>
 export function TopNav({ onOpenNav = () => {} }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
   const [openMenu, setOpenMenu] = useState(false);
   const [openNotif, setOpenNotif] = useState(false);
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
+
+  const unreadCount = notifications.filter(
+    (n) => !n.read_status
+  ).length;
+
   const wrapRef = useRef(null);
 
   const displayName = user?.name || user?.firstName || 'Guest';
@@ -32,9 +41,36 @@ export function TopNav({ onOpenNav = () => {} }) {
         setOpenNotif(false);
       }
     };
+
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!user?.id) {
+        setNotifications([]);
+        return;
+      }
+
+      try {
+        setNotificationsLoading(true);
+        setNotificationsError('');
+
+        const data = await getNotifications();
+
+        setNotifications(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Failed to load notifications:', error);
+        setNotificationsError('Unable to load notifications.');
+        setNotifications([]);
+      } finally {
+        setNotificationsLoading(false);
+      }
+    };
+
+    loadNotifications();
+  }, [user?.id]);
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
@@ -91,17 +127,38 @@ export function TopNav({ onOpenNav = () => {} }) {
                   Notifications
                 </div>
                 <ul className="max-h-72 overflow-y-auto">
-                  {notifications.map((n) => (
-                    <li
-                      key={n.id}
-                      className={`px-4 py-3 text-sm border-b border-slate-50 hover:bg-slate-50 ${
-                        n.unread ? 'bg-brand-blue-50/40' : ''
-                      }`}
-                    >
-                      <div className="text-slate-800">{n.title}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">{n.time}</div>
+                  {notificationsLoading ? (
+                    <li className="px-4 py-6 text-sm text-center text-slate-400">
+                      Loading notifications...
                     </li>
-                  ))}
+                  ) : notificationsError ? (
+                    <li className="px-4 py-6 text-sm text-center text-red-500">
+                      {notificationsError}
+                    </li>
+                  ) : notifications.length === 0 ? (
+                    <li className="px-4 py-6 text-sm text-center text-slate-400">
+                      No notifications
+                    </li>
+                  ) : (
+                    notifications.map((n) => (
+                      <li
+                        key={n.id}
+                        className={`px-4 py-3 text-sm border-b border-slate-50 hover:bg-slate-50 ${
+                          !n.read_status ? 'bg-brand-blue-50/40' : ''
+                        }`}
+                      >
+                        <div className="text-slate-800">
+                          {n.title}
+                        </div>
+
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          {n.created_at
+                            ? new Date(n.created_at).toLocaleString()
+                            : ''}
+                        </div>
+                      </li>
+                    ))
+                  )}
                 </ul>
               </div>
             )}
