@@ -26,7 +26,7 @@ import TasksPage from './pages/TasksPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import StudentSettings from './pages/StudentSettings';
 import StudentInsights from './pages/StudentInsights';
-import InitialAssessment from './pages/InitialAssessment';
+import InitialAssessment from './pages/assessments/initial/InitialAssessment';
 
 // New educator pages
 import ManageCourses from './pages/ManageCourses';
