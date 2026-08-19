@@ -91,14 +91,17 @@ export default function StudentDashboard() {
 
   // Fetch all necessary data when the component mounts.
   useEffect(() => {
-  getStudentDashboard()
-    .then((data) => {
-      console.log("STUDENT DASHBOARD DATA:", data);
-      setDash(data);
-    })
-    .catch((err) => {
-      console.error("Dashboard error:", err);
-    });
+  console.log("CALLING STUDENT DASHBOARD API");
+
+getStudentDashboard()
+  .then((data) => {
+    console.log("STUDENT DASHBOARD DATA:", data);
+    console.log("ASSESSMENT COMPLETED:", data?.assessmentCompleted);
+    setDash(data);
+  })
+  .catch((err) => {
+    console.error("Dashboard error:", err);
+  });
 
   getMyTasks({ status: "pending" })
     .then(setTasks)
@@ -119,7 +122,9 @@ export default function StudentDashboard() {
   // Recommended jobs
   getRecommendedJobs()
     .then((data) => {
-      console.log("RECOMMENDED JOBS:", data);
+console.log("🔥 THIS IS MY STUDENT DASHBOARD FILE 🔥", data);
+console.log("FIRST JOB:", data.jobs?.[0]);
+console.log("FIRST JOB ID:", data.jobs?.[0]?.id);
       setRecommendedJobs(data.jobs || []);
     })
     .catch((err) => {

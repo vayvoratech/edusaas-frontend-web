@@ -4,7 +4,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import {
-  getUserProfile, fetchGapReport, saveUserProfile,
+  getUserProfile, fetchGapReport, saveUserProfile, uploadProfileResume,
   getMyEnrollments, getCourses, getMyAchievements,
   getMyCertificates, getMyRecommendations,
 } from '../services/api';
@@ -68,6 +68,8 @@ export default function Profile() {
   const [draft, setDraft] = useState({ career_goal: '', institution: '', company: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -109,6 +111,37 @@ export default function Profile() {
     };
   }, [editing]);
 
+  const onResumeUpload = async () => {
+  if (!resumeFile || !user?.id) return;
+
+  setResumeUploading(true);
+  setError(null);
+
+  try {
+    const result = await uploadProfileResume(
+      user.id,
+      resumeFile
+    );
+
+    setProfile((prev) => ({
+      ...prev,
+      profile: {
+        ...prev.profile,
+        resume: result.resume,
+      },
+    }));
+
+    setResumeFile(null);
+  } catch (err) {
+    setError(
+      err.response?.data?.error ||
+      err.message ||
+      "Failed to upload resume."
+    );
+  } finally {
+    setResumeUploading(false);
+  }
+};
   const onSave = async (e) => {
     e.preventDefault();
     setSaving(true); setError(null);
@@ -485,6 +518,7 @@ export default function Profile() {
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1 outline-none transition-colors focus:border-brand-blue-400 focus:ring-2 focus:ring-brand-blue-100"
                 />
               </div>
+              
             </div>
 
             <div className="flex justify-end gap-2 mt-6">
@@ -495,6 +529,92 @@ export default function Profile() {
                 {saving ? 'Saving…' : 'Save'}
               </Button>
             </div>
+
+           {/* Resume */}
+<div>
+  <label className="text-xs font-medium text-slate-500">
+    Resume
+  </label>
+
+  {profile?.profile?.resume ? (
+    <div className="mt-1.5 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
+          <span className="text-lg">📄</span>
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-800 truncate">
+            {profile.profile.resume.file_name}
+          </p>
+          <p className="text-xs text-slate-400">
+            Resume uploaded
+          </p>
+        </div>
+      </div>
+
+      <label className="shrink-0 cursor-pointer">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
+          Replace
+        </span>
+
+        <input
+          type="file"
+          accept=".pdf,.doc,.docx"
+          className="hidden"
+          onChange={(e) =>
+            setResumeFile(e.target.files?.[0] || null)
+          }
+        />
+      </label>
+    </div>
+  ) : (
+    <label className="mt-1.5 flex items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 cursor-pointer hover:bg-slate-100 hover:border-slate-400 transition-all">
+      <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
+        <span className="text-lg">📄</span>
+      </div>
+
+      <div className="flex-1">
+        <p className="text-sm font-medium text-slate-700">
+          Upload your resume
+        </p>
+        <p className="text-xs text-slate-400">
+          PDF, DOC or DOCX · Max 5 MB
+        </p>
+      </div>
+
+      <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-brand-blue-600 text-white text-xs font-medium hover:bg-brand-blue-700 transition-colors">
+        Upload
+      </span>
+
+      <input
+        type="file"
+        accept=".pdf,.doc,.docx"
+        className="hidden"
+        onChange={(e) =>
+          setResumeFile(e.target.files?.[0] || null)
+        }
+      />
+    </label>
+  )}
+
+  {resumeFile && (
+    <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
+      <span className="text-xs text-blue-700 truncate">
+        Selected: {resumeFile.name}
+      </span>
+
+      <Button
+        type="button"
+        onClick={onResumeUpload}
+        disabled={resumeUploading}
+        className="text-xs px-3 py-1.5 shrink-0"
+      >
+        {resumeUploading ? "Uploading…" : "Confirm Upload"}
+      </Button>
+    </div>
+  )}
+</div>
           </form>
         </div>
       )}

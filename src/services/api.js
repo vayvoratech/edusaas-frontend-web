@@ -125,6 +125,20 @@ export const getDomainRoles = async () => {
 export const getUserProfile = (id) => api.get(`/api/users/${id}`).then((r) => r.data);
 export const saveUserProfile = (id, data) =>
   api.put(`/api/users/${id}/profile`, data).then((r) => r.data);
+
+export const uploadProfileResume = (id, resumeFile) => {
+  const formData = new FormData();
+
+  formData.append("resume", resumeFile);
+
+  return api
+    .post(`/api/users/${id}/profile/resume`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    })
+    .then((r) => r.data);
+};
 export const getStudentCandidates = () =>
   api.get("/api/users/students/candidates").then((r) => r.data);
 
@@ -240,8 +254,26 @@ export const updateJob = (id, data) =>
 
 export const deleteJob = (id) => api.delete(`/api/jobs/${id}`).then((r) => r.data);
 
-export const applyJob = (jobId) =>
-  api.post(`/api/jobs/${jobId}/apply`).then((r) => r.data);
+export const applyJob = (jobId, applicationData, resumeFile) => {
+  const formData = new FormData();
+
+  formData.append(
+    "application_data",
+    JSON.stringify(applicationData)
+  );
+
+  if (resumeFile) {
+    formData.append("resume", resumeFile);
+  }
+
+  return api
+    .post(`/api/jobs/${jobId}/apply`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    })
+    .then((r) => r.data);
+};
 
 export const inviteCandidate = (jobId, studentId, message) =>
   api.post(`/api/jobs/${jobId}/invite`, { student_id: studentId, message }).then((r) => r.data);
