@@ -18,6 +18,7 @@ import UserManagement from './pages/UserManagement';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import JobDetails from "./pages/StudentViewJobs";
+import JobApplication from "./pages/JobApplication";
 
 // New student pages
 import CoursesPage from './pages/CoursesPage';
@@ -139,6 +140,12 @@ export default function App() {
   path="jobs/:id"
   element={<JobDetails />}
 />
+
+<Route
+  path="jobs/:id/apply"
+  element={<JobApplication />}
+/>
+
 
 {/* /app → /app/dashboard */}
 <Route

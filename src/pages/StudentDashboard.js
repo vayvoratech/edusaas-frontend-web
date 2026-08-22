@@ -24,6 +24,7 @@ import {
   getMyRecommendations,
   getMyAssignments,
   getRecommendedJobs,
+  getNotifications
 } from '../services/api';
 
 
@@ -87,6 +88,7 @@ export default function StudentDashboard() {
   const [recs, setRecs] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [recommendedJobs, setRecommendedJobs] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
 
   // Fetch all necessary data when the component mounts.
@@ -122,7 +124,7 @@ getStudentDashboard()
   // Recommended jobs
   getRecommendedJobs()
     .then((data) => {
-console.log("🔥 THIS IS MY STUDENT DASHBOARD FILE 🔥", data);
+console.log("THIS IS MY STUDENT DASHBOARD FILE", data);
 console.log("FIRST JOB:", data.jobs?.[0]);
 console.log("FIRST JOB ID:", data.jobs?.[0]?.id);
       setRecommendedJobs(data.jobs || []);
@@ -131,7 +133,35 @@ console.log("FIRST JOB ID:", data.jobs?.[0]?.id);
       console.error("Recommended jobs error:", err);
       setRecommendedJobs([]);
     });
+getNotifications()
+  .then((data) => {
+    console.log("ALL NOTIFICATIONS:", data);
+
+    const invitations = Array.isArray(data)
+      ? data.filter((n) => {
+          const type = String(n.type || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, "_");
+
+          console.log("TYPE CHECK:", n.type, "→", type);
+
+          return type === "job_invitation";
+        })
+      : [];
+
+    console.log("FILTERED INVITATIONS:", invitations);
+
+    setNotifications(invitations);
+  })
+  .catch((err) => {
+    console.error("Notifications error:", err);
+    setNotifications([]);
+  });
+
 }, []);
+
+
 
 
   // ----------------------------------------------------
@@ -146,6 +176,8 @@ console.log("FIRST JOB ID:", data.jobs?.[0]?.id);
       </div>
     );
   }
+
+  
 
 
   // ----------------------------------------------------
@@ -808,8 +840,83 @@ console.log("FIRST JOB ID:", data.jobs?.[0]?.id);
 
 
       {/* ------------------------------------------------ */}
-      {/* Recommended courses */}
+      {/* Job Invitations */}
       {/* ------------------------------------------------ */}
+
+         <Card
+  title="Job Invitations"
+  action={
+    notifications.length > 0 && (
+      <span className="text-xs text-slate-500">
+        {notifications.length} invitation
+        {notifications.length !== 1 ? "s" : ""}
+      </span>
+    )
+  }
+>
+  {notifications.length === 0 ? (
+    <div className="text-sm text-slate-400 text-center py-6">
+      No job invitations yet.
+    </div>
+  ) : (
+    <div className="space-y-3">
+      {notifications.map((notification) => (
+        <div
+          key={notification.id}
+          className="p-4 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
+        >
+          <div className="flex items-start gap-3">
+
+            {/* Icon */}
+            <div className="w-10 h-10 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center shrink-0">
+              💼
+            </div>
+
+            {/* Details */}
+            <div className="flex-1 min-w-0">
+
+              {/* Header */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-semibold text-sm text-slate-800">
+                  Job Invitation
+                </div>
+
+                {!notification.read_status && (
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-brand-blue-50 text-brand-blue-700 font-medium">
+                    New
+                  </span>
+                )}
+              </div>
+
+              {/* Message */}
+              <p className="text-sm text-slate-600 mt-1">
+                {notification.message}
+              </p>
+
+              {/* Time */}
+              {notification.created_at && (
+                <div className="text-[11px] text-slate-400 mt-2">
+                  {fmtRel(notification.created_at)}
+                </div>
+              )}
+
+              {/* View Job */}
+              {notification.job_id && (
+                <Link
+                  to={`/app/jobs/${notification.job_id}`}
+                  className="inline-flex mt-3 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
+                >
+                  View Job →
+                </Link>
+              )}
+
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</Card>
 
       {recs.length > 0 && (
 

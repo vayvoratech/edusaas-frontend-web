@@ -167,7 +167,7 @@ export default function JobDetails() {
           onClick={() => navigate(-1)}
           className="mt-4 px-4 py-2 rounded-lg border"
         >
-          ← Back
+          Back
         </button>
       </div>
     );
@@ -186,10 +186,15 @@ export default function JobDetails() {
 
       {/* Back */}
       <button
-        onClick={() => navigate(-1)}
-        className="text-sm text-slate-600 hover:text-slate-900"
-      >
-        ← Back to Jobs
+      onClick={() => navigate("/app/dashboard")}
+         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg
+             text-sm font-medium text-slate-600
+             bg-white border border-slate-200
+             hover:bg-slate-50 hover:text-slate-900
+             transition-all duration-200 shadow-sm"
+>
+  <span className="text-base"></span>
+         Back to Dashboard
       </button>
 
       {/* Job Details */}
@@ -471,6 +476,7 @@ export default function JobDetails() {
               className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-brand-blue-500"
             />
           </div>
+ 
 
           {/* Submit */}
           <div className="pt-4 border-t border-slate-200 flex justify-end">

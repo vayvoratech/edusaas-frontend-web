@@ -276,7 +276,7 @@ export const applyJob = (jobId, applicationData, resumeFile) => {
 };
 
 export const inviteCandidate = (jobId, studentId, message) =>
-  api.post(`/api/jobs/${jobId}/invite`, { student_id: studentId, message }).then((r) => r.data);
+  api.post(`/api/jobs/${jobId}/invite`, { candidate_id: studentId, message }).then((r) => r.data);
 
 // Course assignments (educator → student)
 export const assignCourse = (courseId,{userId,due_date,note,}) =>

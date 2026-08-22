@@ -3,10 +3,13 @@ import { Card, StatPill } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getJobs,  getEligibleStudents, inviteCandidate, getUserProfile } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from "react-router-dom";
 
 const initials = (n) => (n || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
 export default function Candidates() {
+  const location = useLocation();
+  const selectedCandidate = location.state?.candidate;
   const { user } = useAuth();
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);

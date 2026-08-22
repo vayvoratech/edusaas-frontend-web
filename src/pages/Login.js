@@ -144,10 +144,10 @@ export default function Login() {
     setSubmitting(false);
 
     if (ok) {
-      console.log("LOGIN SUCCESS → NAVIGATING TO DASHBOARD");
+      console.log("LOGIN SUCCESS - NAVIGATING TO DASHBOARD");
       navigate("/app/dashboard");
     } else {
-      console.log("LOGIN FAILED → NOT NAVIGATING");
+      console.log("LOGIN FAILED - NOT NAVIGATING");
     }
   } catch (err) {
     console.error("LOGIN ERROR:", err);
