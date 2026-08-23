@@ -5,7 +5,7 @@ import {
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
-  getCourses, createCourse, updateCourse, deleteCourse, createLesson, getLessonsForCourse,
+  getCourses, createCourse, updateCourse, deleteCourse, createLesson, updateLesson, getLessonsForCourse, deleteLesson
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -23,6 +23,7 @@ export default function ManageCourses() {
   const [step, setStep] = useState(1); // Controls the multi-step modal
   const [lessons, setLessons] = useState([]); // Holds lesson data for a course
   const [error, setError] = useState(null);
+  const [thumbnailFile, setThumbnailFile] = useState(null);
 
   // Fetches courses from the API based on current filters
   const load = async () => {
@@ -64,40 +65,62 @@ export default function ManageCourses() {
       lessons,
     });
 
-    // Do not change the API yet, only send course data
-    const data = {
-      title: editing.title, category: editing.category,
-      difficulty: editing.difficulty, status: editing.status,
-      description: editing.description,
-    };
     try {
-      let course;
+        let course;
+        
+        const formData = new FormData();
+        if (editing.title) formData.append('title', editing.title);
+        if (editing.category) formData.append('category', editing.category);
+        if (editing.difficulty) formData.append('difficulty', editing.difficulty);
+        if (editing.status) formData.append('status', editing.status);
+        if (editing.description) formData.append('description', editing.description);
+        if (thumbnailFile) formData.append('thumbnail', thumbnailFile);
 
-      if (editing.id) {
-          course = await updateCourse(editing.id, data);
-      } else {
-          course = await createCourse(data);
-      }
+        if (editing.id) {
+            course = await updateCourse(editing.id, formData);
+        } else {
+            course = await createCourse(formData);
+        }
 
       // Save lessons
       if (lessons.length > 0) {
-        await Promise.all(
-        lessons.map((lesson, index) => {
-        console.log("Lesson being saved:", lesson);
+        // Validate quizzes
+        for (let i = 0; i < lessons.length; i++) {
+          const l = lessons[i];
+          if (!l.quiz || l.quiz.length < 5 || l.quiz.length > 20) {
+            throw new Error(`Lesson ${i + 1} must have between 5 and 20 quiz questions.`);
+          }
+          // Basic validation for questions
+          for (let j = 0; j < l.quiz.length; j++) {
+            const q = l.quiz[j];
+            if (!q.question || !q.options || q.options.length !== 4 || q.correct_option === undefined) {
+              throw new Error(`Question ${j + 1} in Lesson ${i + 1} is incomplete.`);
+            }
+          }
+        }
 
-          return createLesson(course.id, {
-            title: lesson.title,
-            video_url: lesson.video_url,
-            duration: Number(lesson.duration),
-            order_index: index + 1,
-          });
-        })
-      );
-    }
+        await Promise.all(
+          lessons.map((lesson, index) => {
+            const lessonPayload = {
+              title: lesson.title,
+              video_url: lesson.video_url,
+              duration: Number(lesson.duration),
+              order_index: index + 1,
+              quiz: lesson.quiz,
+            };
+            if (lesson.id) {
+              return updateLesson(lesson.id, lessonPayload);
+            } else {
+              return createLesson(course.id, lessonPayload);
+            }
+          })
+        );
+      }
       // Reset state and close modal
       setEditing(null);
       setCreating(false);
       setStep(1); setLessons([]);
+      setThumbnailFile(null);
       load();
     } catch (err) {
       setError(err.response?.data?.error || err.message);
@@ -193,11 +216,14 @@ export default function ManageCourses() {
                           onClick={async () => {
                             setEditing({ ...c });
                             setStep(1);
-                            try {
-                                const lessonData =
-                                    await getLessonsForCourse(c.id);
-                                setLessons(lessonData);
-                            } catch (err) {
+                              try {
+                                  const lessonData = await getLessonsForCourse(c.id);
+                                  const mappedLessons = lessonData.map(l => ({
+                                      ...l,
+                                      quiz: l.quizzes && l.quizzes.length > 0 ? l.quizzes[0].questions : []
+                                  }));
+                                  setLessons(mappedLessons);
+                              } catch (err) {
                                 console.error(err);
                                 setLessons([]);
                             }
@@ -256,7 +282,7 @@ export default function ManageCourses() {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Step 1: Course Details */}
             {step === 1 && (
-              <div className="flex flex-col h-full">
+              <div className="flex flex-col h-full min-h-0">
 
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-slate-200 bg-slate-50">
@@ -379,19 +405,48 @@ export default function ManageCourses() {
                       <label className="block text-sm font-medium text-slate-700 mb-2">
                         Course Description
                       </label>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Course Description
+                        </label>
 
-                      <textarea
-                        rows={5}
-                        value={editing.description || ""}
-                        onChange={(e) =>
-                          setEditing({
-                            ...editing,
-                            description: e.target.value,
-                          })
-                        }
-                        placeholder="Describe what students will learn in this course..."
-                        className="w-full rounded-xl border border-slate-300 px-4 py-3 resize-none focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
+                        <textarea
+                          rows={5}
+                          value={editing.description || ""}
+                          onChange={(e) =>
+                            setEditing({
+                              ...editing,
+                              description: e.target.value,
+                            })
+                          }
+                          placeholder="Describe what students will learn in this course..."
+                          className="w-full rounded-xl border border-slate-300 px-4 py-3 resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      
+                      <div className="md:col-span-2 mt-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Course Thumbnail (Optional)
+                        </label>
+                        <div className="flex items-center gap-4">
+                          <label className="cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-sm">
+                            Upload Image
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => setThumbnailFile(e.target.files[0])}
+                            />
+                          </label>
+                          {thumbnailFile && (
+                            <span className="text-sm text-slate-500 truncate max-w-xs">{thumbnailFile.name}</span>
+                          )}
+                          {editing.id && !thumbnailFile && editing.thumbnail_url && (
+                            <span className="text-sm text-slate-500 truncate max-w-xs">Current thumbnail kept</span>
+                          )}
+                        </div>
+                      </div>
+
                     </div>
 
                   </div>
@@ -399,7 +454,7 @@ export default function ManageCourses() {
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-slate-200 bg-white px-8 py-5 flex items-center justify-between">
+                <div className="border-t border-slate-200 bg-white px-8 py-5 flex items-center justify-between shrink-0">
 
                   <Button
                     type="button"
@@ -457,7 +512,8 @@ export default function ManageCourses() {
                               {
                                   title: "",
                                   video_url: "",
-                                  duration: ""
+                                  duration: "",
+                                  quiz: []
                               }
                           ])
                       }
@@ -533,6 +589,20 @@ export default function ManageCourses() {
               <Button
               variant="outline"
               type="button"
+              onClick={async () => {
+                if (lesson.id) {
+                  if (!window.confirm(`Delete lesson "${lesson.title}"?`)) return;
+                  try {
+                    await deleteLesson(lesson.id);
+                  } catch (err) {
+                    alert("Failed to delete lesson: " + (err.response?.data?.error || err.message));
+                    return;
+                  }
+                }
+                const updated = [...lessons];
+                updated.splice(index, 1);
+                setLessons(updated);
+              }}
               >
 
               Delete
@@ -580,6 +650,87 @@ export default function ManageCourses() {
           />
 
               </div>
+
+              {/* QUIZ BUILDER UI */}
+              <div className="mt-6 border-t pt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-semibold text-slate-800">Mandatory Quiz ({lesson.quiz?.length || 0}/20 Questions)</h4>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="text-xs py-1"
+                    onClick={() => {
+                      const updated = [...lessons];
+                      if (!updated[index].quiz) updated[index].quiz = [];
+                      if (updated[index].quiz.length >= 20) return alert("Maximum 20 questions allowed.");
+                      updated[index].quiz.push({ question: "", options: ["", "", "", ""], correct_option: 0 });
+                      setLessons(updated);
+                    }}
+                  >
+                    + Add Question
+                  </Button>
+                </div>
+                
+                {lesson.quiz && lesson.quiz.length < 5 && (
+                  <p className="text-red-500 text-xs mb-3 font-medium">⚠️ Minimum 5 questions required.</p>
+                )}
+
+                <div className="space-y-4">
+                  {(lesson.quiz || []).map((q, qIndex) => (
+                    <div key={qIndex} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                      <div className="flex justify-between mb-3">
+                        <span className="font-medium text-sm text-slate-700">Question {qIndex + 1}</span>
+                        <button type="button" className="text-red-500 hover:text-red-700 text-sm font-medium"
+                          onClick={() => {
+                            const updated = [...lessons];
+                            updated[index].quiz.splice(qIndex, 1);
+                            setLessons(updated);
+                          }}
+                        >Remove</button>
+                      </div>
+                      
+                      <input
+                        className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
+                        placeholder="Enter question text..."
+                        value={q.question}
+                        onChange={(e) => {
+                          const updated = [...lessons];
+                          updated[index].quiz[qIndex].question = e.target.value;
+                          setLessons(updated);
+                        }}
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        {[0, 1, 2, 3].map((optIndex) => (
+                          <div key={optIndex} className="flex items-center gap-2">
+                            <input 
+                              type="radio" 
+                              name={`correct_${index}_${qIndex}`} 
+                              checked={q.correct_option === optIndex}
+                              onChange={() => {
+                                const updated = [...lessons];
+                                updated[index].quiz[qIndex].correct_option = optIndex;
+                                setLessons(updated);
+                              }}
+                            />
+                            <input
+                              className={`w-full border rounded-lg px-3 py-1.5 text-sm ${q.correct_option === optIndex ? 'border-brand-green-500 bg-brand-green-50' : ''}`}
+                              placeholder={`Option ${['A','B','C','D'][optIndex]}`}
+                              value={q.options[optIndex]}
+                              onChange={(e) => {
+                                const updated = [...lessons];
+                                updated[index].quiz[qIndex].options[optIndex] = e.target.value;
+                                setLessons(updated);
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* END QUIZ BUILDER UI */}
 
               </div>
 

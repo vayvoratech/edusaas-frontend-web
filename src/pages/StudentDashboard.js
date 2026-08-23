@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-    LineChart,
-    Line,
+  AreaChart,
+  Area,
     ResponsiveContainer,
     CartesianGrid,
     XAxis,
@@ -156,13 +156,41 @@ export default function StudentDashboard() {
                 }}
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
+                  <AreaChart
                     data={dash?.learningAnalytics || []}
-                    margin={{ top: 0, right: 20, left: 10, bottom: 10 }}
+                    margin={{ top: 10, right: 30, left: 10, bottom: 25 }}
                   >
-                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 100]} unit="%" ticks={[0, 20, 40, 60, 80, 100]} axisLine={false} tickLine={false} />
+                    <defs>
+                      <linearGradient id="colorQuiz" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorLessons" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorAssignments" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="label" 
+                      tick={{ fontSize: 12, fill: '#64748b' }} 
+                      axisLine={false} 
+                      tickLine={false} 
+                      label={{ value: 'Time', position: 'bottom', offset: 0, fill: '#334155', fontWeight: 500 }}
+                    />
+                    <YAxis 
+                      domain={[0, 100]} 
+                      unit="" 
+                      ticks={[0, 20, 40, 60, 80, 100]} 
+                      axisLine={false} 
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#64748b' }}
+                      label={{ value: 'Progress', angle: -90, position: 'insideLeft', offset: -5, fill: '#334155', fontWeight: 500 }}
+                    />
                     <Tooltip
                       contentStyle={{
                         borderRadius: 12,
@@ -170,42 +198,48 @@ export default function StudentDashboard() {
                         boxShadow: '0 10px 25px rgba(0,0,0,.12)',
                       }}
                     />
-                    <Legend verticalAlign="top" height={35} wrapperStyle={{ paddingTop: 0 }} />
+                    <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: 20 }} iconType="circle" />
 
-                    <Line
+                    <Area
                       type="monotone"
                       dataKey="readiness"
-                      name="Readiness"
+                      name="Quiz Scores"
                       stroke="#f97316"
                       strokeWidth={3}
-                      dot={{ r: 6, strokeWidth: 2, fill: '#fff' }}
-                      activeDot={{ r: 9 }}
+                      fillOpacity={1}
+                      fill="url(#colorQuiz)"
+                      dot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#f97316' }}
+                      activeDot={{ r: 8 }}
                       animationDuration={1200}
                       animationEasing="ease-in-out"
                     />
-                    <Line
+                    <Area
                       type="monotone"
                       dataKey="lessonPercentage"
-                      name="Lessons"
+                      name="Videos Watched"
                       stroke="#22c55e"
                       strokeWidth={3}
-                      dot={{ r: 6, strokeWidth: 2, fill: '#fff' }}
-                      activeDot={{ r: 9 }}
+                      fillOpacity={1}
+                      fill="url(#colorLessons)"
+                      dot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#22c55e' }}
+                      activeDot={{ r: 8 }}
                       animationDuration={1200}
                       animationEasing="ease-in-out"
                     />
-                    <Line
+                    <Area
                       type="monotone"
                       dataKey="assignmentPercentage"
-                      name="Assignments"
+                      name="Assignments Completed"
                       stroke="#2563eb"
                       strokeWidth={3}
-                      dot={{ r: 6, strokeWidth: 2, fill: '#fff' }}
-                      activeDot={{ r: 9 }}
+                      fillOpacity={1}
+                      fill="url(#colorAssignments)"
+                      dot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#2563eb' }}
+                      activeDot={{ r: 8 }}
                       animationDuration={1200}
                       animationEasing="ease-in-out"
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>

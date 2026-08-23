@@ -7,7 +7,6 @@ const USER_KEY = "edu_user";
 
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { "Content-Type": "application/json" },
 });
 
 api.interceptors.request.use((config) => {
@@ -116,8 +115,8 @@ export const resetPassword = (data) =>
 
 // services/domainRoleService.js
 export const getDomainRoles = async () => {
-    const res = await api.get("/api/domain-roles");
-    return res.data.data;
+  const res = await api.get("/api/domain-roles");
+  return res.data.data;
 };
 
 
@@ -138,18 +137,18 @@ export const getAssessmentResults = (id) =>
 
 // Start a new initial quiz session
 export const startInitialQuiz = () => api
-    .post("/api/assessments/initial-quiz/start")
-    .then((r) => r.data);
+  .post("/api/assessments/initial-quiz/start")
+  .then((r) => r.data);
 
 // Submit one answer and receive the next adaptive question
-export const submitInitialQuizAnswer = ({sessionId, questionId,answer,}) => api
-    .post("/api/assessments/initial-quiz/answer", {
-      session_id: sessionId,
-      question_id: questionId,
-      answer,
-    })
-    .then((r) => r.data);
-  
+export const submitInitialQuizAnswer = ({ sessionId, questionId, answer, }) => api
+  .post("/api/assessments/initial-quiz/answer", {
+    session_id: sessionId,
+    question_id: questionId,
+    answer,
+  })
+  .then((r) => r.data);
+
 // Activate (start/resume) the initial quiz timer — call this at the
 // moment the student clicks "Start/Resume Assessment", NOT on page load.
 export const activateInitialQuiz = (sessionId) => api
@@ -214,13 +213,19 @@ export const getLessonsForCourse = (courseId) =>
   api.get(`/api/courses/${courseId}/lessons`).then((r) => r.data);
 export const createLesson = (courseId, data) =>
   api.post(`/api/courses/${courseId}/lessons`, data).then((r) => r.data);
+export const updateLesson = (id, data) =>
+  api.patch(`/api/lessons/lesson/${id}`, data).then((r) => r.data);
 export const getLesson = (lessonId) =>
   api.get(`/api/lessons/lesson/${lessonId}`).then((r) => r.data);
+export const deleteLesson = (lessonId) =>
+  api.delete(`/api/lessons/lesson/${lessonId}`).then((r) => r.data);
 
 // Progress
 export const getMyProgress = () => api.get("/api/progress").then((r) => r.data);
 export const updateProgress = (lessonId, patch) =>
   api.patch(`/api/progress/${lessonId}`, patch).then((r) => r.data);
+export const submitQuiz = (lessonId, answers) =>
+  api.post(`/api/progress/${lessonId}/submit-quiz`, { answers }).then((r) => r.data);
 
 // Enrollments
 export const enrollCourse = (courseId) =>
@@ -239,8 +244,8 @@ export const inviteCandidate = (jobId, studentId, message) =>
   api.post(`/api/jobs/${jobId}/invite`, { student_id: studentId, message }).then((r) => r.data);
 
 // Course assignments (educator → student)
-export const assignCourse = (courseId,{userId,due_date,note,}) =>
-    api.post(`/api/courses/${courseId}/assign`, {userId,due_date,note,}).then((r) => r.data);
+export const assignCourse = (courseId, { userId, due_date, note, }) =>
+  api.post(`/api/courses/${courseId}/assign`, { userId, due_date, note, }).then((r) => r.data);
 export const getMyAssignments = () =>
   api.get('/api/me/assignments').then((r) => r.data);
 export const getCourseAssignments = (courseId) =>
@@ -307,5 +312,11 @@ export const getEducatorDashboard = () =>
   api.get("/api/dashboard/educator").then((r) => r.data);
 export const getEmployerDashboard = () =>
   api.get("/api/dashboard/employer").then((r) => r.data);
+
+// Community
+export const getCommunityFeed = (params = {}) =>
+  api.get("/api/community/feed", { params }).then((r) => r.data);
+export const createCommunityPost = (data) =>
+  api.post("/api/community/posts", data).then((r) => r.data);
 
 export default api;
