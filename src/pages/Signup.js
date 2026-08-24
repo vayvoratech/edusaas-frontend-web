@@ -80,33 +80,7 @@ const PasswordStrengthIndicator = ({ password }) => (
   </div>
 );
 
-const RoleSelector = ({ selectedRole, onSelectRole }) => (
-  <div className="grid grid-cols-2 gap-2">
-    {roles.map((r) => (
-      <button
-        key={r.id}
-        type="button"
-        onClick={() => onSelectRole(r.id)}
-        className={`text-left p-3 rounded-lg border-2 transition ${
-          selectedRole === r.id
-            ? 'border-brand-blue-500 bg-brand-blue-50'
-            : 'border-slate-200 hover:border-slate-300'
-        }`}
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg">{r.emoji}</span>
-          <span className="font-semibold text-sm text-slate-800">
-            {r.label}
-          </span>
-        </div>
 
-        <div className="text-[11px] text-slate-500 leading-snug">
-          {r.desc}
-        </div>
-      </button>
-    ))}
-  </div>
-);
 
 export default function Signup() {
   const { register, authError } = useAuth();
@@ -115,7 +89,7 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [role, setRole] = useState('student');
+  const [role] = useState('student');
   const [domainRoles, setDomainRoles] = useState([]);
   const [domainRoleId, setDomainRoleId] = useState("");
 
@@ -271,39 +245,32 @@ export default function Signup() {
         {touched.confirm && !confirm.trim() && <p className="text-xs text-red-600 mt-1">Please confirm your password</p>}
       </div>
 
-      {/* Role Selection section unchanged for structure continuity */}
+      {/* Domain Role Selection (Career Goal) */}
       <div className="mb-6">
-        <div className="text-sm font-medium text-slate-700 mb-2">Sign up as</div>
-        <RoleSelector selectedRole={role} onSelectRole={setRole} />
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          Select your Role / Career Goal
+        </label>
+        <select
+          value={domainRoleId}
+          onChange={(e) => setDomainRoleId(e.target.value)}
+          disabled={domainRoles.length === 0}
+          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
+        >
+          {domainRoles.length === 0 ? (
+            <option value="">Loading roles...</option>
+          ) : (
+            domainRoles.map((domain) => (
+              <option
+                key={domain.domain_role_id}
+                value={domain.domain_role_id}
+              >
+                {domain.domain_name}
+              </option>
+            ))
+          )}
+        </select>
+        <p className="text-[11px] text-slate-500 mt-1">This sets up your personalized assessments and learning path.</p>
       </div>
-
-      {role === 'student' && (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            What is your career goal?
-          </label>
-          <select
-            value={domainRoleId}
-            onChange={(e) => setDomainRoleId(e.target.value)}
-            disabled={domainRoles.length === 0}
-            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
-          >
-            {domainRoles.length === 0 ? (
-              <option value="">Loading career goals...</option>
-                    ) : (
-                      domainRoles.map((domain) => (
-                        <option
-                          key={domain.domain_role_id}
-                          value={domain.domain_role_id}
-                        >
-                          {domain.domain_name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <p className="text-[11px] text-slate-500 mt-1">This helps us recommend the right courses for you.</p>
-                </div>
-              )}
 
               {errorMsg && (
                 <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
