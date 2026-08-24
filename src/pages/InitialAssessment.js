@@ -860,13 +860,7 @@ const InitialAssessment = () => {
 
             <button
               type="button"
-              onClick={ async () => {
-                const cameraGranted = await requestCameraPermission();
-                if(!cameraGranted){
-                  return
-                }
-                await loadAssessment()
-              }}
+              onClick={loadAssessment}
               disabled={loading}
               className="w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white hover:bg-emerald-800 transition disabled:opacity-50"
             >
