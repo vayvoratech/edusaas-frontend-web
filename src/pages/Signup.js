@@ -105,7 +105,7 @@ export default function Signup() {
   }, []);
 
   const loadDomainRoles = async () => {
-    try { 
+    try {
       const data = await getDomainRoles();
       if (data) {
         setDomainRoles(data);
@@ -140,15 +140,15 @@ export default function Signup() {
 
     setSubmitting(true);
     const ok = await register({
-              name: name.trim(),
-              email: email.trim(),
-              password,
-              role,
-              domain_role_id:
-                  role === "student"
-                      ? domainRoleId
-                      : undefined
-             });
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      role,
+      domain_role_id:
+        role === "student"
+          ? domainRoleId
+          : undefined
+    });
     setSubmitting(false);
     if (ok) navigate('/app/dashboard');
   };
@@ -162,132 +162,132 @@ export default function Signup() {
       {/* Right form */}
       <div className="flex items-center justify-center p-6 sm:p-10">
         <form onSubmit={onSubmit} className="w-full max-w-md">
-      <div className="flex justify-end text-xs text-slate-500 mb-4">
-        Already have an account?{' '}
-        <Link to="/login" className="ml-1 font-semibold text-brand-blue-600 hover:underline">
-          Sign in →
-        </Link>
-      </div>
+          <div className="flex justify-end text-xs text-slate-500 mb-4">
+            Already have an account?{' '}
+            <Link to="/login" className="ml-1 font-semibold text-brand-blue-600 hover:underline">
+              Sign in →
+            </Link>
+          </div>
 
-      <h1 className="text-3xl font-bold text-slate-900 mb-1">Sign up for free</h1>
-      <p className="text-sm text-slate-500 mb-6">Start your learning journey today.</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-1">Sign up for free</h1>
+          <p className="text-sm text-slate-500 mb-6">Start your learning journey today.</p>
 
-      {/* Full Name Field */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Full Name <span className="text-red-500" aria-hidden="true">*</span>
-        </label>
-        <input
-          type="text"
-          placeholder="Full name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => handleBlur('name')}
-          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm transition-colors"
-        />
-        {touched.name && !name.trim() && <p className="text-xs text-red-600 mt-1">Full name is required</p>}
-      </div>
+          {/* Full Name Field */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Full Name <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => handleBlur('name')}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm transition-colors"
+            />
+            {touched.name && !name.trim() && <p className="text-xs text-red-600 mt-1">Full name is required</p>}
+          </div>
 
-      {/* Email Field */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Email <span className="text-red-500" aria-hidden="true">*</span>
-        </label>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={() => handleBlur('email')}
-          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm transition-colors"
-        />
-        {touched.email && !email.trim() && <p className="text-xs text-red-600 mt-1">Email is required</p>}
-        {touched.email && email.trim() && !EMAIL_REGEX.test(email) && <p className="text-xs text-red-600 mt-1">Enter valid mailID</p>}
-      </div>
+          {/* Email Field */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Email <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => handleBlur('email')}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm transition-colors"
+            />
+            {touched.email && !email.trim() && <p className="text-xs text-red-600 mt-1">Email is required</p>}
+            {touched.email && email.trim() && !EMAIL_REGEX.test(email) && <p className="text-xs text-red-600 mt-1">Enter valid mailID</p>}
+          </div>
 
-      {/* Password Field */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Password <span className="text-red-500" aria-hidden="true">*</span>
-        </label>
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onFocus={() => setIsPasswordFocused(true)}
-          onBlur={() => { setIsPasswordFocused(false); handleBlur('password'); }}
-          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm transition-colors"
-        />
-        {touched.password && !password.trim() && <p className="text-xs text-red-600 mt-1">Password is required</p>}
-      </div>
+          {/* Password Field */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Password <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={() => { setIsPasswordFocused(false); handleBlur('password'); }}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm transition-colors"
+            />
+            {touched.password && !password.trim() && <p className="text-xs text-red-600 mt-1">Password is required</p>}
+          </div>
 
-      {/* Password Criteria Wrapper */}
-      {(isPasswordFocused || password.length > 0) && (
-        <div className="mb-4">
-          <PasswordStrengthIndicator password={password} />
-        </div>
-      )}
-
-      {/* Confirm Password Field */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Confirm Password <span className="text-red-500" aria-hidden="true">*</span>
-        </label>
-        <input
-          type="password"
-          placeholder="Confirm password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          onBlur={() => handleBlur('confirm')}
-          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm transition-colors"
-        />
-        {touched.confirm && !confirm.trim() && <p className="text-xs text-red-600 mt-1">Please confirm your password</p>}
-      </div>
-
-      {/* Domain Role Selection (Career Goal) */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Select your Role / Career Goal
-        </label>
-        <select
-          value={domainRoleId}
-          onChange={(e) => setDomainRoleId(e.target.value)}
-          disabled={domainRoles.length === 0}
-          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
-        >
-          {domainRoles.length === 0 ? (
-            <option value="">Loading roles...</option>
-          ) : (
-            domainRoles.map((domain) => (
-              <option
-                key={domain.domain_role_id}
-                value={domain.domain_role_id}
-              >
-                {domain.domain_name}
-              </option>
-            ))
+          {/* Password Criteria Wrapper */}
+          {(isPasswordFocused || password.length > 0) && (
+            <div className="mb-4">
+              <PasswordStrengthIndicator password={password} />
+            </div>
           )}
-        </select>
-        <p className="text-[11px] text-slate-500 mt-1">This sets up your personalized assessments and learning path.</p>
-      </div>
 
-              {errorMsg && (
-                <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-                  {errorMsg}
-                </div>
+          {/* Confirm Password Field */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Confirm Password <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <input
+              type="password"
+              placeholder="Confirm password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              onBlur={() => handleBlur('confirm')}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm transition-colors"
+            />
+            {touched.confirm && !confirm.trim() && <p className="text-xs text-red-600 mt-1">Please confirm your password</p>}
+          </div>
+
+          {/* Domain Role Selection (Career Goal) */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Select your Role / Career Goal
+            </label>
+            <select
+              value={domainRoleId}
+              onChange={(e) => setDomainRoleId(e.target.value)}
+              disabled={domainRoles.length === 0}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 outline-none text-sm"
+            >
+              {domainRoles.length === 0 ? (
+                <option value="">Loading roles...</option>
+              ) : (
+                domainRoles.map((domain) => (
+                  <option
+                    key={domain.domain_role_id}
+                    value={domain.domain_role_id}
+                  >
+                    {domain.domain_name}
+                  </option>
+                ))
               )}
+            </select>
+            <p className="text-[11px] text-slate-500 mt-1">This sets up your personalized assessments and learning path.</p>
+          </div>
 
-              <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-                {submitting ? 'Signing up…' : 'Sign up'}
-              </Button>
+          {errorMsg && (
+            <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+              {errorMsg}
+            </div>
+          )}
 
-              <p className="mt-3 text-center text-[11px] text-slate-500">
-                By signing up, you agree to{' '}
-                <span className="text-brand-blue-600">Terms of Service</span> and{' '}
-                <span className="text-brand-blue-600">Privacy Policy</span>.
-              </p>
-            </form>
+          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+            {submitting ? 'Signing up…' : 'Sign up'}
+          </Button>
+
+          <p className="mt-3 text-center text-[11px] text-slate-500">
+            By signing up, you agree to{' '}
+            <span className="text-brand-blue-600">Terms of Service</span> and{' '}
+            <span className="text-brand-blue-600">Privacy Policy</span>.
+          </p>
+        </form>
 
       </div>
     </div>
