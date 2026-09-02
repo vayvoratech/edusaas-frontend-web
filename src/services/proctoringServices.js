@@ -3,6 +3,7 @@ class ProctoringService {
     this.wsUrl =
       options.wsUrl ||
       this.getWebSocketUrl();
+    this.assessmentType = options.assessmentType || "QUIZ"
 
     this.frameRate = options.frameRate || 5;
     this.cameraWidth = options.cameraWidth || 640;
@@ -76,6 +77,7 @@ class ProctoringService {
 
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
+        
         video: {
           width: {
             ideal: this.cameraWidth,
@@ -87,13 +89,35 @@ class ProctoringService {
         },
         audio: false,
       });
+      console.log("CAMERA STREAM:", this.stream);
+      console.log("CAMERA TRACKS:", this.stream?.getVideoTracks());
+      console.log(
+        "CAMERA TRACK ENABLED:",
+        this.stream?.getVideoTracks()?.[0]?.enabled
+      );
+      console.log(
+        "CAMERA TRACK READY STATE:",
+        this.stream?.getVideoTracks()?.[0]?.readyState
+      );
+      console.log("VIDEO ELEMENT:", this.video);
 
       this.video.srcObject = this.stream;
+      console.log("VIDEO SRC OBJECT:", this.video.srcObject);
+      console.log("VIDEO READY STATE:", this.video.readyState);
+      console.log("VIDEO NETWORK STATE:", this.video.networkState);
       this.video.autoplay = true;
       this.video.muted = true;
       this.video.playsInline = true;
 
       await this.video.play();
+
+      console.log("VIDEO PLAYED:", {
+        paused: this.video.paused,
+        readyState: this.video.readyState,
+        videoWidth: this.video.videoWidth,
+        videoHeight: this.video.videoHeight,
+        srcObject: this.video.srcObject,
+      });
 
       console.log("Camera preview started.");
     } catch (error) {
@@ -197,6 +221,7 @@ class ProctoringService {
             JSON.stringify({
               type: "START_PROCTORING",
               session_id: sessionId,
+              assessment_type: this.assessmentType,
               access_token: accessToken,
             })
           );
@@ -267,6 +292,43 @@ class ProctoringService {
         }
       }
     });
+  }
+
+  // Re-attach the live camera stream to whichever #cameraVideo element
+  // is currently mounted. Needed because some screens swap out the
+  // <video id="cameraVideo"> node (e.g. paused screen -> active
+  // assessment screen), which leaves the original element - and its
+  // srcObject - orphaned even though the stream itself is still live.
+  bindVideoElement() {
+    if (!this.stream) {
+      return;
+    }
+
+    const videoElement = document.getElementById("cameraVideo");
+
+    if (!videoElement) {
+      return;
+    }
+
+    this.video = videoElement;
+
+    if (this.video.srcObject !== this.stream) {
+      this.video.srcObject = this.stream;
+      this.video.autoplay = true;
+      this.video.muted = true;
+      this.video.playsInline = true;
+
+      const playResult = this.video.play();
+
+      if (playResult && typeof playResult.catch === "function") {
+        playResult.catch((error) => {
+          console.error(
+            "Failed to play camera preview after re-binding:",
+            error
+          );
+        });
+      }
+    }
   }
 
   // HANDLE SERVER MESSAGE
@@ -653,11 +715,6 @@ class ProctoringService {
       event,
       metadata,
     };
-
-    console.log(
-      "Browser violation:",
-      payload
-    );
 
     this.websocket.send(
       JSON.stringify(payload)

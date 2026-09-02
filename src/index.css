@@ -19,3 +19,23 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
+
+/* ----------------------------------------------------
+   Initial Assessment Mode
+   Hide the normal application shell so the assessment
+   gets the entire viewport.
+---------------------------------------------------- */
+
+body.assessment-mode > #root > div > aside {
+  display: none;
+}
+
+body.assessment-mode > #root > div > div > header {
+  display: none;
+}
+
+body.assessment-mode > #root > div > div > main {
+  padding: 0;
+  max-width: none;
+  width: 100%;
+}

@@ -9,7 +9,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import EducatorDashboard from './pages/EducatorDashboard';
 import EmployerDashboard from './pages/EmployerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
-import SkillAssessment from './pages/SkillAssessment';
+import SkillAssessment from './pages/assessments/SkillAssessment';
 import GapReport from './pages/GapReport';
 import LearningPath from './pages/LearningPath';
 import Profile from './pages/Profile';
@@ -27,6 +27,7 @@ import RecommendationsPage from './pages/RecommendationsPage';
 import StudentSettings from './pages/StudentSettings';
 import StudentInsights from './pages/StudentInsights';
 import InitialAssessment from './pages/assessments/initial/InitialAssessment';
+import FinalAssessment from './pages/assessments/final/FinalAssessment';
 
 // New educator pages
 import ManageCourses from './pages/ManageCourses';
@@ -88,6 +89,7 @@ export default function App() {
               <Route path="my-insights" element={<StudentInsights />} />
               <Route path="assessments" element={<SkillAssessment />} />
               <Route  path="initial-assessment" element={<InitialAssessment />}/>
+              <Route path='final-assessment' element = {<FinalAssessment />} />
               <Route path="gap-report" element={<GapReport />} />
               <Route path="learning-paths" element={<LearningPath />} />
             </Route>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import InitialQuiz from "./InitialQuiz";
+import InitialCodingAssessment from "./InitialCodingAssessment";
 import {
   startInitialQuiz,
   activateInitialQuiz,
@@ -10,6 +11,8 @@ import {
 
 import ProctoringService from "../../../services/proctoringServices";
 import { useNavigate } from "react-router-dom";
+
+
 
 // ----------------------------------------------------
 // 1. Fullscreen helper
@@ -35,13 +38,22 @@ const exitAssessmentFullscreen = async () => {
 };
 
 // ----------------------------------------------------
-// 9. Answer cards component
+//  Answer cards component
 // ----------------------------------------------------
 
 
 const InitialAssessment = () => {
   const navigate = useNavigate();
   const proctoringRef = useRef(null);
+
+   // Hide the normal application shell while the assessment is active.
+    useEffect(() => {
+      document.body.classList.add("assessment-mode");
+
+      return () => {
+        document.body.classList.remove("assessment-mode");
+      };
+    }, []);
 
   const assessmentActiveRef = useRef(false)
   const sessionIdRef = useRef(null)
@@ -182,6 +194,30 @@ const InitialAssessment = () => {
       console.log("Initial Quiz Started:", response);
 
       const quiz = response.data;
+
+        if (quiz.phase === "coding") {
+          console.log(
+            "Initial quiz completed. Entering/resuming coding assessment."
+          );
+
+          setSessionId(quiz.session_id);
+          setAssessmentActive(false);
+          setPage("coding");
+
+          return;
+        }
+
+        if (quiz.phase === "completed") {
+          console.log(
+            "Initial assessment already completed."
+          );
+
+          setSessionId(quiz.session_id);
+          setAssessmentActive(false);
+          setPage("completed");
+
+          return;
+        }
 
       setSessionId(quiz.session_id);
       pauseSentRef.current = false; // CRITICAL: Reset so assessment can pause again if resumed
@@ -383,20 +419,44 @@ const InitialAssessment = () => {
     })();
   }, [remainingSeconds, assessmentActive]);
 
-  // Enforce fullscreen while the assessment is active
+  // ----------------------------------------------------
+  // Fullscreen enforcement
+  // If the student exits fullscreen while the quiz is active,
+  // pause the quiz and return to the resume screen.
+  // ----------------------------------------------------
   useEffect(() => {
-    if (!assessmentActive) return;
+    if (page !== "quiz" || !assessmentActive) return;
 
     const handleFullscreenChange = async () => {
-      if (document.fullscreenElement) return;
+      // Still in fullscreen — nothing to do.
+      if (document.fullscreenElement !== null) {
+        return;
+      }
 
-      if (!assessmentActiveRef.current) return;
+      // Assessment may have already been stopped/completed.
+      if (!assessmentActiveRef.current) {
+        return;
+      }
 
-      console.warn("Assessment exited fullscreen. Pausing assessment.");
+      console.warn(
+        "Fullscreen exited during initial quiz. Pausing assessment."
+      );
+
+      if (pauseSentRef.current) {
+        return;
+      }
 
       const currentSessionId = sessionIdRef.current;
 
-      if (!currentSessionId || pauseSentRef.current) return;
+      if (!currentSessionId) {
+        setAssessmentActive(false);
+        setPage("ready");
+        setResumed(true);
+        setError(
+          "Assessment was interrupted because fullscreen mode was exited."
+        );
+        return;
+      }
 
       try {
         pauseSentRef.current = true;
@@ -404,25 +464,28 @@ const InitialAssessment = () => {
         await pauseInitialQuiz(currentSessionId);
 
         setAssessmentActive(false);
-
-        if (proctoringRef.current) {
-          proctoringRef.current.cleanup();
-        }
-
-        // Keep the existing quiz page.
-        // The Resume screen will appear because assessmentActive=false.
         setResumed(true);
-        setError("");
+        setPage("ready");
+        setError(
+          "Assessment was interrupted because fullscreen mode was exited. Click Resume to continue."
+        );
       } catch (err) {
-        console.error("Failed to pause assessment after fullscreen exit:", err);
+        console.error(
+          "Failed to pause assessment after fullscreen exit:",
+          err
+        );
 
-        // Do not silently continue the assessment if the server did not
-        // successfully save the paused state.
+        // Even if the pause request fails, stop the local assessment.
         setAssessmentActive(false);
+        setResumed(true);
+        setPage("ready");
+
         setError(
           err.response?.data?.error ||
-          "Unable to pause the assessment. Please try again."
+            "Assessment was interrupted because fullscreen mode was exited."
         );
+      } finally {
+        pauseSentRef.current = false;
       }
     };
 
@@ -437,8 +500,7 @@ const InitialAssessment = () => {
         handleFullscreenChange
       );
     };
-  }, [assessmentActive]);
-
+  }, [page, assessmentActive]);
   // Tab-switch blocking overlay. Fires the instant the tab is hidden
   // (switched away from, minimized, etc.) — the overlay is then shown
   // on top of the quiz until the student explicitly acknowledges it,
@@ -599,16 +661,32 @@ const InitialAssessment = () => {
     }
   };
   
-  const handleQuizComplete = useCallback((result) => {
-    console.log("Initial quiz completed:", result);
+  const handleQuizComplete = useCallback(async (result) => {
+  console.log("Initial quiz completed:", result);
 
-    skipAutoPauseRef.current = true;
-    setAssessmentActive(false);
+  skipAutoPauseRef.current = true;
+  setAssessmentActive(false);
 
-    // For now, stop at quiz completion.
-    // Coding assessment will be connected here next.
-    setPage("completed");
-    }, []);
+  // Release the quiz's proctoring connection FIRST. The backend keys
+  // active proctoring sessions by session_id alone, and the coding
+  // assessment reuses this same session_id - so the quiz's socket
+  // must be fully closed before the coding assessment tries to open
+  // its own, or the backend will reject it as already active.
+  if (proctoringRef.current) {
+    try {
+      await proctoringRef.current.cleanup();
+    } catch (cleanupError) {
+      console.error(
+        "Failed to clean up quiz proctoring before switching to coding assessment:",
+        cleanupError
+      );
+    }
+  }
+
+  // Quiz is complete.
+  // Move to the coding assessment using the same session ID.
+  setPage("coding");
+}, []);
   // Instructions Screen
   if (page === "instructions") {
     return (
@@ -701,6 +779,21 @@ const InitialAssessment = () => {
     );
   }
 
+  // Coding Assessment
+  if (page === "coding") {
+    return (
+      <InitialCodingAssessment
+        sessionId={sessionId}
+        onComplete={async (result) => {
+          console.log("Coding assessment completed:", result);
+
+          await exitAssessmentFullscreen();
+          setPage("completed");
+        }}
+      />
+    );
+  }
+
   // Completed Screen
   if (page === "completed") {
     return (
@@ -727,6 +820,8 @@ const InitialAssessment = () => {
       </div>
     );
   }
+
+
 
   // Terminated Screen
   if (page === "terminated") {
