@@ -402,9 +402,6 @@ export default function ManageCourses() {
                     </div>
 
                     <div className="mt-6">
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Course Description
-                      </label>
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-slate-700 mb-2">
                           Course Description

@@ -176,7 +176,7 @@ export default function Community() {
       formData.append('title', postTitle.trim());
       formData.append('content', postBody.trim());
       formData.append('post_type', postType);
-      formData.append('visibility', JSON.stringify(['Public']));
+      formData.append('visibility', isPublic ? 'Public':'Restricted');
       if (metadata) {
         formData.append('metadata', JSON.stringify(metadata));
       }
