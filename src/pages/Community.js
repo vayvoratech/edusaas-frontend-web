@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { getCommunityFeed, createCommunityPost } from '../services/api';
+import { getCommunityFeed, createCommunityPost, getMyConnections, searchUsers, sendConnectionRequest, getPendingConnections, acceptConnectionRequest, rejectConnectionRequest, removeConnection } from '../services/api';
 
 const ROLE_CONFIG = {
   Student: { label: 'Student', bg: 'bg-blue-100 text-blue-800 border-blue-200 shadow-blue-500/20' },
@@ -31,6 +31,21 @@ export default function Community() {
   const [commentDrafts, setCommentDrafts] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [selectedImages, setSelectedImages] = useState([]);
+  
+  const [connectionsCount, setConnectionsCount] = useState(0);
+  const [networkConnections, setNetworkConnections] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+
+  const [toastMessage, setToastMessage] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [sentRequests, setSentRequests] = useState({}); // { targetUserId: connectionId }
+
+  const showToast = (message, type = 'success') => {
+    setToastMessage({ message, type });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const handleImageChange = (e) => {
     if (e.target.files) {
@@ -86,9 +101,119 @@ export default function Community() {
     }
   };
 
+  const loadNetworkData = () => {
+    getMyConnections().then(res => {
+      if (res.success) {
+        setConnectionsCount(res.network.length);
+        setNetworkConnections(res.network);
+      }
+    }).catch(err => console.error("Failed to load connections:", err));
+
+    getPendingConnections().then(res => {
+      if (res.success) setPendingRequests(res.requests);
+    }).catch(err => console.error("Failed to load pending requests:", err));
+  };
+
   useEffect(() => {
     fetchPosts();
+    loadNetworkData();
   }, []);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length > 2) {
+      setIsSearchingUsers(true);
+      const delayFn = setTimeout(() => {
+        searchUsers(q).then(res => {
+          if (res.success) {
+            const members = res.data.filter(u => u.id !== user.id);
+            const existingRequests = {};
+            members.forEach(m => {
+              if (m.connection_status === 'pending_sent' && m.connection_id) {
+                existingRequests[m.id] = m.connection_id;
+              }
+            });
+            setSentRequests(prev => ({ ...prev, ...existingRequests }));
+            setUserSearchResults(members);
+          }
+        }).finally(() => setIsSearchingUsers(false));
+      }, 500);
+      return () => clearTimeout(delayFn);
+    } else {
+      setUserSearchResults([]);
+      setIsSearchingUsers(false);
+    }
+  }, [searchQuery, user.id]);
+
+  const handleConnect = async (targetUserId) => {
+    try {
+      const res = await sendConnectionRequest(targetUserId);
+      if (res.success && res.connection) {
+        setSentRequests(prev => ({ ...prev, [targetUserId]: res.connection.id }));
+      }
+      showToast("Connection request sent!", "success");
+    } catch (err) {
+      showToast(err.response?.data?.error || "Failed to send request", "error");
+    }
+  };
+
+  const handleRemoveRequest = async (targetUserId, connectionId) => {
+    try {
+      const res = await removeConnection(connectionId);
+      if (res.success) {
+        setSentRequests(prev => {
+          const next = { ...prev };
+          delete next[targetUserId];
+          return next;
+        });
+        showToast("Request cancelled", "success");
+      }
+    } catch (err) {
+      showToast("Failed to cancel request", "error");
+    }
+  };
+
+  const handleAcceptRequest = async (connectionId) => {
+    try {
+      await acceptConnectionRequest(connectionId);
+      loadNetworkData(); // Refresh counts and lists
+      showToast("Request accepted!", "success");
+    } catch (err) {
+      showToast("Failed to accept request", "error");
+    }
+  };
+
+  const handleRejectRequest = async (connectionId) => {
+    try {
+      await rejectConnectionRequest(connectionId);
+      loadNetworkData(); // Refresh counts and lists
+      showToast("Request declined", "success");
+    } catch (err) {
+      showToast("Failed to reject request", "error");
+    }
+  };
+
+  const handleRemoveConnection = async (connectionId) => {
+    setConfirmModal({
+      title: 'Remove Connection',
+      message: 'Are you sure you want to remove this connection?',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          const res = await removeConnection(connectionId);
+          if (res.success) {
+            setNetworkConnections(prev => prev.filter(c => c.connectionId !== connectionId));
+            setConnectionsCount(prev => prev - 1);
+            showToast("Connection removed", "success");
+          }
+        } catch (err) {
+          console.error(err);
+          showToast("Failed to remove connection", "error");
+        }
+      },
+      onCancel: () => setConfirmModal(null)
+    });
+  };
 
   const filteredPosts = useMemo(() => {
     return posts.filter((p) => {
@@ -97,7 +222,8 @@ export default function Community() {
         (activeTab === 'Jobs' && p.type === 'Job') ||
         (activeTab === 'Courses' && p.type === 'Course') ||
         (activeTab === 'Projects' && p.type === 'Project') ||
-        (activeTab === 'Discussions' && p.type === 'Discussion');
+        (activeTab === 'Discussions' && p.type === 'Discussion') ||
+        (activeTab === 'Connections' && false); // Hide posts when in Connections tab
 
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
@@ -109,7 +235,7 @@ export default function Community() {
 
       return matchesTab && matchesSearch;
     });
-  }, [posts, activeTab, searchQuery, visibleRoles]);
+  }, [posts, activeTab, searchQuery]);
 
   const recentJobPosts = useMemo(() => {
     return posts.filter((p) => p.type === 'Job').slice(0, 3);
@@ -203,7 +329,46 @@ export default function Community() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
-      {/* Immersive Hero Header */}
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className={`px-6 py-3 rounded-full shadow-xl text-sm font-bold flex items-center gap-2 ${
+            toastMessage.type === 'error' ? 'bg-red-500 text-white' : 'bg-slate-800 text-white'
+          }`}>
+            <span>{toastMessage.type === 'error' ? '❌' : '✅'}</span>
+            {toastMessage.message}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{confirmModal.title}</h3>
+              <p className="text-sm text-slate-500">{confirmModal.message}</p>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 flex justify-end gap-3 border-t border-slate-100">
+              <button 
+                onClick={confirmModal.onCancel}
+                className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmModal.onConfirm}
+                className="px-4 py-2 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow hover:shadow-lg transition-all"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Left Sidebar (Desktop) */}
       <div className="relative w-full h-48 bg-gradient-to-r from-indigo-600 via-purple-600 to-brand-blue-600 flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
@@ -264,7 +429,7 @@ export default function Community() {
 
                 <div className="w-full mt-5 pt-4 border-t border-slate-100 grid grid-cols-2 gap-3">
                   <div className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="font-extrabold text-slate-800 text-lg">148</div>
+                    <div className="font-extrabold text-slate-800 text-lg">{connectionsCount}</div>
                     <div className="text-xs font-medium text-slate-500 mt-0.5">Connections</div>
                   </div>
                   <div className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
@@ -281,6 +446,7 @@ export default function Community() {
               <nav className="space-y-1">
                 {[
                   { label: 'All Updates', id: 'All', icon: '🌐' },
+                  { label: 'Network & Connections', id: 'Connections', icon: '🤝' },
                   { label: 'Job Board', id: 'Jobs', icon: '💼' },
                   { label: 'Course Stream', id: 'Courses', icon: '📚' },
                   { label: 'Showcase & Demos', id: 'Projects', icon: '🚀' },
@@ -298,17 +464,28 @@ export default function Community() {
                     <span className="flex items-center gap-3">
                       <span className="text-lg opacity-80">{tab.icon}</span> {tab.label}
                     </span>
-                    {activeTab === tab.id && <span className="w-2 h-2 rounded-full bg-indigo-600 shadow-sm shadow-indigo-500/50"></span>}
+                    <div className="flex items-center gap-2">
+                      {tab.id === 'Connections' && pendingRequests.length > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                          {pendingRequests.length}
+                        </span>
+                      )}
+                      {activeTab === tab.id && <span className="w-2 h-2 rounded-full bg-indigo-600 shadow-sm shadow-indigo-500/50"></span>}
+                    </div>
                   </button>
                 ))}
               </nav>
             </Card>
+
+            {/* Pending requests moved to Network Tab */}
           </div>
 
-          {/* Middle Column (Main Feed) */}
+          {/* Middle Column (Main Feed or Network Tab) */}
           <div className="lg:col-span-6 space-y-6">
             
-            {/* Quick Post Prompt */}
+            {activeTab !== 'Connections' && (
+              <>
+                {/* Quick Post Prompt */}
             <Card onClick={() => setComposerOpen(true)} className="p-4 border border-slate-200 shadow-sm rounded-2xl bg-white flex items-center gap-4 cursor-text hover:shadow-md transition-shadow group">
               <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold text-sm grid place-items-center shrink-0 border border-slate-200 group-hover:border-indigo-300 transition-colors">
                 {displayName.split(' ').map((n) => n[0]).join('').substring(0,2)}
@@ -321,6 +498,55 @@ export default function Community() {
                 <span className="text-xl hover:scale-110 transition-transform cursor-pointer">📊</span>
               </div>
             </Card>
+
+            {/* Member Search Results */}
+            {searchQuery.length > 2 && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2">Member Results</h3>
+                {isSearchingUsers ? (
+                  <div className="text-center py-4 text-sm text-slate-500">Searching members...</div>
+                ) : userSearchResults.length === 0 ? (
+                  <div className="text-center py-4 text-sm text-slate-500 bg-white border border-slate-200 rounded-xl">No members found matching "{searchQuery}"</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {userSearchResults.map((u, i) => (
+                      <Card 
+                        key={u.id} 
+                        className="p-4 flex items-center justify-between border border-slate-200 bg-white hover:shadow-lg hover:-translate-y-1 hover:border-indigo-200 transition-all duration-300 rounded-xl animate-in slide-in-from-bottom-4"
+                        style={{ animationDelay: `${i * 50}ms` }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold text-sm grid place-items-center shrink-0 shadow-md">
+                            {u.name.split(' ').map(n => n[0]).join('').substring(0,2)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 transition-colors">{u.name}</div>
+                            <div className="text-xs text-slate-500">@{u.username || 'user'} • <span className="font-medium">{u.role?.name || 'Student'}</span></div>
+                          </div>
+                        </div>
+                        {sentRequests[u.id] ? (
+                          <button 
+                            onClick={() => handleRemoveRequest(u.id, sentRequests[u.id])}
+                            className="text-xs px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all shadow-sm font-bold active:scale-95"
+                          >
+                            Remove Request
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => handleConnect(u.id)}
+                            className="text-xs px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded-lg transition-all shadow-sm font-bold active:scale-95"
+                          >
+                            Connect
+                          </button>
+                        )}
+                      </Card>
+                    ))}
+                  </div>
+                )}
+                
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2 mt-8 border-t border-slate-200 pt-6">Post Results</h3>
+              </div>
+            )}
 
             {/* Posts Feed */}
             <div className="space-y-6">
@@ -500,7 +726,122 @@ export default function Community() {
                 ))
               )}
             </div>
+          </>
+        )}
+
+        {/* Network & Connections Tab View */}
+        {activeTab === 'Connections' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Pending Requests Section */}
+            {pendingRequests.length > 0 && (
+              <Card className="p-6 border border-slate-200 shadow-lg rounded-2xl bg-white overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-full -z-10"></div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl animate-pulse shadow-inner">
+                    📬
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-extrabold text-slate-900">Pending Invitations</h2>
+                    <p className="text-sm text-slate-500">People who want to connect with you</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pendingRequests.map((req, i) => (
+                    <div 
+                      key={req.id} 
+                      className="p-5 bg-white border border-slate-200 rounded-xl flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 transition-all duration-300 animate-in zoom-in-95"
+                      style={{ animationDelay: `${i * 100}ms` }}
+                    >
+                      <div className="flex items-start gap-4 mb-5">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white font-bold text-lg grid place-items-center shrink-0 shadow-lg ring-4 ring-indigo-50">
+                          {req.requester.name.split(' ').map((n) => n[0]).join('').substring(0,2)}
+                        </div>
+                        <div>
+                          <div className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{req.requester.name}</div>
+                          <div className="text-xs font-medium text-slate-500 mt-0.5 mb-2">@{req.requester.username || 'user'} • {req.requester.role?.name || req.requester.role || 'Student'}</div>
+                          <div className="text-[11px] font-bold bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full text-indigo-600 inline-block shadow-sm">
+                            Wants to connect with you
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 mt-auto">
+                        <button 
+                          onClick={() => handleAcceptRequest(req.id)}
+                          className="flex-1 text-sm py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-bold shadow-md shadow-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2"
+                        >
+                          <span>Accept</span>
+                        </button>
+                        <button 
+                          onClick={() => handleRejectRequest(req.id)}
+                          className="flex-1 text-sm py-2.5 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400 hover:to-rose-500 text-white rounded-xl font-bold shadow-md shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2"
+                        >
+                          <span>Decline</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* My Network Section */}
+            <Card className="p-6 border border-slate-200 shadow-md rounded-2xl bg-white">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl">
+                  🤝
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-900">My Network</h2>
+                  <p className="text-sm text-slate-500">You have {networkConnections.length} connections</p>
+                </div>
+              </div>
+
+              {networkConnections.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                  <div className="text-5xl mb-4 opacity-50">👥</div>
+                  <h3 className="text-lg font-bold text-slate-700 mb-2">Your network is empty</h3>
+                  <p className="text-sm text-slate-500 max-w-sm mx-auto">Use the search bar above to find classmates, instructors, or employers and start building your network!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {networkConnections.map(conn => {
+                    const friend = conn.user;
+                    return (
+                      <div 
+                        key={conn.connectionId} 
+                        className="p-4 bg-white border border-slate-200 rounded-xl flex items-center justify-between hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 transition-all duration-300 group animate-in zoom-in-95"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 text-white font-bold text-lg grid place-items-center shrink-0 shadow-lg ring-4 ring-slate-50 group-hover:ring-indigo-50 transition-all duration-300">
+                            {friend.name.split(' ').map((n) => n[0]).join('').substring(0,2)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{friend.name}</div>
+                            <div className="text-xs font-medium text-slate-500 mt-0.5">@{friend.username || 'user'} • {friend.role?.name || friend.role || 'Student'}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                          <button className="w-9 h-9 rounded-full bg-slate-50 hover:bg-indigo-100 hover:text-indigo-700 flex items-center justify-center text-slate-400 hover:scale-110 active:scale-95 transition-all duration-200" title="Message">
+                            💬
+                          </button>
+                          <button 
+                            onClick={() => handleRemoveConnection(conn.connectionId)}
+                            className="w-9 h-9 rounded-full bg-slate-50 hover:bg-red-100 hover:text-red-700 flex items-center justify-center text-slate-400 hover:scale-110 active:scale-95 transition-all duration-200 shadow-sm"
+                            title="Remove Connection"
+                          >
+                            ✖
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
           </div>
+        )}
+      </div>
 
           {/* Right Column (Trending / Spotlights) */}
           <div className="lg:col-span-3 space-y-6">

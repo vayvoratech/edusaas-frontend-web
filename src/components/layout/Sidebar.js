@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const navByRole = {
-  Student: [
+  student: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/app/courses', label: 'Courses', icon: '📚' },
     { to: '/app/achievements', label: 'Achievements', icon: '🏆' },
@@ -16,7 +16,7 @@ const navByRole = {
     { to: '/app/profile', label: 'My Profile', icon: '👤' },
     { to: '/app/settings', label: 'Settings', icon: '⚙️' },
   ],
-  Educator: [
+  educator: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/app/manage-courses', label: 'Courses', icon: '📚' },
     { to: '/app/community', label: 'Community', icon: '💬' },
@@ -25,7 +25,7 @@ const navByRole = {
     { to: '/app/announcements', label: 'Announcements', icon: '📣' },
     { to: '/app/profile', label: 'My Profile', icon: '👤' },
   ],
-  Employer: [
+  employer: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/app/job-listings', label: 'Job Listings', icon: '📋' },
     { to: '/app/community', label: 'Community', icon: '💬' },
@@ -33,7 +33,7 @@ const navByRole = {
     { to: '/app/analytics', label: 'Analytics', icon: '📈' },
     { to: '/app/profile', label: 'Profile', icon: '👤' },
   ],
-  Admin: [
+  admin: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/app/users', label: 'User Management', icon: '👥' },
     { to: '/app/community', label: 'Community', icon: '💬' },
@@ -47,7 +47,8 @@ const navByRole = {
 
 export function Sidebar({ mobileOpen = false, onClose = () => {} }) {
   const { role } = useAuth();
-  const items = navByRole[role] || navByRole.Student;
+  const normalizedRole = role?.toLowerCase();
+  const items = navByRole[normalizedRole] || navByRole.student;
 
   return (
     <>
