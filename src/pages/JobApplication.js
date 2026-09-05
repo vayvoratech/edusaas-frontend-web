@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import {
   getJobById,
   getUserProfile,
   applyJob,
+  getMyJobApplications
 } from "../services/api";
 
 export default function JobApplication() {
@@ -16,13 +17,33 @@ export default function JobApplication() {
 
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [existingApplication, setExistingApplication] = useState(null);
 
   const [error, setError] = useState("");
   const [applicationMessage, setApplicationMessage] = useState("");
 
+  const [validationErrors, setValidationErrors] = useState([]);
+const [showValidationModal, setShowValidationModal] = useState(false);
+const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+const resumeSectionRef = useRef(null);
+const videoSectionRef = useRef(null);
+
   const [resume, setResume] = useState(null);
   const [coverLetter, setCoverLetter] = useState("");
   const [additionalInformation, setAdditionalInformation] = useState("");
+
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoPreview, setVideoPreview] = useState("");
+
+  const [isRecording, setIsRecording] = useState(false);
+const [showRecorder, setShowRecorder] = useState(false);
+const [recordingSeconds, setRecordingSeconds] = useState(0);
+const cameraVideoRef = useRef(null);
+const mediaRecorderRef = useRef(null);
+const mediaStreamRef = useRef(null);
+const recordingChunksRef = useRef([]);
+const recordingTimerRef = useRef(null);
 
 useEffect(() => {
   const loadJobAndProfile = async () => {
@@ -40,13 +61,25 @@ useEffect(() => {
         );
       }
 
-      const [jobData, profileData] = await Promise.all([
-        getJobById(id),
-        getUserProfile(user.id),
-      ]);
+      const [jobData, profileData, applications] = await Promise.all([
+  getJobById(id),
+  getUserProfile(user.id),
+  getMyJobApplications(),
+]);
 
-      setJob(jobData);
-      setProfile(profileData);
+const existing = Array.isArray(applications)
+  ? applications.find(
+      (application) =>
+        String(application.job_id || application.job?.id) === String(id)
+    )
+  : null;
+
+if (existing) {
+  setExistingApplication(existing);
+}
+
+setJob(jobData);
+setProfile(profileData);
     } catch (err) {
       setError(
         err.response?.data?.error ||
@@ -60,6 +93,36 @@ useEffect(() => {
 
   loadJobAndProfile();
 }, [id]);
+
+
+useEffect(() => {
+  return () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+    }
+
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
+    }
+
+    if (videoPreview) {
+      URL.revokeObjectURL(videoPreview);
+    }
+  };
+}, [videoPreview]);
+
+  // Attach camera streaming live after recorder UI is rendered
+useEffect(() => {
+  if (
+    showRecorder &&
+    cameraVideoRef.current &&
+    mediaStreamRef.current
+  ) {
+    cameraVideoRef.current.srcObject = mediaStreamRef.current;
+  }
+}, [showRecorder]);
 
 const handleResumeChange = (event) => {
   const file = event.target.files?.[0];
@@ -88,6 +151,150 @@ const handleResumeChange = (event) => {
   setResume(file);
 };
 
+  // recording
+const startRecording = async () => {
+  try {
+    setError("");
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Camera recording is not supported in this browser.");
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+
+    mediaStreamRef.current = stream;
+
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = stream;
+    }
+
+    recordingChunksRef.current = [];
+
+    let mimeType = "";
+
+    if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
+      mimeType = "video/webm;codecs=vp9,opus";
+    } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
+      mimeType = "video/webm;codecs=vp8,opus";
+    } else if (MediaRecorder.isTypeSupported("video/webm")) {
+      mimeType = "video/webm";
+    }
+
+    const recorder = mimeType
+      ? new MediaRecorder(stream, { mimeType })
+      : new MediaRecorder(stream);
+
+    mediaRecorderRef.current = recorder;
+
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordingChunksRef.current.push(event.data);
+      }
+    };
+
+    recorder.onstop = () => {
+      const finalType = recorder.mimeType || "video/webm";
+
+      const blob = new Blob(recordingChunksRef.current, {
+        type: finalType,
+      });
+
+      const file = new File(
+        [blob],
+        `video-introduction-${Date.now()}.webm`,
+        {
+          type: finalType,
+        }
+      );
+
+      const previewUrl = URL.createObjectURL(blob);
+
+      setVideoFile(file);
+      setVideoPreview(previewUrl);
+      setShowRecorder(false);
+      setIsRecording(false);
+
+      stream.getTracks().forEach((track) => track.stop());
+
+      mediaStreamRef.current = null;
+      mediaRecorderRef.current = null;
+      recordingChunksRef.current = [];
+    };
+
+    recorder.start();
+
+    setRecordingSeconds(0);
+    setShowRecorder(true);
+    setIsRecording(true);
+
+    const maxDuration = Number(job.video_max_duration) || 60;
+
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingSeconds((previous) => {
+        const next = previous + 1;
+
+        if (next >= maxDuration) {
+          if (mediaRecorderRef.current?.state === "recording") {
+            mediaRecorderRef.current.stop();
+          }
+        }
+
+        return Math.min(next, maxDuration);
+      });
+    }, 1000);
+  } catch (err) {
+    console.error("Camera recording failed:", err);
+
+    setError(
+      "Unable to access your camera and microphone. Please allow camera and microphone access and try again."
+    );
+
+    setShowRecorder(false);
+    setIsRecording(false);
+  }
+};
+
+const stopRecording = () => {
+  if (recordingTimerRef.current) {
+    clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+  }
+
+  if (mediaRecorderRef.current?.state === "recording") {
+    mediaRecorderRef.current.stop();
+  }
+
+  setIsRecording(false);
+};
+
+const cancelRecording = () => {
+  if (recordingTimerRef.current) {
+    clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+  }
+
+  if (mediaRecorderRef.current?.state === "recording") {
+    mediaRecorderRef.current.stop();
+  }
+
+  if (mediaStreamRef.current) {
+    mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+  }
+
+  mediaRecorderRef.current = null;
+  mediaStreamRef.current = null;
+  recordingChunksRef.current = [];
+
+  setShowRecorder(false);
+  setIsRecording(false);
+  setRecordingSeconds(0);
+};
+
+
 const handleApply = async () => {
   try {
     setApplying(true);
@@ -96,10 +303,22 @@ const handleApply = async () => {
 
     const profileResume = profile?.profile?.resume;
 
-    if (!resume && !profileResume) {
-      setError("Please upload a resume before applying.");
-      return;
-    }
+const missingFields = [];
+
+if (!resume && !profileResume) {
+  missingFields.push("resume");
+}
+
+if (!videoFile) {
+  missingFields.push("video");
+}
+
+if (missingFields.length > 0) {
+  setValidationErrors(missingFields);
+  setShowValidationModal(true);
+  return;
+}
+
 
     const applicationData = {
       profile: {
@@ -131,17 +350,24 @@ const handleApply = async () => {
 
     console.log("APPLICATION DATA:", applicationData);
 
-    await applyJob(id, {
-      application_data: applicationData,
-    });
-
-    setApplicationMessage(
-      "Application submitted successfully!"
-    );
+   await applyJob(
+  id,
+  applicationData,
+  resume,
+  videoFile
+);
+     setApplicationMessage("");
+     setShowSuccessModal(true);
 
     setResume(null);
     setCoverLetter("");
     setAdditionalInformation("");
+    if (videoPreview) {
+    URL.revokeObjectURL(videoPreview);
+}
+
+setVideoFile(null);
+setVideoPreview("");
 
   } catch (err) {
     setError(
@@ -187,6 +413,47 @@ if (!job) {
   );
 }
 
+
+if (existingApplication) {
+  return (
+    <div className="max-w-2xl mx-auto p-6">
+      <div className="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-sm">
+        <div className="text-4xl mb-4">✓</div>
+
+        <h1 className="text-xl font-bold text-slate-900">
+          You Already Applied
+        </h1>
+
+        <p className="mt-2 text-sm text-slate-500">
+          You have already submitted an application for this job.
+        </p>
+
+        <div className="mt-5 inline-flex px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold capitalize">
+          Status: {existingApplication.status || "submitted"}
+        </div>
+
+        <div className="mt-6 flex justify-center gap-3">
+          <button
+            onClick={() => navigate("/app/my-applications")}
+            className="px-4 py-2 rounded-lg bg-brand-blue-600 text-white text-sm font-medium hover:bg-brand-blue-700"
+          >
+            View My Application
+          </button>
+
+          <button
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
 return (
   <div className="max-w-3xl mx-auto space-y-6 pb-10">
 
@@ -198,17 +465,6 @@ return (
        Back to Job
     </button>
 
-    {/* Job title */}
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-      <h1 className="text-2xl font-bold text-slate-900">
-        Apply for {job.title}
-      </h1>
-
-      <p className="text-sm text-slate-500 mt-1">
-        Your profile information will be included automatically
-        with your application.
-      </p>
-    </div>
 
     {/* Application Form */}
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
@@ -303,7 +559,7 @@ return (
         </div>
 
         {/* Resume */}
-        <div>
+       <div ref={resumeSectionRef}>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Resume
             <span className="text-red-500 ml-1">*</span>
@@ -313,7 +569,7 @@ return (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
-                  
+
                 </div>
 
                 <div className="min-w-0">
@@ -399,6 +655,7 @@ return (
           </p>
         </div>
 
+
         {/* Additional Information */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -415,7 +672,181 @@ return (
             className="w-full px-3 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-blue-200 resize-none"
           />
         </div>
-        
+
+
+        {/* video recording */}
+
+          {/* Video Introduction */}
+<div
+  ref={videoSectionRef}
+  className="mt-6 border-t border-slate-200 pt-6"
+>
+  <div className="flex items-center justify-between mb-2">
+    <h3 className="font-semibold text-slate-800">
+       A Short Video Introduction about you<span className="text-red-500">*</span>
+    </h3>
+
+    <span className="text-xs font-medium text-red-500">
+      Required
+    </span>
+  </div>
+
+  <p className="text-sm text-slate-600 mb-2">
+    {job.video_prompt ||
+      "Please introduce yourself and explain why you are a good fit for this role."}
+  </p>
+
+  <p className="text-xs text-slate-500 mb-4">
+    Maximum duration:{" "}
+    {job.video_max_duration || 60} seconds
+  </p>
+
+  {!videoFile && !showRecorder && (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Record */}
+      <button
+        type="button"
+        onClick={startRecording}
+        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-brand-blue-200 bg-brand-blue-50 text-brand-blue-700 font-medium hover:bg-brand-blue-100 transition-colors"
+      >
+         Record Video
+      </button>
+
+      {/* Upload */}
+      <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 font-medium hover:bg-slate-50 cursor-pointer transition-colors">
+         Upload Video
+
+        <input
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+
+            if (!file) return;
+
+            if (!file.type.startsWith("video/")) {
+              setError("Please select a valid video file.");
+              e.target.value = "";
+              return;
+            }
+
+            const previewUrl = URL.createObjectURL(file);
+            const video = document.createElement("video");
+
+            video.preload = "metadata";
+            video.src = previewUrl;
+
+            video.onloadedmetadata = () => {
+              const maxDuration =
+                Number(job.video_max_duration) || 60;
+
+              if (video.duration > maxDuration) {
+                setError(
+                  `Video must be ${maxDuration} seconds or less.`
+                );
+
+                URL.revokeObjectURL(previewUrl);
+                e.target.value = "";
+                return;
+              }
+
+              setError("");
+              setVideoFile(file);
+              setVideoPreview(previewUrl);
+            };
+          }}
+        />
+      </label>
+    </div>
+  )}
+
+  {/* Camera Recorder */}
+  {showRecorder && (
+    <div className="space-y-4">
+      <div className="relative overflow-hidden rounded-xl bg-black">
+        <video
+          ref={cameraVideoRef}
+          autoPlay
+          muted
+          playsInline
+          className="w-full max-h-[420px] object-contain"
+        />
+
+        {isRecording && (
+          <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/70 text-white text-sm">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Recording
+          </div>
+        )}
+
+        <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/70 text-white text-sm">
+          {recordingSeconds}s /{" "}
+          {job.video_max_duration || 60}s
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        {isRecording ? (
+          <button
+            type="button"
+            onClick={stopRecording}
+            className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700"
+          >
+            ⏹ Stop Recording
+          </button>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={cancelRecording}
+          className="px-4 py-3 rounded-xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )}
+
+  {/* Recorded / Uploaded Video */}
+  {videoFile && !showRecorder && (
+    <div className="space-y-3">
+      <video
+        src={videoPreview}
+        controls
+        className="w-full max-w-xl rounded-xl border border-slate-200"
+      />
+
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-green-600 truncate">
+          ✓ {videoFile.name}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (videoPreview) {
+              URL.revokeObjectURL(videoPreview);
+            }
+
+            setVideoFile(null);
+            setVideoPreview("");
+            setRecordingSeconds(0);
+          }}
+          className="text-xs text-red-600 hover:text-red-700 font-medium"
+        >
+          Remove & Record Again
+        </button>
+      </div>
+    </div>
+  )}
+
+  <p className="text-xs text-slate-400 mt-3">
+    You can record using your camera or upload an existing video.
+    Maximum duration is {job.video_max_duration || 60} seconds.
+  </p>
+</div>
+
           <button
             type="button"
             onClick={handleApply}
@@ -426,10 +857,125 @@ return (
               ? "Submitting Application..."
               : "Submit Application"}
           </button>
-        
+
 
       </div>
     </div>
+
+{showValidationModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6">
+
+      {/* Title */}
+      <h2 className="text-xl font-semibold text-center text-slate-800">
+         Want to Complete Your Application?
+      </h2>
+
+      <p className="text-sm text-slate-500 text-center mt-2 mb-5">
+        Please complete the following required fields before submitting.
+      </p>
+
+      {/* Missing fields */}
+      <div className="space-y-3 mb-6">
+
+        {validationErrors.includes("resume") && (
+          <div className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-100 p-3">
+            <span className="text-red-500 mt-0.5">!</span>
+
+            <div>
+              <p className="text-sm font-medium text-slate-800">
+                Resume Required
+              </p>
+
+              <p className="text-sm text-slate-600">
+                Please upload your resume to proceed.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {validationErrors.includes("video") && (
+          <div className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-100 p-3">
+            <span className="text-red-500 mt-0.5">!</span>
+
+            <div>
+              <p className="text-sm font-medium text-slate-800">
+                Self-Introduction Required
+              </p>
+
+              <p className="text-sm text-slate-600">
+                Please upload or record your self-introduction video to proceed.
+              </p>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* Button */}
+      <button
+        type="button"
+        onClick={() => {
+          setShowValidationModal(false);
+
+          setTimeout(() => {
+            if (validationErrors.includes("resume")) {
+              resumeSectionRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+            } else if (validationErrors.includes("video")) {
+              videoSectionRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+            }
+          }, 100);
+        }}
+        className="w-full rounded-xl bg-brand-blue-600 px-4 py-3 text-white font-semibold hover:bg-brand-blue-700 transition-colors"
+      >
+        OK, Understood
+      </button>
+
+    </div>
+  </div>
+)}
+
+{showSuccessModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6">
+
+      {/* Success Icon */}
+      <div className="flex justify-center mb-4">
+        <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
+          <span className="text-3xl text-green-600">
+            ✓
+          </span>
+        </div>
+      </div>
+
+      {/* Title */}
+      <h2 className="text-xl font-semibold text-center text-slate-800">
+        Application Submitted!
+      </h2>
+
+      {/* Message */}
+      <p className="text-sm text-slate-500 text-center mt-2 mb-6">
+        Your application has been submitted successfully.
+      </p>
+
+      {/* Button */}
+      <button
+        type="button"
+        onClick={() => setShowSuccessModal(false)}
+        className="w-full rounded-xl bg-brand-blue-600 px-4 py-3 text-white font-semibold hover:bg-brand-blue-700 transition-colors"
+      >
+        OK
+      </button>
+
+    </div>
+  </div>
+)}
   </div>
 );
 }
