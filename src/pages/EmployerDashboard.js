@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar,
   XAxis, YAxis, Tooltip, CartesianGrid, Legend,
@@ -11,6 +10,7 @@ import {
   getEligibleStudents,
   getJobApplications,
   getApplicationVideoUrl,
+  getUserProfile,
   updateApplicationStatus,
   scheduleInterview,
   getInterview,
@@ -55,6 +55,10 @@ export default function EmployerDashboard() {
   const [videoCandidate, setVideoCandidate] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [loadingVideo, setLoadingVideo] = useState(false);
+
+  const [profileCandidate, setProfileCandidate] = useState(null);
+const [candidateProfile, setCandidateProfile] = useState(null);
+const [loadingProfile, setLoadingProfile] = useState(false);
 
   const [selectedMatchType, setSelectedMatchType] = useState(null);
   const [updatingApplicationId, setUpdatingApplicationId] = useState(null);
@@ -158,26 +162,42 @@ console.log("APPLICATIONS RETURNED:", applications);
   application_id: application?.id,
   application_status: application?.status,
 });
+ 
+console.log(
+  "FULL NANI APPLICATION:",
+  JSON.stringify(application, null, 2)
+);
 
-                  return {
-                    ...candidate,
 
-                    // Existing candidate data
-                    job_id: job.id,
-                    job_title: job.title,
 
-                //Application data
+console.log(
+  "APPLICATION CHECK:",
+  candidate.name,
+  "CURRENT JOB:",
+  job.id,
+  "APPLICATION ID:",
+  application?.id,
+  "APPLICATION JOB:",
+  application?.job_id,
+  "VIDEO:",
+  application?.application_data?.video
+);
+            return {
+  ...candidate,
 
-                    application_id:
+  // Existing candidate data
+  job_id: job.id,
+  job_title: job.title,
 
-                   application?.id || null,
+  // Application data
+  application_id: application?.id || null,
+  application_status: application?.status || null,
+  application_data: application?.application_data || null,
 
-                   application_status:
-                   application?.status || null,
-
-                  has_video:
-                  Boolean(application?.application_data?.video?.key),
-                  };
+  // Video availability
+  has_video: Boolean(application?.application_data?.video),
+};
+                  
                 }),
               };
             } catch (error) {
@@ -248,9 +268,9 @@ const responsesWithInterviews = await Promise.all(
         // Keep each student only once.
         // If the student matches multiple jobs,
         // keep their highest match.
-        const candidateMap = new Map();
+       const candidateMap = new Map();
 
-        for (const candidate of allCandidates) {
+for (const candidate of allCandidates) {
   const existing = candidateMap.get(candidate.id);
 
   if (!existing) {
@@ -258,7 +278,25 @@ const responsesWithInterviews = await Promise.all(
     continue;
   }
 
-  // Prefer the candidate record that has an application.
+  const candidateHasVideo = Boolean(
+    candidate.application_data?.video
+  );
+
+  const existingHasVideo = Boolean(
+    existing.application_data?.video
+  );
+
+  // Prefer a candidate record that has a video.
+  if (candidateHasVideo && !existingHasVideo) {
+    candidateMap.set(candidate.id, candidate);
+    continue;
+  }
+
+  if (!candidateHasVideo && existingHasVideo) {
+    continue;
+  }
+
+  // Prefer the record that has an application.
   if (
     candidate.application_id &&
     !existing.application_id
@@ -267,13 +305,18 @@ const responsesWithInterviews = await Promise.all(
     continue;
   }
 
-  // If both have applications or both don't,
-  // keep the one with the higher skill match.
   if (
-    Boolean(candidate.application_id) ===
-      Boolean(existing.application_id) &&
+    !candidate.application_id &&
+    existing.application_id
+  ) {
+    continue;
+  }
+
+  // If both have applications (or both don't),
+  // keep the higher skill match.
+  if (
     Number(candidate.skill_match || 0) >
-      Number(existing.skill_match || 0)
+    Number(existing.skill_match || 0)
   ) {
     candidateMap.set(candidate.id, candidate);
   }
@@ -288,14 +331,15 @@ const responsesWithInterviews = await Promise.all(
             Number(a.skill_match || 0)
         );
 
-        console.table(
+console.table(
   uniqueCandidates.map((c) => ({
     name: c.name,
     candidate_id: c.id,
     job_id: c.job_id,
     application_id: c.application_id,
     application_status: c.application_status,
-    skill_match: c.skill_match,
+    has_video: c.has_video,
+    has_video_data: Boolean(c.application_data?.video),
   }))
 );
 
@@ -332,6 +376,30 @@ getDomainRoles()
     });
   }, [user?.id]
 );
+
+
+const handleViewProfile = async (candidate) => {
+  if (!candidate?.id) return;
+
+  setProfileCandidate(candidate);
+  setCandidateProfile(null);
+  setLoadingProfile(true);
+
+  try {
+    const profile = await getUserProfile(candidate.id);
+    setCandidateProfile(profile);
+  } catch (err) {
+    console.error(
+      "Failed to load candidate profile:",
+      err.response?.data || err.message
+    );
+
+    setCandidateProfile(null);
+  } finally {
+    setLoadingProfile(false);
+  }
+};
+
 
 const handleApplicationStatus = async (candidate, status) => {
   try {
@@ -1298,13 +1366,13 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
                 : "Why recommended? ↓"}
             </button>
 
-            <Link
-              to="/app/candidates"
-              state={{ candidate: c }}
-              className="text-xs font-medium text-brand-blue-600 hover:text-brand-blue-700 hover:underline"
-            >
-              Review Candidate
-            </Link>
+            <button
+  type="button"
+  onClick={() => handleViewProfile(c)}
+  className="text-xs font-medium text-brand-blue-600 hover:text-brand-blue-700 hover:underline"
+>
+  Review Candidate
+</button>
 
           </div>
 
@@ -1341,8 +1409,7 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
 
 <div className="flex gap-2">
 
-
-  {c.application_id && c.has_video && (
+{c.application_id && c.application_data?.video && (
   <button
     type="button"
     onClick={() => handleViewApplicationVideo(c)}
@@ -1354,34 +1421,48 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
 )}
 
   {/* Submitted */}
-  {(!c.application_status ||
-    c.application_status === "submitted") && (
-    <>
+ {/* Submitted */}
+{(!c.application_status ||
+  c.application_status === "submitted") && (
+  <>
+    <button
+      type="button"
+      disabled={
+        updatingApplicationId === (c.application_id || c.id)
+      }
+      onClick={() =>
+        handleApplicationStatus(c, "shortlisted")
+      }
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
+    >
+      {updatingApplicationId === (c.application_id || c.id)
+        ? "Updating..."
+        : "Shortlist"}
+    </button>
 
+    <button
+      type="button"
+      disabled={
+        updatingApplicationId === (c.application_id || c.id)
+      }
+      onClick={() => {
+        const confirmed = window.confirm(
+          `Are you sure you want to reject ${c.name}?`
+        );
 
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
+        if (confirmed) {
+          handleApplicationStatus(c, "rejected");
         }
-
-       onClick={() => {
-  const confirmed = window.confirm(
-    `Are you sure you want to reject ${c.name}?`
-  );
-
-  if (confirmed) {
-    handleApplicationStatus(c, "rejected");
-  }
-}} className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
-      >
-        {updatingApplicationId === c.application_id &&
-        c.application_status === "submitted"
-          ? "Updating..."
-          : "Reject"}
-      </button>
-    </>
-  )}
+      }}
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
+    >
+      {updatingApplicationId === (c.application_id || c.id) &&
+      c.application_status === "submitted"
+        ? "Updating..."
+        : "Reject"}
+    </button>
+  </>
+)}
 
   {/* Shortlisted */}
   {c.application_status === "shortlisted" && (
@@ -2203,13 +2284,13 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
               {/* Actions */}
               <div className="flex flex-wrap gap-2">
 
-                <Link
-                  to="/app/candidates"
-                  state={{ candidate: c }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100"
-                >
-                  View Profile
-                </Link>
+                <button
+  type="button"
+  onClick={() => handleViewProfile(c)}
+  className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100"
+>
+  View Profile
+</button>
 
                 <button
                   type="button"
@@ -2490,6 +2571,216 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
           </button>
         </div>
       </form>
+    </div>
+  </div>
+)}
+
+
+
+{profileCandidate && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+    onClick={() => {
+      setProfileCandidate(null);
+      setCandidateProfile(null);
+    }}
+  >
+    <div
+      className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between border-b px-6 py-5">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-lg font-bold">
+            {(profileCandidate.name || "?")
+              .split(" ")
+              .map((p) => p[0])
+              .slice(0, 2)
+              .join("")
+              .toUpperCase()}
+          </div>
+
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">
+              {profileCandidate.name || "Candidate"}
+            </h2>
+
+            <p className="text-sm text-slate-500">
+              {profileCandidate.email || "—"}
+            </p>
+
+            {profileCandidate.role_target && (
+              <p className="text-sm text-blue-600 mt-1">
+                {profileCandidate.role_target}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setProfileCandidate(null);
+            setCandidateProfile(null);
+          }}
+          className="text-2xl text-slate-400 hover:text-slate-700"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {loadingProfile ? (
+          <div className="py-10 text-center text-sm text-slate-500">
+            Loading candidate profile...
+          </div>
+        ) : (
+          <>
+            {/* Application summary */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">
+                Application
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">
+                    Application Status
+                  </div>
+                  <div className="text-sm font-semibold text-slate-800 mt-1">
+                    {profileCandidate.application_status || "Not Applied"}
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">
+                    Skill Match
+                  </div>
+                  <div className="text-sm font-semibold text-slate-800 mt-1">
+                    {profileCandidate.skill_match ?? 0}%
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">
+                    Target Role
+                  </div>
+                  <div className="text-sm font-semibold text-slate-800 mt-1">
+                    {profileCandidate.role_target || "—"}
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">
+                    Domain
+                  </div>
+                  <div className="text-sm font-semibold text-slate-800 mt-1">
+                    {profileCandidate.domain_role || "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Student profile */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">
+                Student Details
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-slate-200 p-3">
+                  <div className="text-xs text-slate-500">
+                    Career Goal
+                  </div>
+                  <div className="text-sm text-slate-800 mt-1">
+                    {candidateProfile?.profile?.career_goal || "—"}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 p-3">
+                  <div className="text-xs text-slate-500">
+                    Institution
+                  </div>
+                  <div className="text-sm text-slate-800 mt-1">
+                    {candidateProfile?.profile?.institution || "—"}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 p-3">
+                  <div className="text-xs text-slate-500">
+                    Company
+                  </div>
+                  <div className="text-sm text-slate-800 mt-1">
+                    {candidateProfile?.profile?.company || "—"}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 p-3">
+                  <div className="text-xs text-slate-500">
+                    Last Login
+                  </div>
+                  <div className="text-sm text-slate-800 mt-1">
+                    {candidateProfile?.last_login
+                      ? new Date(
+                          candidateProfile.last_login
+                        ).toLocaleString("en-IN")
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Resume */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">
+                Resume
+              </h3>
+
+              {candidateProfile?.profile?.resume?.url ? (
+                <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
+                  <div>
+                    <div className="text-sm font-medium text-slate-800">
+                      {candidateProfile.profile.resume.file_name ||
+                        "Resume"}
+                    </div>
+
+                    <div className="text-xs text-slate-500 mt-1">
+                      {candidateProfile.profile.resume.file_type || ""}
+                    </div>
+                  </div>
+
+                  <a
+                    href={candidateProfile.profile.resume.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
+                  >
+                    Open Resume
+                  </a>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
+                  No resume uploaded.
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-2 border-t px-6 py-4">
+        <button
+          type="button"
+          onClick={() => {
+            setProfileCandidate(null);
+            setCandidateProfile(null);
+          }}
+          className="px-4 py-2 rounded-md border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"
+        >
+          Close
+        </button>
+      </div>
     </div>
   </div>
 )}

@@ -26,7 +26,8 @@ import {
   getRecommendedJobs,
   getNotifications,
   getMyInterview,
-  getMyJobApplications
+  getMyJobApplications,
+  getApplicationVideoUrl
 } from '../services/api';
 
 
@@ -94,6 +95,7 @@ export default function StudentDashboard() {
   const [selectedInterview, setSelectedInterview] = useState(null);
   const [loadingInterview, setLoadingInterview] = useState(false);
   const [myApplications, setMyApplications] = useState([]);
+  const [selectedApplication, setSelectedApplication] = useState(null);
 
   // Fetch all necessary data when the component mounts.
   useEffect(() => {
@@ -921,12 +923,18 @@ const handleViewInterview = async (jobId) => {
       ✓ Already Applied
     </span>
 
-    <Link
-      to="/app/my-applications"
-      className="text-xs text-brand-blue-600 hover:underline"
-    >
-      View Application →
-    </Link>
+   <button
+  type="button"
+  onClick={() => setSelectedApplication(
+    myApplications.find(
+      (application) =>
+        String(application.job_id) === String(job.id)
+    ) || null
+  )}
+  className="text-xs text-brand-blue-600 hover:underline"
+>
+  View Application →
+</button>
   </div>
 ) : (
   <Link
@@ -1109,6 +1117,319 @@ const handleViewInterview = async (jobId) => {
     </ul>
   </Card>
 )}
+
+{selectedApplication && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+    onClick={() => setSelectedApplication(null)}
+  >
+    <div
+      className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between border-b px-5 py-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Application Details
+          </h2>
+
+          <p className="text-sm text-slate-500 mt-1">
+            {selectedApplication.job?.title || "Job Application"}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setSelectedApplication(null)}
+          className="text-xl text-slate-400 hover:text-slate-700"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="p-5 space-y-4">
+        <div className="flex items-center justify-between rounded-lg bg-slate-50 p-4">
+          <span className="text-sm text-slate-500">
+            Application Status
+          </span>
+
+          <span className="text-sm font-semibold capitalize text-slate-800">
+            {selectedApplication.status || "Submitted"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="border rounded-lg p-3">
+            <div className="text-xs text-slate-500">
+              Skill Match
+            </div>
+            <div className="font-semibold text-slate-800 mt-1">
+              {selectedApplication.skill_match ?? 0}%
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-3">
+            <div className="text-xs text-slate-500">
+              Applied On
+            </div>
+            <div className="font-semibold text-slate-800 mt-1">
+              {selectedApplication.applied_at
+                ? new Date(
+                    selectedApplication.applied_at
+                  ).toLocaleDateString("en-IN")
+                : "—"}
+            </div>
+          </div>
+        </div>
+
+        {selectedApplication.application_data?.cover_letter && (
+          <div>
+            <div className="text-xs font-semibold text-slate-500 mb-1">
+              Cover Letter
+            </div>
+
+            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">
+              {selectedApplication.application_data.cover_letter}
+            </div>
+          </div>
+        )}
+
+        {selectedApplication.application_data?.additional_information && (
+          <div>
+            <div className="text-xs font-semibold text-slate-500 mb-1">
+              Additional Information
+            </div>
+
+            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">
+              {selectedApplication.application_data.additional_information}
+            </div>
+          </div>
+        )}
+
+        {selectedApplication && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+    onClick={() => setSelectedApplication(null)}
+  >
+    <div
+      className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">
+            Application Details
+          </h2>
+
+          <p className="mt-1 text-base text-slate-500">
+            {selectedApplication.job?.title || "Job Opportunity"}
+          </p>
+
+          {selectedApplication.job?.company && (
+            <p className="mt-1 text-sm text-slate-400">
+              {selectedApplication.job.company}
+            </p>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setSelectedApplication(null)}
+          className="text-2xl text-slate-400 hover:text-slate-600"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="space-y-5 px-6 py-6">
+
+        {/* Application Status */}
+        <div className="rounded-xl bg-slate-50 px-5 py-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-500">
+              Application Status
+            </span>
+
+            <span
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                String(selectedApplication.status).toLowerCase() ===
+                "shortlisted"
+                  ? "bg-green-100 text-green-700"
+                  : String(selectedApplication.status).toLowerCase() ===
+                    "rejected"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-blue-100 text-blue-700"
+              }`}
+            >
+              {String(selectedApplication.status).toLowerCase() ===
+              "shortlisted"
+                ? "Shortlisted"
+                : String(selectedApplication.status).toLowerCase() ===
+                  "rejected"
+                ? "Rejected"
+                : "Submitted"}
+            </span>
+          </div>
+        </div>
+
+        {/* Application Information */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-sm text-slate-500">Skill Match</p>
+            <p className="mt-1 text-lg font-semibold text-slate-800">
+              {selectedApplication.skill_match != null
+                ? `${selectedApplication.skill_match}%`
+                : "N/A"}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-sm text-slate-500">Applied On</p>
+            <p className="mt-1 text-lg font-semibold text-slate-800">
+              {selectedApplication.applied_at
+                ? new Date(
+                    selectedApplication.applied_at
+                  ).toLocaleDateString()
+                : "N/A"}
+            </p>
+          </div>
+        </div>
+
+        {/* Submitted Resume */}
+        {selectedApplication.application_data?.resume?.url && (
+          <div className="rounded-xl border border-slate-200 p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-semibold text-slate-800">
+                  Submitted Resume
+                </p>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedApplication.application_data.resume.file_name ||
+                    "Resume"}
+                </p>
+              </div>
+
+              <a
+                href={
+                  selectedApplication.application_data.resume.url.startsWith(
+                    "http"
+                  )
+                    ? selectedApplication.application_data.resume.url
+                    : `http://localhost:5000${selectedApplication.application_data.resume.url}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                Open Resume
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Application Video */}
+        {selectedApplication.application_data?.video?.key && (
+          <div className="rounded-xl border border-slate-200 p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-semibold text-slate-800">
+                  Video Introduction
+                </p>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Video submitted with this application
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const url = await getApplicationVideoUrl(
+                      selectedApplication.id
+                    );
+
+                    if (url) {
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }
+                  } catch (err) {
+                    console.error(
+                      "Failed to open application video:",
+                      err
+                    );
+                  }
+                }}
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                Watch Video
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Interview */}
+        <div className="rounded-xl border border-slate-200 p-5">
+          <p className="font-semibold text-slate-800">
+            Interview
+          </p>
+
+          {selectedApplication.interview ? (
+            <div className="mt-3 space-y-1 text-sm text-slate-600">
+              <p>
+                <span className="font-medium">Status:</span>{" "}
+                {selectedApplication.interview.status || "Scheduled"}
+              </p>
+
+              {selectedApplication.interview.scheduled_at && (
+                <p>
+                  <span className="font-medium">Scheduled:</span>{" "}
+                  {new Date(
+                    selectedApplication.interview.scheduled_at
+                  ).toLocaleString()}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-slate-500">
+              No interview scheduled yet.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-end border-t border-slate-200 px-6 py-4">
+        <button
+          type="button"
+          onClick={() => setSelectedApplication(null)}
+          className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+      </div>
+
+      <div className="border-t px-5 py-4 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setSelectedApplication(null)}
+          className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
   {/* Interview Details */}
 {selectedInterview && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

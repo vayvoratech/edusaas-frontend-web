@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 const navByRole = {
   Student: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
+    { to: '/app/job-applications', label: 'Job Applications', icon: '💼' },
     { to: '/app/courses', label: 'Courses', icon: '📚' },
     { to: '/app/achievements', label: 'Achievements', icon: '🏆' },
     { to: '/app/tasks', label: 'Tasks & Deadlines', icon: '✅' },
