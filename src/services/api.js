@@ -328,6 +328,8 @@ export const getEligibleStudents = (jobId) =>
 
 // Notifications
 export const getNotifications = () => api.get("/api/notifications").then((r) => r.data);
+export const markNotificationRead = (id) => api.patch(`/api/notifications/${id}/read`).then((r) => r.data);
+export const markAllNotificationsRead = () => api.patch("/api/notifications/read-all").then((r) => r.data);
 
 // Admin
 export const getAllUsers = (params = {}) =>
@@ -376,6 +378,8 @@ export const getCommunityFeed = (params = {}) =>
   api.get("/api/community/feed", { params }).then((r) => r.data);
 export const createCommunityPost = (data) =>
   api.post("/api/community/posts", data).then((r) => r.data);
+export const toggleCommunityPostBookmark = (postId) =>
+  api.post(`/api/community/posts/${postId}/bookmark`).then((r) => r.data);
 
 // Connections & Users
 export const searchUsers = (q) => api.get(`/api/users/search?q=${q}`).then((r) => r.data);

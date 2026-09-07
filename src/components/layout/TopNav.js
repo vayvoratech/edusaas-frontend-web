@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { getNotifications, searchUsers, getCourses, sendConnectionRequest, removeConnection } from '../../services/api';
+import { getNotifications, markNotificationRead, markAllNotificationsRead, searchUsers, getCourses, sendConnectionRequest, removeConnection } from '../../services/api';
 
 const initials = (name) =>
   (name || '?')
@@ -26,11 +26,13 @@ export function TopNav({ onOpenNav = () => {} }) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState({ members: [], courses: [] });
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(5);
 
   const unreadCount = notifications.filter(
       (n) => !n.read_status
     ).length;
-      
+
+  const visibleNotifications = notifications.slice(0, displayLimit);
 
   const wrapRef = useRef(null);
 
@@ -46,6 +48,7 @@ export function TopNav({ onOpenNav = () => {} }) {
         setOpenMenu(false);
         setOpenNotif(false);
         setShowSearchResults(false);
+        setDisplayLimit(5);
       }
     };
 
@@ -85,6 +88,54 @@ export function TopNav({ onOpenNav = () => {} }) {
   const showToast = (message, type = 'success') => {
     setToastMessage({ message, type });
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleBellClick = async () => {
+    setOpenMenu(false);
+    
+    if (!openNotif) {
+      const hadUnread = unreadCount > 0;
+      setDisplayLimit(hadUnread ? 50 : 5);
+      setOpenNotif(true);
+
+      // Mark all as read when opening
+      if (hadUnread) {
+        try {
+          await markAllNotificationsRead();
+          setNotifications(prev => prev.map(n => ({ ...n, read_status: true })));
+        } catch (err) {
+          console.error("Failed to mark all as read:", err);
+        }
+      }
+    } else {
+      setOpenNotif(false);
+      setDisplayLimit(5);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    const { id, read_status, type, reference_id } = notification;
+
+    if (!read_status) {
+      try {
+        await markNotificationRead(id);
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_status: true } : n));
+      } catch (err) {
+        console.error("Failed to mark as read:", err);
+      }
+    }
+
+    setOpenNotif(false);
+    setDisplayLimit(5);
+
+    if (type === 'connection_request') {
+      navigate('/app/community', { state: { activeTab: 'Connections' } });
+    } else if (type === 'new_post' || type === 'new_job' || type === 'new_course') {
+      // Navigate to community and highlight the specific post
+      navigate('/app/community', { state: { scrollToPost: reference_id } });
+    } else if (type === 'connection_accepted') {
+      navigate('/app/community', { state: { activeTab: 'Connections' } });
+    }
   };
 
   const handleConnect = async (targetUserId, e) => {
@@ -263,10 +314,7 @@ export function TopNav({ onOpenNav = () => {} }) {
 
           <div className="relative">
             <button
-              onClick={() => {
-                setOpenNotif((v) => !v);
-                setOpenMenu(false);
-              }}
+              onClick={handleBellClick}
               className="relative w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 grid place-items-center"
               aria-label="Notifications"
             >
@@ -279,8 +327,13 @@ export function TopNav({ onOpenNav = () => {} }) {
             </button>
             {openNotif && (
               <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden animate-fade-in">
-                <div className="px-4 py-3 border-b border-slate-100 font-semibold text-sm">
-                  Notifications
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between text-sm">
+                  <span className="font-semibold text-slate-800">Notifications</span>
+                  {notifications.length > 5 && displayLimit === 5 && (
+                    <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                      Latest 5
+                    </span>
+                  )}
                 </div>
                 <ul className="max-h-72 overflow-y-auto">
                   {notificationsLoading ? (
@@ -291,20 +344,21 @@ export function TopNav({ onOpenNav = () => {} }) {
                     <li className="px-4 py-6 text-sm text-center text-red-500">
                       {notificationsError}
                     </li>
-                  ) : notifications.length === 0 ? (
+                  ) : visibleNotifications.length === 0 ? (
                     <li className="px-4 py-6 text-sm text-center text-slate-400">
                       No notifications
                     </li>
                   ) : (
-                    notifications.map((n) => (
+                    visibleNotifications.map((n) => (
                       <li
                         key={n.id}
-                        className={`px-4 py-3 text-sm border-b border-slate-50 hover:bg-slate-50 ${
+                        onClick={() => handleNotificationClick(n)}
+                        className={`px-4 py-3 text-sm border-b border-slate-50 hover:bg-slate-50 cursor-pointer ${
                           !n.read_status ? 'bg-brand-blue-50/40' : ''
                         }`}
                       >
                         <div className="text-slate-800">
-                          {n.title}
+                          {n.message}
                         </div>
 
                         <div className="text-xs text-slate-400 mt-0.5">

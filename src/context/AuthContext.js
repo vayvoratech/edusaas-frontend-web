@@ -79,7 +79,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('edu_token');
         localStorage.removeItem('edu_refresh');
         localStorage.removeItem('edu_user');
-        signOut();
+        signOut({ redirectUrl: '/login' });
       },
     }),
     [user, role, isSignedIn, signOut]
