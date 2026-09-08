@@ -145,6 +145,8 @@ const recommendationSummary = {
 
 export default function RecommendationsPage() {
   const [recs, setRecs] = useState([]);
+  const [aiRecs, setAiRecs] = useState([]);
+  const [learningPathway, setLearningPathway] = useState([]);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
   const [enrolledIds, setEnrolledIds] = useState(new Set());
@@ -156,7 +158,17 @@ export default function RecommendationsPage() {
           getMyRecommendations(),
           getMyEnrollments().catch(() => []),
         ]);
-        setRecs(r);
+        const list = Array.isArray(r) ? r : [];
+        const aiItem = list.find(
+          (x) => x.type === "ai_suggestions" || x.source === "ai"
+        );
+        if (aiItem) {
+          setAiRecs(aiItem.suggestions || []);
+          if (Array.isArray(aiItem.learning_pathway) && aiItem.learning_pathway.length > 0) {
+            setLearningPathway(aiItem.learning_pathway);
+          }
+        }
+        setRecs(list.filter((x) => x.type !== "ai_suggestions"));
         setEnrolledIds(new Set(e.map((x) => x.course_id)));
       } catch (err) {
         setError(err.response?.data?.error || err.message);
@@ -247,16 +259,30 @@ export default function RecommendationsPage() {
 
       {/* ROADMAP */}
       <Card>
-        <h2 className="text-xl font-bold mb-6">🛣 Recommended Learning Roadmap</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold">🛣 Recommended Learning Roadmap</h2>
+          {learningPathway.length > 0 && (
+            <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 font-semibold">
+              🤖 Dynamic AI Pathway
+            </span>
+          )}
+        </div>
         <div className="grid md:grid-cols-5 gap-4">
-          {recommendationSummary.roadmap.map((step, index) => (
-            <div key={step} className="relative">
+          {(learningPathway.length > 0
+            ? learningPathway.map((item) =>
+                typeof item === "string"
+                  ? item
+                  : item.course_name || item.title || item.step || JSON.stringify(item)
+              )
+            : recommendationSummary.roadmap
+          ).map((step, index, arr) => (
+            <div key={step + index} className="relative">
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 text-center h-full">
-                <div className="text-3xl">{index + 1}</div>
-                <div className="font-semibold mt-3">{step}</div>
+                <div className="text-3xl font-bold text-blue-600">{index + 1}</div>
+                <div className="font-semibold mt-3 text-sm">{step}</div>
               </div>
-              {index !== recommendationSummary.roadmap.length - 1 && (
-                <div className="hidden md:block absolute top-1/2 -right-4 text-3xl">
+              {index !== arr.length - 1 && (
+                <div className="hidden md:block absolute top-1/2 -right-4 text-2xl text-blue-300">
                   ➜
                 </div>
               )}
@@ -356,7 +382,63 @@ export default function RecommendationsPage() {
           })}
         </div>
 
-        {recs.length === 0 && (
+        {/* AI MODEL SUGGESTIONS */}
+        {aiRecs.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <span>🤖</span> AI Personalized Course Suggestions
+              <span className="text-xs font-normal text-gray-500">
+                (Generated via hybrid collaborative filtering & content vectors)
+              </span>
+            </h3>
+            <div className="grid lg:grid-cols-2 gap-6">
+              {aiRecs.map((aiCourse, idx) => (
+                <Card
+                  key={aiCourse.course_id || idx}
+                  className="hover:shadow-xl transition-all duration-300 border-indigo-200 bg-gradient-to-br from-white to-indigo-50/20"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex gap-4">
+                      <div className="text-5xl">{iconFor(aiCourse.course_name || "")}</div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-xl">{aiCourse.course_name}</h4>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                            Confidence: {Math.round((aiCourse.confidence_score || 0.85) * 100)}%
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
+                            {aiCourse.difficulty || "Beginner"}
+                          </span>
+                          <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">
+                            {aiCourse.category || "AI / Data Science"}
+                          </span>
+                          {aiCourse.prerequisite_completed && (
+                            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                              ✓ Prerequisites Met
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 mt-4 text-sm">
+                          {aiCourse.recommendation_reason ||
+                            "Recommended by AI collaborative filtering model."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-6">
+                    <Button variant="outline" className="flex-1">
+                      View Details
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {recs.length === 0 && aiRecs.length === 0 && (
           <Card>
             <div className="py-12 text-center">
               <div className="text-6xl">🤖</div>

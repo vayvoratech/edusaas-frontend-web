@@ -141,10 +141,25 @@ export default function Candidates() {
               {initials(c.name)}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm text-slate-800 truncate">{c.name}</div>
-              <div className="text-xs text-slate-500 truncate">{c.role_target}</div>
+              <div className="flex items-center gap-2">
+                <div className="font-semibold text-sm text-slate-800 truncate">{c.name}</div>
+                {c.ai_hiring_match && (
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      c.ai_hiring_match.match_level === "EXCELLENT"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : c.ai_hiring_match.match_level === "GOOD"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    🤖 AI {c.ai_hiring_match.match_level} ({Math.round(c.ai_hiring_match.match_percentage)}%)
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-slate-500 truncate">{c.domain_role || c.role_target}</div>
             </div>
-            <StatPill label="Match" value={`${c.skill_match}%`} tone={c.skill_match >= 80 ? 'green' : c.skill_match >= 60 ? 'orange' : 'slate'} />
+            <StatPill label="Skill Match" value={`${c.skill_match}%`} tone={c.skill_match >= 80 ? 'green' : c.skill_match >= 60 ? 'orange' : 'slate'} />
             <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => openView(c)}>
               View Profile
             </Button>
@@ -185,8 +200,14 @@ export default function Candidates() {
             ) : (
               <dl className="space-y-2 text-sm">
                 <Row k="Role" v={viewProfile?.role || viewing.role || '—'} />
-                <Row k="Target role" v={viewing.role_target} />
+                <Row k="Target role" v={viewing.domain_role || viewing.role_target || '—'} />
                 <Row k="Skill match" v={`${viewing.skill_match}%`} />
+                {viewing.ai_hiring_match && (
+                  <Row
+                    k="AI Match Assessment"
+                    v={`${viewing.ai_hiring_match.match_level} (${Math.round(viewing.ai_hiring_match.match_percentage)}% confidence)`}
+                  />
+                )}
                 <Row k="Career goal" v={viewProfile?.profile?.career_goal || '—'} />
                 <Row k="Institution" v={viewProfile?.profile?.institution || '—'} />
                 <Row k="Company" v={viewProfile?.profile?.company || '—'} />
