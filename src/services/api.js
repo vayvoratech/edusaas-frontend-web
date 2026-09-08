@@ -430,6 +430,8 @@ export const getEligibleStudents = (jobId) =>
 
 // Notifications
 export const getNotifications = () => api.get("/api/notifications").then((r) => r.data);
+export const markNotificationRead = (id) => api.patch(`/api/notifications/${id}/read`).then((r) => r.data);
+export const markAllNotificationsRead = () => api.patch("/api/notifications/read-all").then((r) => r.data);
 
 // Admin
 export const getAllUsers = (params = {}) =>
@@ -478,6 +480,17 @@ export const getCommunityFeed = (params = {}) =>
   api.get("/api/community/feed", { params }).then((r) => r.data);
 export const createCommunityPost = (data) =>
   api.post("/api/community/posts", data).then((r) => r.data);
+export const toggleCommunityPostBookmark = (postId) =>
+  api.post(`/api/community/posts/${postId}/bookmark`).then((r) => r.data);
+
+// Connections & Users
+export const searchUsers = (q) => api.get(`/api/users/search?q=${q}`).then((r) => r.data);
+export const getMyConnections = () => api.get("/api/connections").then((r) => r.data);
+export const getPendingConnections = () => api.get("/api/connections/pending").then((r) => r.data);
+export const sendConnectionRequest = (userId) => api.post(`/api/connections/request/${userId}`).then((r) => r.data);
+export const acceptConnectionRequest = (connectionId) => api.post(`/api/connections/accept/${connectionId}`).then((r) => r.data);
+export const rejectConnectionRequest = (connectionId) => api.post(`/api/connections/reject/${connectionId}`).then((r) => r.data);
+export const removeConnection = (connectionId) => api.delete(`/api/connections/${connectionId}`).then((r) => r.data);
 
 export const getRecommendedJobs = () =>
   api.get("/api/jobs/recommended").then((r) => r.data);

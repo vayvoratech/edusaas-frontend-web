@@ -1,94 +1,88 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { loginUser, registerUser, tokenStore, refreshStore, userStore } from '../services/api';
+import React, { createContext, useContext, useMemo } from 'react';
+import { useUser, useAuth as useClerkAuth } from '@clerk/react';
 
 const AuthContext = createContext(null);
 
 const apiToRole = (r) => {
-  if (!r) return 'Student';
-  return r.charAt(0).toUpperCase() + r.slice(1);
+  if (!r) return 'student';
+  return r.toLowerCase();
 };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => userStore.get());
-  const [role, setRole] = useState(() => apiToRole(userStore.get()?.role));
-  const [authError, setAuthError] = useState(null);
+  const { user, isLoaded, isSignedIn } = useUser();
+  const { signOut, getToken } = useClerkAuth();
 
-  useEffect(() => {
-    const stored = userStore.get();
-    if (stored && !user) {
-      setUser(stored);
-      setRole(apiToRole(stored.role));
+  React.useEffect(() => {
+    if (isLoaded && isSignedIn && user) {
+      const token = localStorage.getItem('edu_token');
+      if (!token) {
+        (async () => {
+          try {
+            const clerkToken = await getToken();
+            const res = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:5000'}/api/users/sync`, {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${clerkToken}`
+              },
+              body: JSON.stringify({
+                clerkId: user.id,
+                emailAddresses: user.emailAddresses,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                username: user.username,
+                unsafeMetadata: user.unsafeMetadata
+              })
+            });
+            const data = await res.json();
+            if (data.accessToken) {
+              localStorage.setItem('edu_token', data.accessToken);
+              if (data.refreshToken) localStorage.setItem('edu_refresh', data.refreshToken);
+              if (data.user) localStorage.setItem('edu_user', JSON.stringify(data.user));
+              window.location.reload();
+            }
+          } catch (err) {
+            console.error("Auto-sync failed:", err);
+          }
+        })();
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isLoaded, isSignedIn, user, getToken]);
+
+  const role = useMemo(() => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('edu_user'));
+      if (storedUser && storedUser.role) {
+        return storedUser.role.toLowerCase();
+      }
+    } catch(e) {}
+
+    if (isLoaded && isSignedIn && user?.unsafeMetadata?.role) {
+      return apiToRole(user.unsafeMetadata.role);
+    }
+    return 'student';
+  }, [user, isLoaded, isSignedIn]);
 
   const value = useMemo(
     () => ({
       user,
       role,
-      authError,
-      isAuthenticated: !!user,
-      // Real API login. Returns true on success, false on failure.
-      login: async ({ email, password }) => {
-        setAuthError(null);
-        try {
-          const {
-            accessToken,
-            refreshToken,
-            user: apiUser,
-          } = await loginUser({ email, password });
-
-          tokenStore.set(accessToken);
-          if (refreshToken) refreshStore.set(refreshToken);
-          userStore.set(apiUser);
-          setUser(apiUser);
-          setRole(apiToRole(apiUser.role));
-          return true;
-        } catch (err) {
-          setAuthError(err.response?.data?.error || err.message || 'Login failed');
-          return false;
-        }
+      authError: null,
+      isAuthenticated: isSignedIn,
+      login: async () => {
+        return false; // Clerk handles login now
       },
-
-      register: async (data) => {
-        setAuthError(null);
-        try {
-          const {
-            accessToken,
-            refreshToken,
-            user: apiUser,
-          } = await registerUser(data);
-
-          tokenStore.set(accessToken);
-
-          if (refreshToken) {
-            refreshStore.set(refreshToken);
-          }
-
-          userStore.set(apiUser);
-          setUser(apiUser);
-          setRole(apiToRole(apiUser.role));
-
-          return true;
-        } catch (err) {
-          setAuthError(
-            err.response?.data?.error ||
-            err.message ||
-            "Register failed"
-          );
-          return false;
-        }
+      register: async () => {
+        return false; // Clerk handles register now
       },
-
       logout: () => {
-        tokenStore.clear();
-        userStore.clear?.();
+        localStorage.removeItem('edu_token');
+        localStorage.removeItem('edu_refresh');
         localStorage.removeItem('edu_user');
-        setUser(null);
-        setRole('Student');
+        signOut({ redirectUrl: '/login' });
       },
     }),
-    [user, role, authError]
+    [user, role, isSignedIn, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

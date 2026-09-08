@@ -11,7 +11,9 @@ export default function RoleRoute({ allowedRoles }) {
 
     // If we have a user and their role is allowed, render the page.
     // This is the most important, positive case.
-    if (user && role && (!allowedRoles || allowedRoles.includes(role))) {
+    const normalizedRole = role?.toLowerCase();
+    const normalizedAllowed = allowedRoles?.map(r => r.toLowerCase());
+    if (user && normalizedRole && (!normalizedAllowed || normalizedAllowed.includes(normalizedRole))) {
         return <Outlet />;
     }
 
