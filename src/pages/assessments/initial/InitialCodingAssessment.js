@@ -15,6 +15,7 @@ import {
   completeInitialCodingAssessment
 } from "../../../services/api";
 import ProctoringService from "../../../services/proctoringServices";
+import Editor from "@monaco-editor/react";
 
 // ============================================================
 // Constants
@@ -262,6 +263,18 @@ const Icon = {
       <rect x="1" y="5" width="15" height="14" rx="2" />
     </svg>
   ),
+  Magic: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z" />
+      <path d="m14 7 3 3" />
+      <path d="M5 6v4" />
+      <path d="M19 14v4" />
+      <path d="M10 2v2" />
+      <path d="M7 8H3" />
+      <path d="M21 16h-4" />
+      <path d="M11 3H9" />
+    </svg>
+  ),
 };
 
 // ============================================================
@@ -296,6 +309,13 @@ const InitialCodingAssessment = ({
 
   const [showFinishModal, setShowFinishModal] = useState(false);
 
+  // Proctoring warning banner state
+  const [localWarning, setLocalWarning] = useState(null);
+  const activeWarning = proctoringWarning || localWarning;
+
+  // Instant tab-switch blocking overlay
+  const [tabSwitchAlert, setTabSwitchAlert] = useState(false);
+  const tabSwitchCountRef = useRef(0);
 
   // ---- purely presentational UI state (no effect on data/flow) ----
   const [problemTab, setProblemTab] = useState("description"); // "description" | "examples"
@@ -311,8 +331,65 @@ const InitialCodingAssessment = ({
   const answersRef = useRef({});
   const draftTimersRef = useRef({});
   const finalizingRef = useRef(false);
+  const editorRef = useRef(null);
   const proctoringRef = useRef(null);
-  const proctoringStartRef = useRef(false)
+  const proctoringStartRef = useRef(false);
+
+  const getMonacoLanguage = (lang) => {
+    const l = String(lang || "").toLowerCase();
+    if (l === "cpp" || l === "c++") return "cpp";
+    if (l === "c") return "c";
+    if (l === "python" || l === "py") return "python";
+    if (l === "javascript" || l === "js") return "javascript";
+    if (l === "java") return "java";
+    return "python";
+  };
+
+  const handleEditorMount = (editor, monaco) => {
+    editorRef.current = editor;
+
+    // Ctrl/Cmd + Enter -> Run code
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      onClickRun();
+    });
+
+    // Ctrl/Cmd + Shift + Enter -> Submit
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter,
+      () => {
+        onClickSubmit();
+      }
+    );
+  };
+
+  const handleFormatCode = () => {
+    if (editorRef.current) {
+      editorRef.current.getAction("editor.action.formatDocument")?.run();
+    }
+  };
+
+  // Instant client-side tab-switch detection overlay
+  useEffect(() => {
+    if (!assessmentActive) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        tabSwitchCountRef.current += 1;
+        setTabSwitchAlert(true);
+        setLocalWarning((prev) => ({
+          violationType: "TAB_SWITCH",
+          message: "Warning: Please return to test and face the camera. Tab switch detected.",
+          violationCount: prev ? Math.max((prev.violationCount || 0) + 1, 1) : 1,
+          action: "WARNING",
+        }));
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [assessmentActive]);
 
   useEffect(() => {
     proctoringRef.current = new ProctoringService({
@@ -332,11 +409,26 @@ const InitialCodingAssessment = ({
 
       onResult: (data) => {
         if (!data?.fraud) return;
-        // Result handling managed via props/callbacks
+        const fraud = data.fraud;
+        if (fraud.new_violation === true || fraud.action === "WARNING") {
+          setLocalWarning({
+            violationType: fraud.violation_type || "PROCTORING",
+            message: fraud.message || "A proctoring violation was detected.",
+            violationCount: fraud.violation_count ?? 1,
+            action: fraud.action || "WARNING",
+          });
+        }
       },
 
       onWarning: (data) => {
         console.warn("Coding proctoring warning:", data);
+        const fraud = data?.fraud || data;
+        setLocalWarning({
+          violationType: fraud?.violation_type || "PROCTORING",
+          message: fraud?.message || "A proctoring violation was detected.",
+          violationCount: fraud?.violation_count ?? 1,
+          action: fraud?.action || "WARNING",
+        });
       },
 
       onPause: async (data) => {
@@ -982,10 +1074,10 @@ const InitialCodingAssessment = ({
     }));
   }, []);
 
-  const handleCodeChange = (event) => {
+  const handleCodeChange = (eventOrValue) => {
     if (!currentQuestionId) return;
 
-    const value = event.target.value;
+    const value = typeof eventOrValue === "string" ? eventOrValue : eventOrValue?.target?.value ?? "";
 
     updateAnswer(currentQuestionId, { code: value, runResult: null });
     setError("");
@@ -1001,38 +1093,6 @@ const InitialCodingAssessment = ({
     }, 400);
   };
 
-  const handleEditorKeyDown = (event) => {
-    if (event.key === "Tab") {
-      event.preventDefault();
-
-      const textarea = event.target;
-      const { selectionStart, selectionEnd, value } = textarea;
-      const indent = "    ";
-
-      const nextValue =
-        value.slice(0, selectionStart) + indent + value.slice(selectionEnd);
-
-      updateAnswer(currentQuestionId, { code: nextValue, runResult: null });
-
-      requestAnimationFrame(() => {
-        textarea.selectionStart = textarea.selectionEnd =
-          selectionStart + indent.length;
-      });
-      return;
-    }
-
-    // Convenience shortcuts: Ctrl/Cmd+Enter to run, +Shift to submit.
-    // Presentational only — both call the exact same handlers as the
-    // toolbar buttons below.
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      event.preventDefault();
-      if (event.shiftKey) {
-        onClickSubmit();
-      } else {
-        onClickRun();
-      }
-    }
-  };
 
   const handleLanguageChange = (event) => {
     if (!currentQuestion || !currentQuestionId) return;
@@ -1430,82 +1490,131 @@ const InitialCodingAssessment = ({
   const hasUnsubmittedEdits =
     currentAnswer?.submittedCode != null &&
     currentAnswer.submittedCode !== code;
-  const lineCount = Math.max(code.split("\n").length, 1);
   const useLanguagePills = languages.length <= 5;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-[#eef1f4]">
-      {/* Top bar */}
-      <header className="shrink-0 bg-[#111318] text-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#3161d1]/20 font-mono text-sm font-bold text-[#7ea2ec]">
-              {"{ }"}
-            </div>
-            <div>
-              <p className="text-sm font-semibold leading-none">
-                Coding Assessment
-              </p>
-              <p className="mt-1 text-[11px] leading-none text-slate-400">
-                Question {questionNumber} of {totalQuestions}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="hidden sm:block text-right">
-              <p className="text-[11px] leading-none text-slate-400">
-                Submitted
-              </p>
-              <p className="mt-1 text-sm font-medium leading-none text-slate-100">
-                {answeredCount} / {totalQuestions}
-              </p>
+    <>
+      {/* Tab-switch blocking overlay */}
+      {tabSwitchAlert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4">
+          <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+              !
             </div>
 
-            <div
-              className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 ${
-                timerDanger
-                  ? "border-red-500/30 bg-red-500/10"
-                  : "border-white/10 bg-white/5"
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  timerDanger ? "bg-red-400 animate-pulse" : "bg-[#f5a623] animate-pulse"
-                }`}
-              />
-              <span
-                className={`font-mono text-sm font-semibold tabular-nums ${
-                  timerDanger ? "text-red-300" : "text-slate-100"
-                }`}
-              >
-                {formatTime(remainingSeconds)}
-              </span>
-            </div>
+            <h2 className="text-xl font-bold text-slate-900">
+              Return to the Assessment
+            </h2>
+
+            <p className="mt-3 text-sm text-slate-600">
+              You switched away from the coding assessment tab or window. This has
+              been recorded as a proctoring violation. Complete the test
+              first — you must stay on this tab until you finish.
+            </p>
+
+            <p className="mt-2 text-xs text-slate-400">
+              Tab switches detected: {tabSwitchCountRef.current}
+            </p>
 
             <button
               type="button"
-              onClick={() => setShowFinishModal(true)}
-              disabled={completing || answeredCount < totalQuestions}
-              className="rounded-lg bg-[#3161d1] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#2952b3] disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={() => setTabSwitchAlert(false)}
+              className="mt-6 w-full rounded-full bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition"
             >
-              Finish assessment
+              Return to Assessment
             </button>
           </div>
         </div>
+      )}
 
-        {(error || proctoringWarning) && (
-          <div className="shrink-0 border-t border-white/10 bg-orange-500/10 px-5 py-1.5 text-xs text-orange-200 flex items-center justify-between gap-4">
-            <span>{error || proctoringWarning?.message}</span>
+      <div className="h-full flex flex-col overflow-hidden bg-[#eef1f4]">
+        {/* Top bar */}
+        <header className="shrink-0 bg-[#111318] text-white">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#3161d1]/20 font-mono text-sm font-bold text-[#7ea2ec]">
+                {"{ }"}
+              </div>
+              <div>
+                <p className="text-sm font-semibold leading-none">
+                  Coding Assessment
+                </p>
+                <p className="mt-1 text-[11px] leading-none text-slate-400">
+                  Question {questionNumber} of {totalQuestions}
+                </p>
+              </div>
+            </div>
 
-            {proctoringWarning && (
-              <span className="font-semibold whitespace-nowrap">
-                Violations: {proctoringWarning.violationCount}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-3">
+              {activeWarning && (
+                <div className="flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-200 animate-pulse">
+                  <span>⚠️</span>
+                  <span>Warning {activeWarning.violationCount || 1}/2: Please return to test and face the camera</span>
+                </div>
+              )}
+
+              <div className="hidden sm:block text-right">
+                <p className="text-[11px] leading-none text-slate-400">
+                  Submitted
+                </p>
+                <p className="mt-1 text-sm font-medium leading-none text-slate-100">
+                  {answeredCount} / {totalQuestions}
+                </p>
+              </div>
+
+              <div
+                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 ${
+                  timerDanger
+                    ? "border-red-500/30 bg-red-500/10"
+                    : "border-white/10 bg-white/5"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    timerDanger ? "bg-red-400 animate-pulse" : "bg-[#f5a623] animate-pulse"
+                  }`}
+                />
+                <span
+                  className={`font-mono text-sm font-semibold tabular-nums ${
+                    timerDanger ? "text-red-300" : "text-slate-100"
+                  }`}
+                >
+                  {formatTime(remainingSeconds)}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowFinishModal(true)}
+                disabled={completing || answeredCount < totalQuestions}
+                className="rounded-lg bg-[#3161d1] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#2952b3] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Finish assessment
+              </button>
+            </div>
           </div>
-        )}
-      </header>
+
+          {(error || activeWarning) && (
+            <div className={`shrink-0 border-t px-5 py-2 text-xs flex items-center justify-between gap-4 transition-all ${
+              (activeWarning?.violationCount >= 2 || error)
+                ? "bg-red-600/25 border-red-500/50 text-red-200"
+                : "bg-amber-500/20 border-amber-500/40 text-amber-200"
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">⚠️</span>
+                <span className="font-semibold">{error || activeWarning?.message}</span>
+              </div>
+
+              {activeWarning && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="rounded-md bg-red-500/30 px-2 py-0.5 text-[11px] font-bold text-red-300 border border-red-500/40">
+                    Violation {activeWarning.violationCount || 1} of 2
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </header>
 
       {/* Question navigator */}
       <div className="shrink-0 border-b border-slate-200 bg-white px-5 py-2.5">
@@ -1792,6 +1901,17 @@ const InitialCodingAssessment = ({
 
               <button
                 type="button"
+                onClick={handleFormatCode}
+                disabled={running || submitting || completing || !code.trim()}
+                title="Format Code (Alt+Shift+F)"
+                className="flex items-center gap-1 text-xs font-medium text-slate-600 transition hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Icon.Magic className="h-3.5 w-3.5 text-indigo-500" />
+                Format
+              </button>
+
+              <button
+                type="button"
                 onClick={handleResetTemplate}
                 disabled={running || submitting || completing}
                 className="flex items-center gap-1 text-xs font-medium text-slate-400 transition hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1803,26 +1923,33 @@ const InitialCodingAssessment = ({
           </div>
 
           {/* Code editor */}
-          <div className="min-h-0 flex-1 flex bg-[#16171d]">
-            <div
-              aria-hidden="true"
-              className="select-none overflow-hidden px-3 py-4 text-right font-mono text-[13px] leading-6 text-[#565a66]"
-              style={{ minWidth: `${String(lineCount).length + 2}ch` }}
-            >
-              {Array.from({ length: lineCount }).map((_, index) => (
-                <div key={index}>{index + 1}</div>
-              ))}
-            </div>
-
-            <textarea
-              key={currentQuestionId}
+          <div className="min-h-0 flex-1 relative bg-[#1e1e1e]">
+            <Editor
+              height="100%"
+              language={getMonacoLanguage(language)}
               value={code}
-              onChange={handleCodeChange}
-              onKeyDown={handleEditorKeyDown}
-              spellCheck={false}
-              disabled={running || submitting || completing}
-              className="h-full min-h-[360px] w-full resize-none border-0 border-l border-white/5 bg-transparent py-4 pl-3 pr-5 font-mono text-[13px] leading-6 text-[#e4e6eb] outline-none placeholder:text-slate-500"
-              placeholder="Write your solution here..."
+              theme="vs-dark"
+              onMount={handleEditorMount}
+              onChange={(value) => handleCodeChange(value || "")}
+              options={{
+                readOnly: running || submitting || completing,
+                fontSize: 14,
+                fontFamily: "JetBrains Mono, Fira Code, Menlo, Monaco, Consolas, 'Courier New', monospace",
+                fontLigatures: true,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                lineNumbers: "on",
+                roundedSelection: true,
+                tabSize: 4,
+                insertSpaces: true,
+                formatOnPaste: true,
+                formatOnType: true,
+                suggestOnTriggerCharacters: true,
+                acceptSuggestionOnEnter: "on",
+                quickSuggestions: true,
+                automaticLayout: true,
+                padding: { top: 12, bottom: 12 },
+              }}
             />
           </div>
 
@@ -2112,7 +2239,8 @@ const InitialCodingAssessment = ({
         </div>
       )}
     </div>
-  );
+  </>
+);
 };
 
 export default InitialCodingAssessment;

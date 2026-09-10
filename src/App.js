@@ -5,6 +5,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import RoleRoute from './components/auth/RoleRoute';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Onboarding from './pages/Onboarding';
 import StudentDashboard from './pages/StudentDashboard';
 import EducatorDashboard from './pages/EducatorDashboard';
 import EmployerDashboard from './pages/EmployerDashboard';
@@ -47,18 +48,19 @@ import Community from './pages/Community';
 
 function RoleDashboard() {
   const { role } = useAuth();
-  switch (role) {
-    case 'Educator': return <EducatorDashboard />;
-    case 'Employer': return <EmployerDashboard />;
-    case 'Admin': return <AdminDashboard />;
-    case 'Student':
+  // Ensure we compare in lowercase as the backend returns lowercase roles like "educator", "student"
+  switch (role?.toLowerCase()) {
+    case 'educator': return <EducatorDashboard />;
+    case 'employer': return <EmployerDashboard />;
+    case 'admin': return <AdminDashboard />;
+    case 'student':
     default: return <StudentDashboard />;
   }
 }
 
 function StudentOrAdminSettings() {
   const { role } = useAuth();
-  return role === 'Admin' ? <Settings /> : <StudentSettings />;
+  return role?.toLowerCase() === 'admin' ? <Settings /> : <StudentSettings />;
 }
 
 
@@ -70,6 +72,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/onboarding" element={<Onboarding />} />
 
            <Route path="/app" element={<AppLayout />}>
 {/* Dashboard */}
@@ -131,6 +134,7 @@ export default function App() {
             {/* Employer */}
             <Route element={<RoleRoute allowedRoles={["Employer"]} />}>
               <Route path="job-listings" element={<JobListings />} />
+              <Route path="jobs" element={<Navigate to="/app/job-listings" replace />} />
               <Route path="candidates" element={<Candidates />} />
               <Route path="analytics" element={<EmployerAnalytics />} />
             </Route>

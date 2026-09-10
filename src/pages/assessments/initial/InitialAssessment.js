@@ -46,14 +46,14 @@ const InitialAssessment = () => {
   const navigate = useNavigate();
   const proctoringRef = useRef(null);
 
-   // Hide the normal application shell while the assessment is active.
-    useEffect(() => {
-      document.body.classList.add("assessment-mode");
+  // Hide the normal application shell while the assessment is active.
+  useEffect(() => {
+    document.body.classList.add("assessment-mode");
 
-      return () => {
-        document.body.classList.remove("assessment-mode");
-      };
-    }, []);
+    return () => {
+      document.body.classList.remove("assessment-mode");
+    };
+  }, []);
 
   const assessmentActiveRef = useRef(false)
   const sessionIdRef = useRef(null)
@@ -69,6 +69,7 @@ const InitialAssessment = () => {
 
         onStarted: (data) => {
           console.log("AI proctoring started:", data);
+          setStartingProctoring(false);
           setError("");
           setAssessmentActive(true);
           setPage("quiz")
@@ -146,6 +147,7 @@ const InitialAssessment = () => {
   const [loading, setLoading] = useState(false);
   const loadingAssessmentRef = useRef(false);
   const [error, setError] = useState("");
+  const [startingProctoring, setStartingProctoring] = useState(false);
   const [proctoringWarning, setProctoringWarning] = useState(null);
 
   // ----------------------------------------------------
@@ -182,7 +184,7 @@ const InitialAssessment = () => {
 
   // Load Assessment configuration
   const loadAssessment = async () => {
-    if(loadingAssessmentRef.current){
+    if (loadingAssessmentRef.current) {
       return;
     }
     loadingAssessmentRef.current = true;
@@ -190,54 +192,96 @@ const InitialAssessment = () => {
       setLoading(true);
       setError("");
 
+      // Request browser permission for both Camera and Microphone upfront
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError(
+          "Your browser does not support camera and microphone access. Please use Chrome, Edge, or Firefox."
+        );
+        return;
+      }
+
+      let testStream = null;
+      try {
+        testStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+      } catch (mediaErr) {
+        console.error("Camera and Microphone permission denied:", mediaErr);
+        if (
+          mediaErr.name === "NotAllowedError" ||
+          mediaErr.name === "PermissionDeniedError"
+        ) {
+          setError(
+            "Camera and microphone permissions are required to load the assessment. Please allow camera and microphone access in your browser site settings and click Load Assessment again."
+          );
+        } else if (
+          mediaErr.name === "NotFoundError" ||
+          mediaErr.name === "DevicesNotFoundError"
+        ) {
+          setError(
+            "Camera or microphone device was not found. Please connect your camera and microphone and try again."
+          );
+        } else {
+          setError(
+            `Camera and microphone access error: ${mediaErr.message || "Permission not granted"}.`
+          );
+        }
+        return;
+      } finally {
+        if (testStream) {
+          testStream.getTracks().forEach((track) => track.stop());
+        }
+      }
+
       const response = await startInitialQuiz();
       console.log("Initial Quiz Started:", response);
 
       const quiz = response.data;
 
-        if (quiz.phase === "coding") {
-          console.log(
-            "Initial quiz completed. Entering/resuming coding assessment."
-          );
+      if (quiz.phase === "coding") {
+        console.log(
+          "Initial quiz completed. Entering/resuming coding assessment."
+        );
 
-          setSessionId(quiz.session_id);
-          setAssessmentActive(false);
-          setPage("coding");
+        setSessionId(quiz.session_id);
+        setAssessmentActive(false);
+        setPage("coding");
 
-          return;
-        }
+        return;
+      }
 
-        if (quiz.phase === "completed") {
-          console.log(
-            "Initial assessment already completed."
-          );
+      if (quiz.phase === "completed") {
+        console.log(
+          "Initial assessment already completed."
+        );
 
-          setSessionId(quiz.session_id);
-          setAssessmentActive(false);
-          setPage("completed");
+        setSessionId(quiz.session_id);
+        setAssessmentActive(false);
+        setPage("completed");
 
-          return;
-        }
+        return;
+      }
 
       setSessionId(quiz.session_id);
       pauseSentRef.current = false; // CRITICAL: Reset so assessment can pause again if resumed
 
       const overallAnswered =
         quiz.assessment?.overall_question
-            ? Math.max(
-                quiz.assessment.overall_question - 1,
-                0
-            )
-            : 0;
+          ? Math.max(
+            quiz.assessment.overall_question - 1,
+            0
+          )
+          : 0;
 
-        setQuizData({
+      setQuizData({
         domain: quiz.domain,
         skill: quiz.skill,
         question: quiz.question,
         assessment: quiz.assessment,
         questionsAnswered: overallAnswered,
         skillQuestionsAnswered: overallAnswered % 10,
-        });
+      });
       setResumed(Boolean(quiz.resumed));
       setRemainingSeconds(quiz.timer?.remaining_seconds ?? 0);
 
@@ -267,7 +311,7 @@ const InitialAssessment = () => {
         await exitAssessmentFullscreen()
         setError(
           err.message ||
-            "Unable to access the camera. Please allow camera permission and try again."
+          "Unable to access the camera. Please allow camera permission and try again."
         );
       }
     };
@@ -285,6 +329,7 @@ const InitialAssessment = () => {
       return;
     }
 
+    setStartingProctoring(true);
     setError("");
     setProctoringWarning(null);
 
@@ -307,10 +352,11 @@ const InitialAssessment = () => {
         setRemainingSeconds(activatedRemaining);
       }
     } catch (err) {
+      setStartingProctoring(false);
       console.error("Failed to activate assessment session:", err);
       setError(
         err.response?.data?.error ||
-          "Unable to resume the assessment. Please try again."
+        "Unable to resume the assessment. Please try again."
       );
       return;
     }
@@ -322,6 +368,7 @@ const InitialAssessment = () => {
 
       console.log("Proctoring connection established. Waiting for AI...");
     } catch (err) {
+      setStartingProctoring(false);
       console.error("Failed to start proctoring:", err);
       setAssessmentActive(false);
 
@@ -342,7 +389,7 @@ const InitialAssessment = () => {
 
       setError(
         err.message || // Keep existing error message logic
-          "Unable to start proctoring. Please check your camera permission and try again."
+        "Unable to start proctoring. The AI service may be starting up. Please wait a few seconds and try again."
       );
     }
   };
@@ -482,7 +529,7 @@ const InitialAssessment = () => {
 
         setError(
           err.response?.data?.error ||
-            "Assessment was interrupted because fullscreen mode was exited."
+          "Assessment was interrupted because fullscreen mode was exited."
         );
       } finally {
         pauseSentRef.current = false;
@@ -637,56 +684,32 @@ const InitialAssessment = () => {
     };
   }, []);
 
-
-  const requestCameraPermission = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false,
-      });
-
-      // Immediately stop the temporary permission stream.
-      stream.getTracks().forEach((track) => track.stop());
-
-      setError("");
-      return true;
-    } catch (err) {
-      console.error("Camera permission denied:", err);
-
-      setError(
-        "Camera permission is required to continue the assessment."
-      );
-
-      return false;
-    }
-  };
-  
   const handleQuizComplete = useCallback(async (result) => {
-  console.log("Initial quiz completed:", result);
+    console.log("Initial quiz completed:", result);
 
-  skipAutoPauseRef.current = true;
-  setAssessmentActive(false);
+    skipAutoPauseRef.current = true;
+    setAssessmentActive(false);
 
-  // Release the quiz's proctoring connection FIRST. The backend keys
-  // active proctoring sessions by session_id alone, and the coding
-  // assessment reuses this same session_id - so the quiz's socket
-  // must be fully closed before the coding assessment tries to open
-  // its own, or the backend will reject it as already active.
-  if (proctoringRef.current) {
-    try {
-      await proctoringRef.current.cleanup();
-    } catch (cleanupError) {
-      console.error(
-        "Failed to clean up quiz proctoring before switching to coding assessment:",
-        cleanupError
-      );
+    // Release the quiz's proctoring connection FIRST. The backend keys
+    // active proctoring sessions by session_id alone, and the coding
+    // assessment reuses this same session_id - so the quiz's socket
+    // must be fully closed before the coding assessment tries to open
+    // its own, or the backend will reject it as already active.
+    if (proctoringRef.current) {
+      try {
+        await proctoringRef.current.cleanup();
+      } catch (cleanupError) {
+        console.error(
+          "Failed to clean up quiz proctoring before switching to coding assessment:",
+          cleanupError
+        );
+      }
     }
-  }
 
-  // Quiz is complete.
-  // Move to the coding assessment using the same session ID.
-  setPage("coding");
-}, []);
+    // Quiz is complete.
+    // Move to the coding assessment using the same session ID.
+    setPage("coding");
+  }, []);
   // Instructions Screen
   if (page === "instructions") {
     return (
@@ -778,6 +801,7 @@ const InitialAssessment = () => {
     return (
       <InitialCodingAssessment
         sessionId={sessionId}
+        proctoringWarning={proctoringWarning}
         onComplete={async (result) => {
           console.log("Coding assessment completed:", result);
 
@@ -803,7 +827,7 @@ const InitialAssessment = () => {
             You have successfully completed your initial skill assessment.
           </p>
 
-          
+
           <button
             onClick={() => handleExitAssessmentToDashboard()}
             className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
@@ -912,64 +936,72 @@ const InitialAssessment = () => {
       {/* 4. Assessment Viewport (non-scrolling) */}
       <div className="h-[calc(100vh-80px)] overflow-hidden bg-[#f5f7f6]">
         <div className="fixed bottom-5 left-5 z-40 w-48 overflow-hidden rounded-xl border-2 border-white bg-black shadow-xl">
-            <video
+          <video
             id="cameraVideo"
             autoPlay
             muted
             playsInline
             className="aspect-video w-full object-cover"
-            />
+          />
 
-            <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1.5">
+          <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1.5">
             <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
 
-                <span className="text-[10px] font-medium text-white">
-                Camera active
-                </span>
+              <span className="text-[10px] font-medium text-white">
+                Camera & Mic active
+              </span>
             </div>
-            </div>
+          </div>
         </div>
 
         {page === "ready" ? (
-            <div className="h-full flex items-center justify-center p-6">
+          <div className="h-full flex items-center justify-center p-6">
 
             <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
 
-                <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-2xl font-bold text-slate-900">
                 {resumed
-                    ? "Resume Skill Assessment"
-                    : "Start Skill Assessment"}
-                </h2>
+                  ? "Resume Skill Assessment"
+                  : "Start Skill Assessment"}
+              </h2>
 
-                <p className="mt-3 text-sm text-slate-500">
+              <p className="mt-3 text-sm text-slate-500">
                 {resumed
-                    ? "Your previous progress has been saved. You will continue from the same question with the remaining time."
-                    : "Your assessment is ready. Click below to enter full-screen mode and launch proctoring."}
-                </p>
+                  ? "Your previous progress has been saved. You will continue from the same question with the remaining time."
+                  : "Your assessment is ready. Click below to enter full-screen mode and launch proctoring."}
+              </p>
 
-                {error && (
+              {error && (
                 <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-600">
-                    {error}
+                  {error}
                 </div>
-                )}
+              )}
 
-                <button
+              <button
                 type="button"
                 onClick={handleStartAssessment}
-                className="mt-6 w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white hover:bg-emerald-800 transition"
-                >
-                {resumed
-                    ? "Resume Skill Assessment"
-                    : "Start Skill Assessment"}
-                </button>
+                disabled={startingProctoring}
+                className="mt-6 w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white hover:bg-emerald-800 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {startingProctoring ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                    <span>Connecting Proctoring AI... Please wait...</span>
+                  </>
+                ) : resumed ? (
+                  "Resume Skill Assessment"
+                ) : (
+                  "Start Skill Assessment"
+                )}
+              </button>
 
             </div>
-            </div>
+          </div>
 
         ) : quizData ? (
 
-            <InitialQuiz
+          <InitialQuiz
             sessionId={sessionId}
 
             initialDomain={quizData.domain}
@@ -977,10 +1009,10 @@ const InitialAssessment = () => {
             initialQuestion={quizData.question}
             initialAssessment={quizData.assessment}
             initialQuestionsAnswered={
-                quizData.questionsAnswered
+              quizData.questionsAnswered
             }
             initialSkillQuestionsAnswered={
-                quizData.skillQuestionsAnswered
+              quizData.skillQuestionsAnswered
             }
 
             remainingSeconds={remainingSeconds}
@@ -991,19 +1023,19 @@ const InitialAssessment = () => {
             onQuizComplete={handleQuizComplete}
 
             onError={(message) => {
-                setError(message || "");
+              setError(message || "");
             }}
-            />
+          />
 
         ) : (
-            <div className="h-full flex items-center justify-center p-6">
+          <div className="h-full flex items-center justify-center p-6">
             <p className="text-slate-500">
-                No question available.
+              No question available.
             </p>
-            </div>
+          </div>
         )}
 
-        </div>
+      </div>
     </>
   );
 };

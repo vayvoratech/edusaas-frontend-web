@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Editor from '@monaco-editor/react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { assessmentBank } from '../mocks/data';
@@ -7,6 +8,7 @@ import { submitAssessment } from '../services/api';
 
 export default function SkillAssessment() {
   const navigate = useNavigate();
+  const editorRef = useRef(null);
   const [idx, setIdx] = useState(0);
   const total = assessmentBank.length;
   console.log("assessmentBank:", assessmentBank);
@@ -22,6 +24,20 @@ export default function SkillAssessment() {
 
   const progressPct = ((idx) / total) * 100;
   const isAnswerEmpty = !answer.trim() || answer.trim() === q.starter.trim();
+
+  const getMonacoLang = (lang) => {
+    const l = String(lang || "").toLowerCase();
+    if (l === "sql") return "sql";
+    if (l === "python") return "python";
+    if (l === "javascript" || l === "js") return "javascript";
+    return "plaintext";
+  };
+
+  const handleFormatCode = () => {
+    if (editorRef.current) {
+      editorRef.current.getAction('editor.action.formatDocument')?.run();
+    }
+  };
 
   const goNext = (record) => {
     const next = [...results, record];
@@ -130,13 +146,38 @@ export default function SkillAssessment() {
 
         <p className="text-base text-slate-800 mb-4">{q.prompt}</p>
 
-        <textarea
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          spellCheck={false}
-          rows={8}
-          className="w-full font-mono text-sm rounded-lg bg-slate-900 text-green-300 p-4 outline-none focus:ring-2 focus:ring-brand-blue-500"
-        />
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-slate-500">Code Editor</span>
+          <button
+            type="button"
+            onClick={handleFormatCode}
+            disabled={submitting || !answer.trim()}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded transition flex items-center gap-1 disabled:opacity-50"
+          >
+            ✨ Format Code
+          </button>
+        </div>
+
+        <div className="w-full h-56 rounded-lg overflow-hidden border border-slate-700 bg-[#1e1e1e]">
+          <Editor
+            height="100%"
+            language={getMonacoLang(q.language)}
+            value={answer}
+            theme="vs-dark"
+            onMount={(editor) => { editorRef.current = editor; }}
+            onChange={(val) => setAnswer(val || "")}
+            options={{
+              fontSize: 13,
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              lineNumbers: "on",
+              tabSize: 4,
+              insertSpaces: true,
+              automaticLayout: true,
+              padding: { top: 8, bottom: 8 },
+            }}
+          />
+        </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
           <Button variant="primary" onClick={onSubmitAnswer} disabled={submitting || isAnswerEmpty}>

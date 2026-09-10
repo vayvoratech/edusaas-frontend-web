@@ -3,11 +3,12 @@ import { Card, StatPill } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getJobs,  getEligibleStudents, inviteCandidate, getUserProfile } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const initials = (n) => (n || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
 export default function Candidates() {
+  const navigate = useNavigate();
   const location = useLocation();
   const selectedCandidate = location.state?.candidate;
   const { user } = useAuth();
@@ -28,49 +29,65 @@ export default function Candidates() {
   const [inviteError, setInviteError] = useState(null);
   const [inviteSent, setInviteSent] = useState(false);
 
+  const [selectedJobId, setSelectedJobId] = useState('');
+
+  const loadCandidatesForJob = async (jobId) => {
+    if (!jobId) {
+      setCandidates([]);
+      return;
+    }
+    try {
+      setError(null);
+      const response = await getEligibleStudents(jobId);
+      console.log("ELIGIBLE STUDENTS:", response);
+      setCandidates(response.eligible_students || []);
+    } catch (e) {
+      setError(e.response?.data?.error || e.message);
+      setCandidates([]);
+    }
+  };
+
   useEffect(() => {
-  if (!user?.id) return;
+    let currentUserId = user?.id;
+    try {
+      const stored = JSON.parse(localStorage.getItem("edu_user") || "{}");
+      if (stored?.id) currentUserId = stored.id;
+    } catch (e) {}
 
-  getJobs({ employer_id: user.id })
-    .then(async (js) => {
-      setJobs(js);
+    if (!currentUserId) return;
 
-      if (!js.length) {
-        setCandidates([]);
-        return;
-      }
+    getJobs({ employer_id: currentUserId })
+      .then(async (js) => {
+        setJobs(js || []);
+        setError(null);
 
-      // Use the employer's first posted job
-      const job = js[0];
+        if (!js || !js.length) {
+          setCandidates([]);
+          return;
+        }
 
-      setInviteJob(job.id);
+        const initialJob = js[0];
+        setSelectedJobId(initialJob.id);
+        setInviteJob(initialJob.id);
+        await loadCandidatesForJob(initialJob.id);
+      })
+      .catch((e) => {
+        setError(e.response?.data?.error || e.message);
+      });
+  }, [user?.id]);
 
-      try {
-        const response = await getEligibleStudents(job.id);
+  const onJobChange = async (jobId) => {
+    setSelectedJobId(jobId);
+    setInviteJob(jobId);
+    await loadCandidatesForJob(jobId);
+  };
 
-        console.log("ELIGIBLE STUDENTS:", response);
-
-        setCandidates(response.eligible_students || []);
-      } catch (e) {
-        setError(
-          e.response?.data?.error || e.message
-        );
-        setCandidates([]);
-      }
-    })
-    .catch((e) => {
-      setError(
-        e.response?.data?.error || e.message
-      );
-    });
-}, [user?.id]);
-
- const filtered = candidates.filter((c) =>
-  !q ||
-  c.name?.toLowerCase().includes(q.toLowerCase()) ||
-  c.domain_role?.toLowerCase().includes(q.toLowerCase()) ||
-  c.fit_category?.toLowerCase().includes(q.toLowerCase())
-);
+  const filtered = candidates.filter((c) =>
+    !q ||
+    c.name?.toLowerCase().includes(q.toLowerCase()) ||
+    c.domain_role?.toLowerCase().includes(q.toLowerCase()) ||
+    c.fit_category?.toLowerCase().includes(q.toLowerCase())
+  );
 
   const openView = async (c) => {
     setViewing(c);
@@ -85,6 +102,12 @@ export default function Candidates() {
       setViewLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (selectedCandidate) {
+      openView(selectedCandidate);
+    }
+  }, [selectedCandidate]);
 
   const openInvite = (c) => {
     setInviting(c);
@@ -115,18 +138,33 @@ export default function Candidates() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Candidates</h2>
           <p className="text-sm text-slate-500">Skill-matched students for your open roles.</p>
         </div>
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search candidates…"
-          className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-64"
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          {jobs.length > 0 && (
+            <select
+              value={selectedJobId}
+              onChange={(e) => onJobChange(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue-500"
+            >
+              {jobs.map((j) => (
+                <option key={j.id} value={j.id}>
+                  Role: {j.title}
+                </option>
+              ))}
+            </select>
+          )}
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search candidates…"
+            className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-full sm:w-64"
+          />
+        </div>
       </div>
 
       {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
@@ -141,10 +179,25 @@ export default function Candidates() {
               {initials(c.name)}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm text-slate-800 truncate">{c.name}</div>
-              <div className="text-xs text-slate-500 truncate">{c.role_target}</div>
+              <div className="flex items-center gap-2">
+                <div className="font-semibold text-sm text-slate-800 truncate">{c.name}</div>
+                {c.ai_hiring_match && (
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      c.ai_hiring_match.match_level === "EXCELLENT"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : c.ai_hiring_match.match_level === "GOOD"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    🤖 AI {c.ai_hiring_match.match_level} ({Math.round(c.ai_hiring_match.match_percentage)}%)
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-slate-500 truncate">{c.domain_role || c.role_target}</div>
             </div>
-            <StatPill label="Match" value={`${c.skill_match}%`} tone={c.skill_match >= 80 ? 'green' : c.skill_match >= 60 ? 'orange' : 'slate'} />
+            <StatPill label="Skill Match" value={`${c.skill_match}%`} tone={c.skill_match >= 80 ? 'green' : c.skill_match >= 60 ? 'orange' : 'slate'} />
             <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => openView(c)}>
               View Profile
             </Button>
@@ -153,11 +206,24 @@ export default function Candidates() {
             </Button>
           </div>
         ))}
-        {filtered.length === 0 && (
+        {jobs.length === 0 ? (
           <Card className="md:col-span-2">
-            <p className="text-sm text-slate-500 text-center py-6">No candidates match.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="text-5xl mb-3">💼</div>
+              <h3 className="text-xl font-bold text-slate-800">No Job Listings Posted Yet</h3>
+              <p className="text-sm text-slate-500 max-w-md mt-2">
+                Post your first job opening to automatically match with qualified students and candidates based on required skills.
+              </p>
+              <Button className="mt-5" onClick={() => navigate('/app/job-listings')}>
+                Post a Job Listing
+              </Button>
+            </div>
           </Card>
-        )}
+        ) : filtered.length === 0 ? (
+          <Card className="md:col-span-2">
+            <p className="text-sm text-slate-500 text-center py-6">No candidates match your current search.</p>
+          </Card>
+        ) : null}
       </div>
 
       {/* View Profile modal */}
@@ -185,8 +251,14 @@ export default function Candidates() {
             ) : (
               <dl className="space-y-2 text-sm">
                 <Row k="Role" v={viewProfile?.role || viewing.role || '—'} />
-                <Row k="Target role" v={viewing.role_target} />
+                <Row k="Target role" v={viewing.domain_role || viewing.role_target || '—'} />
                 <Row k="Skill match" v={`${viewing.skill_match}%`} />
+                {viewing.ai_hiring_match && (
+                  <Row
+                    k="AI Match Assessment"
+                    v={`${viewing.ai_hiring_match.match_level} (${Math.round(viewing.ai_hiring_match.match_percentage)}% confidence)`}
+                  />
+                )}
                 <Row k="Career goal" v={viewProfile?.profile?.career_goal || '—'} />
                 <Row k="Institution" v={viewProfile?.profile?.institution || '—'} />
                 <Row k="Company" v={viewProfile?.profile?.company || '—'} />
