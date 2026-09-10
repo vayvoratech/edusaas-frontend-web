@@ -131,6 +131,7 @@ export default function App() {
             {/* Employer */}
             <Route element={<RoleRoute allowedRoles={["Employer"]} />}>
               <Route path="job-listings" element={<JobListings />} />
+              <Route path="jobs" element={<Navigate to="/app/job-listings" replace />} />
               <Route path="candidates" element={<Candidates />} />
               <Route path="analytics" element={<EmployerAnalytics />} />
             </Route>

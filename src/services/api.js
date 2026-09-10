@@ -175,7 +175,7 @@ export const pauseInitialQuizOnUnload = (sessionId) => {
     },
     body: JSON.stringify({ session_id: sessionId }),
     keepalive: true,
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 // Initial Coding Assessment
@@ -205,7 +205,7 @@ export const pauseInitialCodingAssessmentOnUnload = (sessionId) => {
     },
     body: JSON.stringify({ session_id: sessionId }),
     keepalive: true,
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 // Final Adaptive Skill Assessment
@@ -232,7 +232,7 @@ export const pauseFinalQuizOnUnload = (sessionId) => {
     },
     body: JSON.stringify({ session_id: sessionId }),
     keepalive: true,
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 // ---------------------------------------------------------
@@ -370,7 +370,7 @@ export const sendAnnouncement = (data) => api.post("/api/announcements", data).t
 // Dashboards API
 // ---------------------------------------------------------
 export const getStudentDashboard = () => api.get("/api/dashboard/student").then((r) => r.data);
-export const getEducatorDashboard = () => api.get("/api/dashboard/educator").then((r) => r.data);
+export const getEducatorDashboard = (params = {}) => api.get("/api/dashboard/educator", { params }).then((r) => r.data);
 export const getEmployerDashboard = () => api.get("/api/dashboard/employer").then((r) => r.data);
 
 // Community
