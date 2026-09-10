@@ -27,7 +27,7 @@ import {
   getNotifications,
   getMyInterview,
   getMyJobApplications,
-  getApplicationVideoUrl
+  getApplicationVideoUrl,
 } from '../services/api';
 
 
@@ -99,14 +99,10 @@ export default function StudentDashboard() {
 
   // Fetch all necessary data when the component mounts.
   useEffect(() => {
-  console.log("CALLING STUDENT DASHBOARD API");
-
-getStudentDashboard()
-  .then((data) => {
-    console.log("STUDENT DASHBOARD DATA:", data);
-    console.log("ASSESSMENT COMPLETED:", data?.assessmentCompleted);
-    setDash(data);
-  })
+    getStudentDashboard()
+    .then((data) => {
+     setDash(data);
+     })
   .catch((err) => {
     console.error("Dashboard error:", err);
   });
@@ -130,9 +126,6 @@ getStudentDashboard()
   // Recommended jobs
   getRecommendedJobs()
     .then((data) => {
-console.log("THIS IS MY STUDENT DASHBOARD FILE", data);
-console.log("FIRST JOB:", data.jobs?.[0]);
-console.log("FIRST JOB ID:", data.jobs?.[0]?.id);
       setRecommendedJobs(data.jobs || []);
     })
     .catch((err) => {
@@ -141,21 +134,11 @@ console.log("FIRST JOB ID:", data.jobs?.[0]?.id);
     });
 getNotifications()
   .then((data) => {
-    console.log("ALL NOTIFICATIONS:", data);
 
     if (!Array.isArray(data)) {
       setNotifications([]);
       return;
     }
-
-    getMyJobApplications()
-  .then((data) => {
-    setMyApplications(Array.isArray(data) ? data : []);
-  })
-  .catch((err) => {
-    console.error("My applications error:", err);
-    setMyApplications([]);
-  });
 
     const now = Date.now();
 const twentyFourHours = 24 * 60 * 60 * 1000;
@@ -219,12 +202,6 @@ const filteredNotifications = data
         new Date(b.created_at) -
         new Date(a.created_at)
     );
-
-    console.log(
-      "FILTERED STUDENT NOTIFICATIONS:",
-      studentNotifications
-    );
-
     setNotifications(studentNotifications);
   })
   .catch((err) => {
@@ -232,7 +209,25 @@ const filteredNotifications = data
     setNotifications([]);
   });
 
+  getMyJobApplications()
+  .then((data) => { 
+    const applications = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.applications)
+      ? data.applications
+      : [];
+    setMyApplications(applications);
+  })
+  .catch((err) => {
+    console.error(
+      "My applications error:",
+      err.response?.data || err.message
+    );
+    setMyApplications([]);
+  });
+
 }, []);
+
 
 const handleViewInterview = async (jobId) => {
   if (!jobId) return;
@@ -259,8 +254,6 @@ const handleViewInterview = async (jobId) => {
 };
 
 
-
-
   // ----------------------------------------------------
   // Loading dashboard data
   // ----------------------------------------------------
@@ -278,12 +271,6 @@ const handleViewInterview = async (jobId) => {
   // ----------------------------------------------------
   // Fresh student - assessment not completed
   // ----------------------------------------------------
-
-  console.log(
-  "ASSESSMENT CHECK:",
-  dash?.assessmentCompleted,
-  dash
-);
   if (!dash.assessmentCompleted) {
     return (
       <div className="min-h-screen bg-gray-100 p-8">
@@ -318,11 +305,15 @@ const handleViewInterview = async (jobId) => {
   // Get the next upcoming task deadline.
   const nextDeadline = tasks[0];
   const appliedJobIds = new Set(
-  myApplications.map((application) =>
-    String(application.job_id || application.job?.id)
-  )
+  myApplications
+    .map((application) => application.job_id ?? application.job?.id)
+    .filter(Boolean)
+    .map(String)
 );
 
+const availableJobs = recommendedJobs.filter(
+  (job) => !appliedJobIds.has(String(job.id))
+);
 
   return (
     <div className="space-y-6">
@@ -851,24 +842,21 @@ const handleViewInterview = async (jobId) => {
       )}
 
 
-
-
-
 {/* Eligible Job Opportunities */}
 {/* ------------------------------------------------ */}
 
-{recommendedJobs.length > 0 && (
+{availableJobs.length > 0 && (
   <Card
     title="Job Opportunities"
     action={
       <span className="text-xs text-slate-500">
-        {recommendedJobs.length} job
-        {recommendedJobs.length !== 1 ? "s" : ""} matched
+        {availableJobs.length} job
+        {availableJobs.length !== 1 ? "s" : ""} matched
       </span>
     }
   >
     <div className="space-y-3">
-      {recommendedJobs.map((job) => (
+      {availableJobs.map((job) => (
         <div
           key={job.id}
           className="p-4 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
@@ -917,35 +905,12 @@ const handleViewInterview = async (jobId) => {
                   {job.skill_match}% Skill Match
                 </span>
               )}
-            {appliedJobIds.has(String(job.id)) ? (
-  <div className="flex flex-col items-start sm:items-end gap-2">
-    <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-50 text-green-700 text-sm font-medium">
-      ✓ Already Applied
-    </span>
-
-   <button
-  type="button"
-  onClick={() => setSelectedApplication(
-    myApplications.find(
-      (application) =>
-        String(application.job_id) === String(job.id)
-    ) || null
-  )}
-  className="text-xs text-brand-blue-600 hover:underline"
->
-  View Application →
-</button>
-  </div>
-) : (
-  <Link
-    to={`/app/jobs/${job.id}`}
-    className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-brand-blue-600 text-white text-sm hover:bg-brand-blue-700"
-  >
-    View Job →
-  </Link>
-)}
-
-        </div>
+            <Link
+  to={`/app/jobs/${job.id}`}
+  className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-brand-blue-600 text-white text-sm hover:bg-brand-blue-700">
+  View Job 
+</Link>
+     </div>
           </div>
              </div>
       ))}
@@ -1072,8 +1037,6 @@ const handleViewInterview = async (jobId) => {
     </Link>
   )
 )}
-
-
             </div>
           </div>
         </div>
@@ -1118,93 +1081,6 @@ const handleViewInterview = async (jobId) => {
   </Card>
 )}
 
-{selectedApplication && (
-  <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-    onClick={() => setSelectedApplication(null)}
-  >
-    <div
-      className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex items-center justify-between border-b px-5 py-4">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">
-            Application Details
-          </h2>
-
-          <p className="text-sm text-slate-500 mt-1">
-            {selectedApplication.job?.title || "Job Application"}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setSelectedApplication(null)}
-          className="text-xl text-slate-400 hover:text-slate-700"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="p-5 space-y-4">
-        <div className="flex items-center justify-between rounded-lg bg-slate-50 p-4">
-          <span className="text-sm text-slate-500">
-            Application Status
-          </span>
-
-          <span className="text-sm font-semibold capitalize text-slate-800">
-            {selectedApplication.status || "Submitted"}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="border rounded-lg p-3">
-            <div className="text-xs text-slate-500">
-              Skill Match
-            </div>
-            <div className="font-semibold text-slate-800 mt-1">
-              {selectedApplication.skill_match ?? 0}%
-            </div>
-          </div>
-
-          <div className="border rounded-lg p-3">
-            <div className="text-xs text-slate-500">
-              Applied On
-            </div>
-            <div className="font-semibold text-slate-800 mt-1">
-              {selectedApplication.applied_at
-                ? new Date(
-                    selectedApplication.applied_at
-                  ).toLocaleDateString("en-IN")
-                : "—"}
-            </div>
-          </div>
-        </div>
-
-        {selectedApplication.application_data?.cover_letter && (
-          <div>
-            <div className="text-xs font-semibold text-slate-500 mb-1">
-              Cover Letter
-            </div>
-
-            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">
-              {selectedApplication.application_data.cover_letter}
-            </div>
-          </div>
-        )}
-
-        {selectedApplication.application_data?.additional_information && (
-          <div>
-            <div className="text-xs font-semibold text-slate-500 mb-1">
-              Additional Information
-            </div>
-
-            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">
-              {selectedApplication.application_data.additional_information}
-            </div>
-          </div>
-        )}
 
         {selectedApplication && (
   <div
@@ -1230,9 +1106,8 @@ const handleViewInterview = async (jobId) => {
             <p className="mt-1 text-sm text-slate-400">
               {selectedApplication.job.company}
             </p>
-          )}
+          )} 
         </div>
-
         <button
           type="button"
           onClick={() => setSelectedApplication(null)}
@@ -1346,22 +1221,23 @@ const handleViewInterview = async (jobId) => {
 
               <button
                 type="button"
-                onClick={async () => {
-                  try {
-                    const url = await getApplicationVideoUrl(
-                      selectedApplication.id
-                    );
+                  onClick={async () => {
+  try {
+    const result = await getApplicationVideoUrl(
+      selectedApplication.job_id,
+      selectedApplication.id
+    );
 
-                    if (url) {
-                      window.open(url, "_blank", "noopener,noreferrer");
-                    }
-                  } catch (err) {
-                    console.error(
-                      "Failed to open application video:",
-                      err
-                    );
-                  }
-                }}
+    if (result?.url) {
+      window.open(result.url, "_blank", "noopener,noreferrer");
+    }
+  } catch (err) {
+    console.error(
+      "Failed to open application video:",
+      err.response?.data || err.message
+    );
+  }
+}}
                 className="inline-flex shrink-0 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
               >
                 Watch Video
@@ -1413,28 +1289,11 @@ const handleViewInterview = async (jobId) => {
     </div>
   </div>
 )}
-      </div>
-
-      <div className="border-t px-5 py-4 flex justify-end">
-        <button
-          type="button"
-          onClick={() => setSelectedApplication(null)}
-          className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
 
   {/* Interview Details */}
 {selectedInterview && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
     <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
-
       {/* Header */}
       <div className="border-b px-5 py-4 flex items-center justify-between">
         <div>
@@ -1573,6 +1432,6 @@ const handleViewInterview = async (jobId) => {
     </div>
   </div>
 )}
-</div>
 
-  )}
+</div>
+)}

@@ -1532,92 +1532,6 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
       </div>
 
 
-
-              {c.application_status === "shortlisted" && (
-
-
-  <div className="flex gap-2">
-
-
-    <button
-      type="button"
-      onClick={() => {
-        setInterviewCandidate(c);
-
-
-  if (
-    c.interview &&
-    c.interview.status !== "cancelled"
-  ) {
-    setInterviewForm({
-      scheduled_at: formatDateTimeLocal(
-        c.interview.scheduled_at
-      ),
-      duration: Number(
-        c.interview.duration || 30
-      ),
-      interview_type:
-        c.interview.interview_type || "online",
-      meeting_link:
-        c.interview.meeting_link || "",
-      notes:
-        c.interview.notes || "",
-    });
-  } else {
-          setInterviewForm({
-            scheduled_at: "",
-            duration: 30,
-            interview_type: "online",
-            meeting_link: "",
-            notes: "",
-          });
-        }
-      }}
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100"
-    >
-
-
-      {c.interview &&
-      c.interview.status !== "cancelled"
-        ? "View / Edit Interview"
-        : "Schedule Interview"}
-    </button>
-
-   {c.interview &&
-  c.interview.status !== "cancelled" && (
-    <button
-      type="button"
-      disabled={schedulingInterview}
-      onClick={() => {
-        setCancelCandidate(c);
-        setShowCancelModal(true);
-      }}
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
-    >
-      Cancel Interview
-    </button>
-  )}
-
-  {c.interview &&
-  c.interview.status !== "cancelled" && (
-    <button
-      type="button"
-      disabled={
-        updatingApplicationId === c.application_id
-      }
-      onClick={() =>
-        handleApplicationStatus(c, "selected")
-      }
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
-    >
-      {updatingApplicationId === c.application_id
-        ? "Updating..."
-        : "Select Candidate"}
-    </button>
-  )}
-  </div>
-)}
-
   {/* //cancel trigger */}
 
 {c.interview?.status === "cancelled" && (
@@ -2751,13 +2665,17 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
                   </div>
 
                   <a
-                    href={candidateProfile.profile.resume.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-2 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
-                  >
-                    Open Resume
-                  </a>
+  href={
+    candidateProfile?.profile?.resume?.url?.startsWith("http")
+      ? candidateProfile.profile.resume.url
+      : `http://localhost:5000${candidateProfile?.profile?.resume?.url || ""}`
+  }
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-sm text-brand-blue-600 hover:underline"
+>
+  Open Resume
+</a>
                 </div>
               ) : (
                 <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">

@@ -148,8 +148,12 @@ export const getStudentCandidates = () =>
 // ---------------------------------------------------------
 export const submitAssessment = (data) => api.post("/api/assessments", data).then((r) => r.data);
 export const getAssessmentResults = (id) => api.get(`/api/assessments/${id}/results`).then((r) => r.data);
-export const getAssessmentOverview = () => api.get("/api/assessments/overview").then((r) => r.data);
-export const fetchGapReport = (userId) => api.get(`/api/gap-report/${userId}`).then((r) => r.data);
+export const getAssessmentOverview = () =>
+  api.get("/api/assessments/overview").then((r) => r.data);
+
+export const fetchGapReport = (userId) =>
+  api.get(`/api/gap-report/${userId}`).then((r) => r.data);
+
 
 // Initial Adaptive Skill Assessment
 export const startInitialQuiz = () => api.post("/api/assessments/initial-quiz/start").then((r) => r.data);
@@ -292,7 +296,26 @@ export const getApplicationVideoUrl = (jobId, applicationId) =>
     .get(`/api/jobs/${jobId}/applications/${applicationId}/video`)
     .then((r) => r.data);
 
-export const applyJob = (jobId, applicationData, resumeFile, videoFile) => {
+
+export const getApplicationVideoUploadUrl = (
+  jobId,
+  fileName,
+  fileType,
+  fileSize
+) =>
+  api
+    .post(`/api/jobs/${jobId}/application-video-upload-url`, {
+      file_name: fileName,
+      file_type: fileType,
+      file_size: fileSize,
+ })
+.then((r) => r.data);    
+
+export const applyJob = (
+  jobId,
+  applicationData,
+  resumeFile
+) => {
   const formData = new FormData();
 
   formData.append(
@@ -302,10 +325,6 @@ export const applyJob = (jobId, applicationData, resumeFile, videoFile) => {
 
   if (resumeFile) {
     formData.append("resume", resumeFile);
-  }
-
-  if (videoFile) {
-    formData.append("video", videoFile);
   }
 
   return api

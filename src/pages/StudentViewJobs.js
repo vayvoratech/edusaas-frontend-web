@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   getJobById,
+  getMyJobApplications,
 } from "../services/api";
 
 export default function JobDetails() {
@@ -10,8 +11,8 @@ export default function JobDetails() {
 
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [error, setError] = useState("");
-
   useEffect(() => {
   const loadJob = async () => {
     try {
@@ -34,6 +35,27 @@ export default function JobDetails() {
 
   loadJob();
 }, [id]);
+
+
+useEffect(() => {
+  const checkApplication = async () => {
+    try {
+      const applications = await getMyJobApplications();
+
+      const applied = applications?.some(
+        (application) =>
+          String(application.job_id || application.job?.id) === String(id)
+      );
+
+      setAlreadyApplied(applied);
+    } catch (err) {
+      console.error("Failed to check application status:", err);
+    }
+  };
+
+  checkApplication();
+}, [id]);
+
 
   if (loading) {
     return (
@@ -146,15 +168,17 @@ export default function JobDetails() {
       </div>
 
       {/* Apply Now */}
-   <div className="mt-6 pt-5 border-t border-slate-200 flex justify-end">
-  <button
-    type="button"
-    onClick={() => navigate(`/app/jobs/${id}/apply`)}
-    className="w-full sm:w-auto px-7 py-3 rounded-lg bg-brand-blue-600 text-white font-semibold hover:bg-brand-blue-700 transition-colors"
-  >
-    Apply Now
-  </button>
+{!alreadyApplied && (
+  <div className="mt-6 pt-5 border-t border-slate-200 flex justify-end">
+    <button
+      type="button"
+      onClick={() => navigate(`/app/jobs/${id}/apply`)}
+      className="w-full sm:w-auto px-7 py-3 rounded-lg bg-brand-blue-600 text-white font-semibold hover:bg-brand-blue-700 transition-colors"
+    >
+      Apply Now
+    </button>
   </div>
+)}
        </div>
           </div>
   );

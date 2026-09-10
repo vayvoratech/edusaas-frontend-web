@@ -11,6 +11,13 @@ const apiToRole = (r) => {
 export function AuthProvider({ children }) {
   const { user, isLoaded, isSignedIn } = useUser();
   const { signOut, getToken } = useClerkAuth();
+  const [backendUser, setBackendUser] = React.useState(() => {
+    try {
+     return JSON.parse(localStorage.getItem("edu_user")) || null;
+  } catch {
+     return null;
+  }
+});
 
   React.useEffect(() => {
     if (isLoaded && isSignedIn && user) {
@@ -38,7 +45,10 @@ export function AuthProvider({ children }) {
             if (data.accessToken) {
               localStorage.setItem('edu_token', data.accessToken);
               if (data.refreshToken) localStorage.setItem('edu_refresh', data.refreshToken);
-              if (data.user) localStorage.setItem('edu_user', JSON.stringify(data.user));
+             if (data.user) {
+                 localStorage.setItem("edu_user", JSON.stringify(data.user));
+                setBackendUser(data.user);
+              }
               window.location.reload();
             }
           } catch (err) {
@@ -65,7 +75,7 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      user,
+      user: backendUser || user,
       role,
       authError: null,
       isAuthenticated: isSignedIn,
@@ -82,7 +92,7 @@ export function AuthProvider({ children }) {
         signOut({ redirectUrl: '/login' });
       },
     }),
-    [user, role, isSignedIn, signOut]
+    [backendUser, user, role, isSignedIn, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

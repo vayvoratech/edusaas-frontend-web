@@ -5,7 +5,8 @@ import {
   getJobById,
   getUserProfile,
   applyJob,
-  getMyJobApplications
+  getMyJobApplications,
+  getApplicationVideoUploadUrl,
 } from "../services/api";
 
 export default function JobApplication() {
@@ -17,6 +18,7 @@ export default function JobApplication() {
 
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [submitStage, setSubmitStage] = useState("");
   const [existingApplication, setExistingApplication] = useState(null);
 
   const [error, setError] = useState("");
@@ -298,9 +300,9 @@ const cancelRecording = () => {
 const handleApply = async () => {
   try {
     setApplying(true);
+    setSubmitStage("Preparing application...");
     setApplicationMessage("");
     setError("");
-
     const profileResume = profile?.profile?.resume;
 
 const missingFields = [];
@@ -309,7 +311,7 @@ if (!resume && !profileResume) {
   missingFields.push("resume");
 }
 
-if (!videoFile) {
+if (job.require_video && !videoFile) {
   missingFields.push("video");
 }
 
@@ -347,15 +349,50 @@ if (missingFields.length > 0) {
       additional_information:
         additionalInformation.trim(),
     };
+if (videoFile) {
+    setSubmitStage("Uploading video...");
 
-    console.log("APPLICATION DATA:", applicationData);
+const uploadInfo = await getApplicationVideoUploadUrl(
+  id,
+  videoFile.name,
+  videoFile.type,
+  videoFile.size
+);
 
-   await applyJob(
+const uploadResponse = await fetch(
+  uploadInfo.upload_url,
+  {
+    method: "PUT",
+    headers: {
+      "Content-Type": videoFile.type,
+    },
+    body: videoFile,
+  }
+);
+
+if (!uploadResponse.ok) {
+  throw new Error(
+    "Video upload failed. Please try again."
+  );
+}
+
+applicationData.video = {
+  file_name: videoFile.name,
+  file_type: videoFile.type,
+  file_size: videoFile.size,
+  storage: "backblaze_b2",
+  key: uploadInfo.key,
+};
+}
+
+setSubmitStage("Submitting application...");
+await applyJob(
   id,
   applicationData,
-  resume,
-  videoFile
+  resume
 );
+
+     setSubmitStage("");
      setApplicationMessage("");
      setShowSuccessModal(true);
 
@@ -370,15 +407,16 @@ setVideoFile(null);
 setVideoPreview("");
 
   } catch (err) {
-    setError(
-      err.response?.data?.error ||
-        err.message ||
-        "Failed to apply for this job."
-    );
-  } finally {
+  setSubmitStage("");
+  setError(
+    err.response?.data?.error ||
+      err.message ||
+      "Failed to apply for this job."
+  );
+} finally {
     setApplying(false);
   }
-};
+}
 
 if (loading) {
   return (
@@ -674,8 +712,6 @@ return (
         </div>
 
 
-        {/* video recording */}
-
           {/* Video Introduction */}
 <div
   ref={videoSectionRef}
@@ -683,12 +719,8 @@ return (
 >
   <div className="flex items-center justify-between mb-2">
     <h3 className="font-semibold text-slate-800">
-       A Short Video Introduction about you<span className="text-red-500">*</span>
+       A Short Video Introduction about you{job.require_video && (<span className="text-red-500">*</span>) }
     </h3>
-
-    <span className="text-xs font-medium text-red-500">
-      Required
-    </span>
   </div>
 
   <p className="text-sm text-slate-600 mb-2">
@@ -847,6 +879,11 @@ return (
   </p>
 </div>
 
+         {submitStage && (
+  <p className="mb-3 text-sm text-slate-600">
+    {submitStage}
+  </p>
+)}
           <button
             type="button"
             onClick={handleApply}
@@ -854,8 +891,8 @@ return (
             className="w-full sm:w-auto px-7 py-3 rounded-lg bg-brand-blue-600 text-white font-semibold hover:bg-brand-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {applying
-              ? "Submitting Application..."
-              : "Submit Application"}
+  ? submitStage || "Submitting Application..."
+  : "Submit Application"}
           </button>
 
 
@@ -967,7 +1004,9 @@ return (
       {/* Button */}
       <button
         type="button"
-        onClick={() => setShowSuccessModal(false)}
+        onClick={() =>  {setShowSuccessModal(false);
+          navigate("/app/dashboard");
+        }}
         className="w-full rounded-xl bg-brand-blue-600 px-4 py-3 text-white font-semibold hover:bg-brand-blue-700 transition-colors"
       >
         OK
@@ -979,11 +1018,5 @@ return (
   </div>
 );
 }
-
-
-
-
-
-
 
 
