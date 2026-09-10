@@ -296,7 +296,26 @@ export const getApplicationVideoUrl = (jobId, applicationId) =>
     .get(`/api/jobs/${jobId}/applications/${applicationId}/video`)
     .then((r) => r.data);
 
-export const applyJob = (jobId, applicationData, resumeFile, videoFile) => {
+
+export const getApplicationVideoUploadUrl = (
+  jobId,
+  fileName,
+  fileType,
+  fileSize
+) =>
+  api
+    .post(`/api/jobs/${jobId}/application-video-upload-url`, {
+      file_name: fileName,
+      file_type: fileType,
+      file_size: fileSize,
+ })
+.then((r) => r.data);    
+
+export const applyJob = (
+  jobId,
+  applicationData,
+  resumeFile
+) => {
   const formData = new FormData();
 
   formData.append(
@@ -306,10 +325,6 @@ export const applyJob = (jobId, applicationData, resumeFile, videoFile) => {
 
   if (resumeFile) {
     formData.append("resume", resumeFile);
-  }
-
-  if (videoFile) {
-    formData.append("video", videoFile);
   }
 
   return api

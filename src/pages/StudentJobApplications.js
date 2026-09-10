@@ -66,8 +66,15 @@ export default function StudentJobApplications() {
       try {
         setLoadingInterviews(true);
 
+  //sort applications based on timestamp
+        const sortedApplications = [...applications].sort(
+  (a, b) =>
+    new Date(b.applied_at || b.created_at) -
+    new Date(a.applied_at || a.created_at)
+);
+
         const results = await Promise.all(
-          applications.map(async (application) => {
+          sortedApplications.map(async (application) => {
             if (!application?.job_id) {
               return null;
             }
