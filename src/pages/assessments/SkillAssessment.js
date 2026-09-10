@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { getAssessmentOverview } from '../../services/api';
+import MiniProject from './MiniProject';
 
 export default function SkillAssessment() {
   const navigate = useNavigate();
 
-  const [overview, setOverview] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeView, setActiveView] = useState("overview");
 
   useEffect(() => {
     const loadOverview = async () => {
@@ -62,32 +64,56 @@ export default function SkillAssessment() {
     );
   }
 
+  if (activeView === "mini-project") {
+    return (
+      <MiniProject onBack={() => setActiveView("overview")}/>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-
       {/* Page Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">
-          Assessments
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Track your assessment progress and complete the required evaluations.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+            Skill Evaluation
+          </p>
+
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+            Assessments
+          </h2>
+
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+            Complete your assessments, strengthen your skill gaps, and progress
+            toward certification.
+          </p>
+        </div>
+
+        <div className="hidden rounded-lg bg-blue-50 px-3.5 py-2 text-xs font-medium text-blue-700 sm:block">
+          Your assessment journey
+        </div>
       </div>
 
       {/* Initial Assessment */}
       <Card>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-slate-900">
-                Initial Assessment
-              </h3>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                ✓
+              </div>
 
-              <span className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">
-                Assessment
-              </span>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Initial Assessment
+                  </h3>
+
+                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                    Skill Assessment
+                  </span>
+                </div>
+              </div>
             </div>
 
             <p className="text-sm text-slate-500 mt-2 max-w-2xl">
@@ -95,42 +121,51 @@ export default function SkillAssessment() {
               to determine your readiness level and identify skill gaps.
             </p>
 
-            <div className="flex flex-wrap gap-4 mt-4 text-sm">
-              <div>
-                <span className="text-slate-400">Status</span>
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  Status
+                </span>
+
                 <p
-                  className={`font-medium ${
+                  className={`mt-1 text-sm font-semibold ${
                     overview.initialAssessment.status === 'Completed'
                       ? 'text-green-600'
-                      : overview.initialAssessment.status === 'Paused' ||
-                        overview.initialAssessment.status === 'In Progress'
-                        ? 'text-amber-600'
-                        : 'text-slate-600'
+                      : 'text-amber-600'
                   }`}
                 >
                   {overview.initialAssessment.status}
                 </p>
               </div>
 
-              <div>
-                <span className="text-slate-400">Questions</span>
-                <p className="font-medium text-slate-700">
+              <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  Questions
+                </span>
+
+                <p className="mt-1 text-sm font-semibold text-slate-700">
                   {overview.initialAssessment.questionsAnswered}/
                   {overview.initialAssessment.totalQuestions}
                 </p>
               </div>
 
-              <div>
-                <span className="text-slate-400">Readiness Score</span>
-                <p className="font-medium text-slate-700">
+              <div className="rounded-lg bg-orange-50 px-3 py-2.5">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-orange-500">
+                  Readiness
+                </span>
+
+                <p className="mt-1 text-sm font-semibold text-orange-600">
                   {overview.initialAssessment.readinessScore ?? '—'}
                 </p>
               </div>
 
-              <div>
-                <span className="text-slate-400">Purpose</span>
-                <p className="font-medium text-slate-700">
-                  Skill & Readiness Analysis
+              <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  Purpose
+                </span>
+
+                <p className="mt-1 text-sm font-semibold text-slate-700">
+                  Skill & Readiness
                 </p>
               </div>
             </div>
@@ -143,42 +178,45 @@ export default function SkillAssessment() {
               </span>
             ) : (
               <Button
-                variant="outline"
+                variant="primary"
                 onClick={() => navigate('/app/initial-assessment')}
               >
-                {overview.initialAssessment.status === 'Paused' ||
-                overview.initialAssessment.status === 'In Progress'
-                  ? 'Resume Assessment'
+                {overview.initialAssessment.status === 'Completed'
+                  ? 'View Assessment'
                   : 'Start Assessment'}
               </Button>
             )}
           </div>
-
         </div>
       </Card>
 
       {/* Learning Prerequisites */}
       <Card>
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">
-            Learning Progress
-          </h3>
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
+            ✦
+          </div>
 
-          <p className="text-sm text-slate-500 mt-1">
-            Complete the required learning activities before proceeding
-            through the final certification process.
-          </p>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">
+              Learning Progress
+            </h3>
+
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Complete the required learning activities before proceeding
+              through the final certification process.
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-
-          <div className="rounded-lg border border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 transition hover:border-blue-200 hover:shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">
                 Enrolled Courses
               </span>
 
-              <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                 Pending
               </span>
             </div>
@@ -188,13 +226,13 @@ export default function SkillAssessment() {
             </p>
           </div>
 
-          <div className="rounded-lg border border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 transition hover:border-blue-200 hover:shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">
                 Recommended Courses
               </span>
 
-              <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                 Pending
               </span>
             </div>
@@ -203,21 +241,19 @@ export default function SkillAssessment() {
               Recommended learning activities will be tracked here.
             </p>
           </div>
-
         </div>
       </Card>
 
       {/* Final Assessment */}
       <Card>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold text-slate-900">
                 Final Assessment
               </h3>
 
-              <span className="text-xs px-2.5 py-1 rounded-full bg-brand-blue-100 text-brand-blue-700 font-medium">
+              <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">
                 Certification
               </span>
             </div>
@@ -227,14 +263,11 @@ export default function SkillAssessment() {
               complete the certification assessment.
             </p>
           </div>
-
         </div>
 
         {/* Final Quiz */}
-        <div className="mt-6 rounded-xl border border-slate-200 p-5">
-
+        <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50/30 p-5">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
             <div>
               <div className="flex items-center gap-3">
                 <h4 className="font-semibold text-slate-900">
@@ -244,7 +277,7 @@ export default function SkillAssessment() {
                 <span
                   className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                     overview.finalAssessment.finalQuiz.status === 'Completed'
-                      ? 'bg-green-100 text-green-700'
+                      ? 'bg-emerald-100 text-emerald-700'
                       : overview.finalAssessment.finalQuiz.status === 'In Progress'
                         ? 'bg-amber-100 text-amber-700'
                         : 'bg-slate-100 text-slate-600'
@@ -271,7 +304,7 @@ export default function SkillAssessment() {
               </div>
             </div>
 
-          {overview.finalAssessment.finalQuiz.status === 'Completed' ? (
+            {overview.finalAssessment.finalQuiz.status === 'Completed' ? (
               <span className="text-sm font-medium text-green-600">
                 Completed
               </span>
@@ -286,16 +319,12 @@ export default function SkillAssessment() {
                   : 'Start Final Quiz'}
               </Button>
             )}
-
           </div>
-
         </div>
 
         {/* Mini Project */}
-        <div className="mt-4 rounded-xl border border-slate-200 p-5">
-
+        <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50/30 p-5">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
             <div>
               <div className="flex items-center gap-3">
                 <h4 className="font-semibold text-slate-900">
@@ -309,28 +338,25 @@ export default function SkillAssessment() {
 
               <p className="text-sm text-slate-500 mt-1">
                 Complete the assigned problem statement and submit your
-                project for AI evaluation and plagiarism checking.
+                project as part of the final certification process.
               </p>
 
               <div className="flex flex-wrap gap-4 mt-3 text-xs text-slate-500">
                 <span>• Submission: ZIP</span>
-                <span>• Evaluation: AI</span>
-                <span>• Plagiarism Check</span>
+                <span>• One submission</span>
+                <span>• Final Certification</span>
               </div>
             </div>
 
             <Button
               variant="outline"
-              disabled
+              onClick={() => setActiveView("mini-project")}
             >
-              Not Available
+              Start Mini Project
             </Button>
-
           </div>
-
         </div>
       </Card>
-
     </div>
   );
 }

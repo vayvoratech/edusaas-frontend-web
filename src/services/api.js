@@ -235,6 +235,37 @@ export const pauseFinalQuizOnUnload = (sessionId) => {
   }).catch(() => {});
 };
 
+//Mini Project APIs (Final Assessment)
+export const getCurrentMiniProject = () => api.get("/api/mini-projects/current").then((r) => r.data);
+
+export const getMiniProjectSubmissions = (assignmentId) =>
+  api
+    .get(`/api/mini-projects/${assignmentId}/submissions`)
+    .then((r) => r.data);
+
+export const submitMiniProject = (
+  assignmentId,
+  repositoryUrl,
+  branch = "main"
+) =>
+  api
+    .post(`/api/mini-projects/${assignmentId}/submissions`, {
+      repository_url: repositoryUrl,
+      branch,
+    })
+    .then((r) => r.data);
+
+export const getMyMiniProjects = () => api.get("/api/mini-projects").then((r) => r.data);
+
+export const createMiniProject = (data) => api.post("/api/mini-projects", data).then((r) => r.data);
+
+export const publishMiniProject = (assignmentId, due_at) =>
+  api
+    .post(`/api/mini-projects/${assignmentId}/publish`, {
+      due_at,
+    })
+    .then((r) => r.data);
+
 // ---------------------------------------------------------
 // Courses & Lessons API
 // ---------------------------------------------------------

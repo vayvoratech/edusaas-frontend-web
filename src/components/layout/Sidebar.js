@@ -24,6 +24,7 @@ const navByRole = {
     { to: '/app/insights', label: 'Insights', icon: '📊' },
     { to: '/app/announcements', label: 'Announcements', icon: '📣' },
     { to: '/app/profile', label: 'My Profile', icon: '👤' },
+    { to: '/app/educator-assessments', label: 'Assessments', icon: '📝' },
   ],
   employer: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },

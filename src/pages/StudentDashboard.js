@@ -48,16 +48,11 @@ export default function StudentDashboard() {
 
   // Fetch initial dashboard data on mount
   useEffect(() => {
-    console.log("CALLING STUDENT DASHBOARD API");
-
     getStudentDashboard()
       .then((data) => {
-        console.log("STUDENT DASHBOARD DATA:", data);
-        console.log("ASSESSMENT COMPLETED:", data?.assessmentCompleted);
         setDash(data);
       })
       .catch((err) => {
-        console.error("Dashboard error:", err);
       });
     
     getAssessmentOverview().then(setAssessmentOverview).catch(() => {})
@@ -80,34 +75,26 @@ export default function StudentDashboard() {
 
     getRecommendedJobs()
       .then((data) => {
-        console.log("THIS IS MY STUDENT DASHBOARD FILE", data);
-        console.log("FIRST JOB:", data.jobs?.[0]);
-        console.log("FIRST JOB ID:", data.jobs?.[0]?.id);
         setRecommendedJobs(data.jobs || []);
       })
       .catch((err) => {
-        console.error("Recommended jobs error:", err);
         setRecommendedJobs([]);
       });
 
     getNotifications()
       .then((data) => {
-        console.log("ALL NOTIFICATIONS:", data);
         const invitations = Array.isArray(data)
           ? data.filter((n) => {
               const type = String(n.type || "")
                 .trim()
                 .toLowerCase()
                 .replace(/[\s-]+/g, "_");
-              console.log("TYPE CHECK:", n.type, "→", type);
               return type === "job_invitation";
             })
           : [];
-        console.log("FILTERED INVITATIONS:", invitations);
         setNotifications(invitations);
       })
       .catch((err) => {
-        console.error("Notifications error:", err);
         setNotifications([]);
       });
   }, []);

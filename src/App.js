@@ -36,6 +36,8 @@ import ManageCourses from './pages/ManageCourses';
 import ViewLearners from './pages/ViewLearners';
 import EducatorInsights from './pages/EducatorInsights';
 import SendAnnouncement from './pages/SendAnnouncement';
+import EducatorAssessments from './pages/EducatorAssessments';
+import CreateMiniProject from './pages/CreateMiniProject';
 
 // New employer pages
 import JobListings from './pages/JobListings';
@@ -74,29 +76,29 @@ export default function App() {
           <Route path="/onboarding" element={<Onboarding />} />
 
            <Route path="/app" element={<AppLayout />}>
-{/* Dashboard */}
-<Route
-  path="dashboard"
-  element={<RoleDashboard />}
-/>
+            {/* Dashboard */}
+            <Route
+              path="dashboard"
+              element={<RoleDashboard />}
+            />
 
-{/* Job Details */}
-<Route
-  path="jobs/:id"
-  element={<JobDetails />}
-/>
+            {/* Job Details */}
+            <Route
+              path="jobs/:id"
+              element={<JobDetails />}
+            />
 
-<Route
-  path="jobs/:id/apply"
-  element={<JobApplication />}
-/>
+            <Route
+              path="jobs/:id/apply"
+              element={<JobApplication />}
+            />
 
 
-{/* /app → /app/dashboard */}
-<Route
-  index
-  element={<Navigate to="dashboard" replace />}
-/>
+            {/* /app → /app/dashboard */}
+            <Route
+              index
+              element={<Navigate to="dashboard" replace />}
+            />
              
             {/* Shared */}
             <Route path="profile" element={<Profile />} />
@@ -126,6 +128,8 @@ export default function App() {
               <Route path="learners" element={<ViewLearners />} />
               <Route path="insights" element={<EducatorInsights />} />
               <Route path="announcements" element={<SendAnnouncement />} />
+              <Route path="educator-assessments" element={<EducatorAssessments />} />
+              <Route path="educator-assessments/create"element={<CreateMiniProject />} />
             </Route>
 
             {/* Employer */}
