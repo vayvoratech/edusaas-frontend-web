@@ -124,8 +124,32 @@ export const getDomainRoles = async () => {
   return res.data.data;
 };
 export const getUserProfile = (id) => api.get(`/api/users/${id}`).then((r) => r.data);
+export const updateUserName = (id, name) =>
+  api.patch(`/api/users/${id}`, { name }).then((r) => r.data);
 export const saveUserProfile = (id, data) =>
   api.put(`/api/users/${id}/profile`, data).then((r) => r.data);
+
+export const uploadProfileAvatar = (id, imageFile) => {
+  const formData = new FormData();
+  formData.append("avatar", imageFile);
+  return api
+    .post(`/api/users/${id}/avatar`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((r) => r.data);
+};
+
+export const deleteProfileAvatar = (id) =>
+  api.delete(`/api/users/${id}/avatar`).then((r) => r.data);
+
+export const resolveAssetUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  const base = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  return `${base.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export const uploadProfileResume = (id, resumeFile) => {
   const formData = new FormData();

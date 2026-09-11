@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { getNotifications, markNotificationRead, markAllNotificationsRead, searchUsers, getCourses, sendConnectionRequest, removeConnection } from '../../services/api';
+import { getNotifications, markNotificationRead, markAllNotificationsRead, searchUsers, getCourses, sendConnectionRequest, removeConnection, resolveAssetUrl } from '../../services/api';
 
 const initials = (name) =>
   (name || '?')
     .split(' ')
+    .filter(Boolean)
     .map((p) => p[0])
     .slice(0, 2)
     .join('')
@@ -36,11 +37,19 @@ export function TopNav({ onOpenNav = () => {} }) {
 
   const wrapRef = useRef(null);
 
-  const displayName = user?.name || user?.firstName || 'Guest';
-  const firstName = displayName.split(' ')[0];
+  const displayName = user?.name || user?.displayName || user?.firstName || 'Guest';
+  const firstName = user?.firstName || displayName.split(' ')[0] || 'Guest';
   const displayRole = user?.role
     ? user.role[0].toUpperCase() + user.role.slice(1)
     : '';
+
+  const [avatarErr, setAvatarErr] = useState(false);
+  const rawAvatar = user?.avatar_url || user?.avatar || user?.imageUrl;
+  const userAvatar = !avatarErr && rawAvatar ? resolveAssetUrl(rawAvatar) : null;
+
+  useEffect(() => {
+    setAvatarErr(false);
+  }, [rawAvatar]);
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -229,7 +238,7 @@ export function TopNav({ onOpenNav = () => {} }) {
               Education SaaS Dashboard
             </h1>
             <div className="text-xs text-slate-500 hidden sm:block truncate">
-              Welcome back, {firstName} — let&apos;s close those skill gaps.
+              Welcome back, {firstName} — {user?.role === 'employer' ? 'find and connect with top candidates.' : user?.role === 'educator' ? 'manage courses and inspire learners.' : "let's close those skill gaps."}
             </div>
           </div>
         </div>
@@ -382,11 +391,12 @@ export function TopNav({ onOpenNav = () => {} }) {
               }}
               className="flex items-center gap-2 pl-1 pr-2 sm:pr-3 py-1 rounded-full hover:bg-slate-100"
             >
-              {user?.avatar ? (
+              {userAvatar ? (
                 <img
-                  src={user.avatar}
-                  alt=""
-                  className="w-8 h-8 rounded-full object-cover"
+                  src={userAvatar}
+                  alt={displayName}
+                  onError={() => setAvatarErr(true)}
+                  className="w-8 h-8 rounded-full object-cover border border-slate-200"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold text-xs">
