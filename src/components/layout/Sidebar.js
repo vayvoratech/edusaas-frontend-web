@@ -13,6 +13,7 @@ const navByRole = {
     { to: '/app/my-insights', label: 'Insights', icon: '📊' },
     { to: '/app/assessments', label: 'Assessments', icon: '📝' },
     { to: '/app/gap-report', label: 'Gap Report', icon: '📈' },
+    { to: '/app/job-applications', label: 'Job Applications', icon: '💼' },
     { to: '/app/profile', label: 'My Profile', icon: '👤' },
     { to: '/app/settings', label: 'Settings', icon: '⚙️' },
   ],

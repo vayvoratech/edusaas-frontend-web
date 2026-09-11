@@ -172,8 +172,12 @@ export const getStudentCandidates = () =>
 // ---------------------------------------------------------
 export const submitAssessment = (data) => api.post("/api/assessments", data).then((r) => r.data);
 export const getAssessmentResults = (id) => api.get(`/api/assessments/${id}/results`).then((r) => r.data);
-export const getAssessmentOverview = () => api.get("/api/assessments/overview").then((r) => r.data);
-export const fetchGapReport = (userId) => api.get(`/api/gap-report/${userId}`).then((r) => r.data);
+export const getAssessmentOverview = () =>
+  api.get("/api/assessments/overview").then((r) => r.data);
+
+export const fetchGapReport = (userId) =>
+  api.get(`/api/gap-report/${userId}`).then((r) => r.data);
+
 
 // Initial Adaptive Skill Assessment
 export const startInitialQuiz = () => api.post("/api/assessments/initial-quiz/start").then((r) => r.data);
@@ -279,7 +283,7 @@ export const getLesson = (lessonId) =>
   api.get(`/api/lessons/lesson/${lessonId}`).then((r) => r.data);
 export const deleteLesson = (lessonId) =>
   api.delete(`/api/lessons/lesson/${lessonId}`).then((r) => r.data);
-export const getCourseAssignments = (courseId) => api.get(`/api/courses/${courseId}/assignments`).then((r) => r.data);
+
 
 
 // ---------------------------------------------------------
@@ -311,7 +315,31 @@ export const updateJob = (id, data) =>
 
 export const deleteJob = (id) => api.delete(`/api/jobs/${id}`).then((r) => r.data);
 
-export const applyJob = (jobId, applicationData, resumeFile) => {
+export const getApplicationVideoUrl = (jobId, applicationId) =>
+  api
+    .get(`/api/jobs/${jobId}/applications/${applicationId}/video`)
+    .then((r) => r.data);
+
+
+export const getApplicationVideoUploadUrl = (
+  jobId,
+  fileName,
+  fileType,
+  fileSize
+) =>
+  api
+    .post(`/api/jobs/${jobId}/application-video-upload-url`, {
+      file_name: fileName,
+      file_type: fileType,
+      file_size: fileSize,
+ })
+.then((r) => r.data);    
+
+export const applyJob = (
+  jobId,
+  applicationData,
+  resumeFile
+) => {
   const formData = new FormData();
 
   formData.append(
@@ -336,16 +364,109 @@ export const inviteCandidate = (jobId, studentId, message) =>
   api.post(`/api/jobs/${jobId}/invite`, { candidate_id: studentId, message }).then((r) => r.data);
 
 // Course assignments (educator → student)
-export const assignCourse = (courseId, { userId, due_date, note, }) =>
-  api.post(`/api/courses/${courseId}/assign`, { userId, due_date, note, }).then((r) => r.data);
+export const assignCourse = (courseId,{userId,due_date,note,}) =>
+    api.post(`/api/courses/${courseId}/assign`, {userId,due_date,note,}).then((r) => r.data);
 export const getMyAssignments = () =>
   api.get('/api/me/assignments').then((r) => r.data);
+
+export const getCourseAssignments = (courseId) =>
+  api.get(`/api/courses/${courseId}/assignments`).then((r) => r.data);
 
 export const cancelAssignment = (assignmentId) =>
   api.post(`/api/assignments/${assignmentId}/cancel`).then((r) => r.data);
 
 export const getJobApplications = (jobId) =>
   api.get(`/api/jobs/${jobId}/applications`).then((r) => r.data);
+
+export const getMyJobApplications = () =>
+  api.get("/api/jobs/my-applications").then((r) => r.data);
+
+
+export const updateApplicationStatus = (
+  jobId,
+  applicationId,
+  status
+) =>
+  api
+    .patch(
+      `/api/jobs/${jobId}/applications/${applicationId}/status`,
+      { status }
+    )
+    .then((r) => r.data);
+
+
+export async function scheduleInterview(
+  jobId,
+  applicationId,
+  interviewData
+) {
+  const response = await api.post(
+    `/api/jobs/${jobId}/applications/${applicationId}/interview`,
+    interviewData
+  );
+
+  return response.data;
+}
+
+
+export async function getInterview(
+  jobId,
+  applicationId
+) {
+  const response = await api.get(
+    `/api/jobs/${jobId}/applications/${applicationId}/interview`
+  );
+
+  return response.data;
+}
+
+export async function getMyInterview(jobId) {
+  const response = await api.get(
+    `/api/jobs/${jobId}/my-interview`
+  );
+
+  return response.data;
+}
+
+
+export async function updateInterview(
+  jobId,
+  applicationId,
+  interviewData
+) {
+  const response = await api.put(
+    `/api/jobs/${jobId}/applications/${applicationId}/interview`,
+    interviewData
+  );
+
+  return response.data;
+}
+
+export async function cancelInterview(
+  jobId,
+  applicationId
+) {
+  const response = await api.delete(
+    `/api/jobs/${jobId}/applications/${applicationId}/interview`
+  );
+
+  return response.data;
+}
+
+
+export async function sendApplicantEmail(
+  jobId,
+  applicationId,
+  emailData
+) {
+  const response = await api.post(
+    `/api/jobs/${jobId}/applications/${applicationId}/email`,
+    emailData
+  );
+
+  return response.data;
+}
+
 
 export const getEligibleStudents = (jobId) =>
   api.get(`/api/jobs/${jobId}/eligible-students`).then((r) => r.data);

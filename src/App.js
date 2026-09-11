@@ -19,6 +19,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import JobDetails from "./pages/StudentViewJobs";
 import JobApplication from "./pages/JobApplication";
+import StudentJobApplications from './pages/StudentJobApplications';
 
 // New student pages
 import CoursesPage from './pages/CoursesPage';
@@ -117,6 +118,8 @@ export default function App() {
               <Route path="final-assessment" element={<FinalAssessment />} />
               <Route path="gap-report" element={<GapReport />} />
               <Route path="learning-paths" element={<LearningPath />} />
+              <Route path="job-applications" element={<StudentJobApplications />}
+/>
             </Route>
            
 

@@ -19,6 +19,8 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
+  const backendUser = dbUser;
+  const setBackendUser = setDbUser;
 
   // Listen for local updates to edu_user (e.g. name edits, avatar changes)
   React.useEffect(() => {
@@ -170,7 +172,8 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      user: mergedUser,
+      user: mergedUser || backendUser || user,
+      backendUser: dbUser,
       role,
       updateAuthUser,
       authError: null,
@@ -189,7 +192,7 @@ export function AuthProvider({ children }) {
         signOut({ redirectUrl: '/login' });
       },
     }),
-    [mergedUser, role, updateAuthUser, isSignedIn, signOut]
+    [mergedUser, backendUser, user, role, updateAuthUser, isSignedIn, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
