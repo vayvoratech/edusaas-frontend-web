@@ -195,6 +195,10 @@ export default function Profile() {
         getMyAchievements().then(setAchievements),
         getMyCertificates().then(setCerts),
         getMyRecommendations().then(setRecs),
+        getAnnouncements().then((res) => {
+          const list = Array.isArray(res) ? res : (res?.data || []);
+          setAnnouncements(list);
+        }).catch(() => null),
       ]).finally(() => setLoading(false));
     }
   }, [targetUserId, isEducator, isEmployer, isAdmin, updateAuthUser]);
@@ -1856,9 +1860,9 @@ export default function Profile() {
               <EmptyState icon="🏅" title="No badges yet." />
             ) : (
               <ul className="grid grid-cols-2 gap-2 text-sm">
-                {achievements.slice(0, 6).map((a) => (
+                {achievements.slice(0, 6).map((a, aIdx) => (
                   <li
-                    key={a.id}
+                    key={a.id || a.badge_name || `ach-${aIdx}`}
                     className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all"
                   >
                     <span className="text-xl shrink-0" aria-hidden="true">🏅</span>
@@ -1876,19 +1880,64 @@ export default function Profile() {
                   Recommended for you
                 </div>
                 <ul className="space-y-2 text-sm">
-                  {recs.slice(0, 3).map((r) => (
-                    <li
-                      key={r.id}
-                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 -mx-2 hover:bg-slate-50 transition-colors"
-                    >
-                      <span aria-hidden="true">📘</span>
-                      <span className="font-medium text-slate-800 truncate">
-                        {r.course?.title}
-                      </span>
-                    </li>
-                  ))}
+                  {recs
+                    .filter((r) => r.type !== "ai_suggestions" && (r.course?.title || r.title))
+                    .slice(0, 3)
+                    .map((r, rIdx) => (
+                      <li
+                        key={r.id || r.course_id || `rec-item-${rIdx}`}
+                        className="flex items-center gap-2 rounded-lg px-2 py-1.5 -mx-2 hover:bg-slate-50 transition-colors"
+                      >
+                        <span aria-hidden="true">📘</span>
+                        <span className="font-medium text-slate-800 truncate">
+                          {r.course?.title || r.title}
+                        </span>
+                      </li>
+                    ))}
                 </ul>
               </div>
+            )}
+          </Card>
+
+          <Card
+            title={`Course Announcements (${announcements.length})`}
+            action={
+              <span className="text-xs text-slate-400">Updates & Notices</span>
+            }
+          >
+            {loading ? (
+              <SectionSkeleton lines={3} />
+            ) : announcements.length === 0 ? (
+              <div className="py-6 text-center text-sm text-slate-400">
+                No course announcements yet.
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {announcements.slice(0, 4).map((a, aIdx) => (
+                  <li key={a.id || `announcement-${aIdx}`} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <span className="font-semibold text-sm text-slate-800">
+                        {a.title}
+                      </span>
+                      <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 shrink-0">
+                        {a.audience === 'course' ? 'My Course' : 'All'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 line-clamp-2">
+                      {a.message}
+                    </p>
+                    <div className="text-[11px] text-slate-400 mt-2 flex items-center justify-between">
+                      <span>
+                        {a.educator?.name ? `By ${a.educator.name} • ` : ''}
+                        {a.created_at ? new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent'}
+                      </span>
+                      <Link to="/app/dashboard" className="text-brand-blue-600 font-medium hover:underline">
+                        View in Dashboard
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
         </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import {
   LineChart,
@@ -28,6 +28,8 @@ import {
   getMyInterview,
   getMyJobApplications,
   getApplicationVideoUrl,
+  getAnnouncements,
+  markAnnouncementNotificationsRead,
 } from '../services/api';
 
 
@@ -82,6 +84,7 @@ const moduleCards = [
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // State for dashboard data, tasks, achievements,
   // recommendations, and assignments, notifications, Interviews
@@ -96,137 +99,214 @@ export default function StudentDashboard() {
   const [loadingInterview, setLoadingInterview] = useState(false);
   const [myApplications, setMyApplications] = useState([]);
   const [selectedApplication, setSelectedApplication] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [dashError, setDashError] = useState(null);
 
-  // Fetch all necessary data when the component mounts.
-  useEffect(() => {
-    getStudentDashboard()
-    .then((data) => {
-     setDash(data);
-     })
-  .catch((err) => {
-    console.error("Dashboard error:", err);
-  });
-
-  getMyTasks({ status: "pending" })
-    .then(setTasks)
-    .catch(() => {});
-
-  getMyAchievements()
-    .then(setAchievements)
-    .catch(() => {});
-
-  getMyRecommendations()
-    .then(setRecs)
-    .catch(() => {});
-
-  getMyAssignments()
-    .then(setAssignments)
-    .catch(() => {});
-
-  // Recommended jobs
-  getRecommendedJobs()
-    .then((data) => {
-      setRecommendedJobs(data.jobs || []);
-    })
-    .catch((err) => {
-      console.error("Recommended jobs error:", err);
-      setRecommendedJobs([]);
-    });
-getNotifications()
-  .then((data) => {
-
-    if (!Array.isArray(data)) {
-      setNotifications([]);
-      return;
+  const dismissedKey = `edu_dismissed_announcements_${user?.id || 'student'}`;
+  const getDismissedIds = () => {
+    try {
+      const raw = localStorage.getItem(dismissedKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
     }
+  };
 
-    const now = Date.now();
-const twentyFourHours = 24 * 60 * 60 * 1000;
+  const markSeenLocally = (id) => {
+    try {
+      const seenKey = `edu_seen_announcements_${user?.id || 'student'}`;
+      const raw = localStorage.getItem(seenKey);
+      const seen = raw ? JSON.parse(raw) : [];
+      if (!seen.includes(id)) {
+        localStorage.setItem(seenKey, JSON.stringify([...seen, id]));
+      }
+    } catch {}
+  };
 
-const filteredNotifications = data
-  .map((notification) => ({
-    ...notification,
-    normalizedType: String(notification.type || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[\s-]+/g, "_"),
-  }))
-  .filter((notification) => {
-    const notificationAge =
-      now - new Date(notification.created_at).getTime();
+  const handleAnnouncementClick = (id) => {
+    try {
+      const dismissed = getDismissedIds();
+      if (!dismissed.includes(id)) {
+        localStorage.setItem(dismissedKey, JSON.stringify([...dismissed, id]));
+      }
+    } catch {}
+    markSeenLocally(id);
+    markAnnouncementNotificationsRead(id).finally(() => {
+      window.dispatchEvent(new CustomEvent('notifications_updated'));
+      window.dispatchEvent(new CustomEvent('announcements_seen'));
+    });
+    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+    navigate('/app/community', { state: { activeTab: 'Announcements' } });
+  };
 
-    return (
-      notificationAge <= twentyFourHours &&
-      [
-        "job_invitation",
-        "application",
-        "application_selected",
-        "interview_scheduled",
-        "interview_rescheduled",
-        "interview_cancelled",
-      ].includes(notification.normalizedType)
-    );
-  });
+  const handleDismissOnly = (e, id) => {
+    e.stopPropagation();
+    try {
+      const dismissed = getDismissedIds();
+      if (!dismissed.includes(id)) {
+        localStorage.setItem(dismissedKey, JSON.stringify([...dismissed, id]));
+      }
+    } catch {}
+    markSeenLocally(id);
+    markAnnouncementNotificationsRead(id).finally(() => {
+      window.dispatchEvent(new CustomEvent('notifications_updated'));
+      window.dispatchEvent(new CustomEvent('announcements_seen'));
+    });
+    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+  };
 
-    // Keep only the latest application update
-    const applicationNotifications =
-      filteredNotifications
-        .filter(
-          (notification) =>
-            notification.normalizedType === "application"
-        )
-        .sort(
-          (a, b) =>
-            new Date(b.created_at) -
-            new Date(a.created_at)
+  // Fetch all necessary data when the component mounts or when token becomes ready.
+  const loadDashboardData = React.useCallback(() => {
+    setDashError(null);
+
+    getStudentDashboard()
+      .then((data) => {
+        setDash(data);
+        setDashError(null);
+      })
+      .catch((err) => {
+        console.error("Dashboard error:", err);
+        setDashError(err.response?.data?.error || err.message || "Failed to load dashboard");
+      });
+
+    getAnnouncements()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        const dismissed = getDismissedIds();
+        setAnnouncements(list.filter((a) => !dismissed.includes(a.id)));
+      })
+      .catch((err) => {
+        console.error("Announcements error:", err);
+        setAnnouncements([]);
+      });
+
+    getMyTasks({ status: "pending" })
+      .then(setTasks)
+      .catch(() => {});
+
+    getMyAchievements()
+      .then(setAchievements)
+      .catch(() => {});
+
+    getMyRecommendations()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        const normalized = [];
+        list.forEach((item, itemIdx) => {
+          if (item.type === "ai_suggestions" || item.source === "ai") {
+            const suggestions = Array.isArray(item.suggestions) ? item.suggestions : [];
+            suggestions.forEach((s, idx) => {
+              normalized.push({
+                id: s.course_id || `ai-${itemIdx}-${idx}`,
+                title: s.title || "Recommended Course",
+                description: s.description || s.reason || "AI generated recommendation for you.",
+                category: s.category || "AI Recommendation",
+                difficulty: s.difficulty || "Intermediate",
+                thumbnail_url: s.thumbnail_url || null,
+                reason: s.reason || "Recommended based on your career path",
+                source: "ai",
+              });
+            });
+          } else if (item.course) {
+            normalized.push({
+              ...item.course,
+              reason: item.reason || "Recommended based on your skill gap",
+              source: "curated",
+            });
+          } else if (item.id && item.title) {
+            normalized.push({
+              ...item,
+              reason: item.reason || "Recommended course",
+              source: "curated",
+            });
+          }
+        });
+        setRecs(normalized);
+      })
+      .catch((err) => {
+        console.error("Recommendations error:", err);
+        setRecs([]);
+      });
+
+    getRecommendedJobs()
+      .then((data) => {
+        setRecommendedJobs(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.error("Recommended jobs error:", err);
+        setRecommendedJobs([]);
+      });
+
+    getNotifications()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        const now = Date.now();
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        const filteredNotifications = list
+          .map((notification) => ({
+            ...notification,
+            normalizedType: (notification.type || "")
+              .trim()
+              .toLowerCase()
+              .replace(/[\s-]+/g, "_"),
+          }))
+          .filter((notification) => {
+            const notificationAge = now - new Date(notification.created_at).getTime();
+            return (
+              notificationAge <= twentyFourHours &&
+              [
+                "job_invitation",
+                "application",
+                "application_selected",
+                "interview_scheduled",
+                "interview_rescheduled",
+                "interview_cancelled",
+              ].includes(notification.normalizedType)
+            );
+          });
+
+        const applicationNotifications = filteredNotifications
+          .filter((notification) => notification.normalizedType === "application")
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        const latestApplication = applicationNotifications.length > 0 ? [applicationNotifications[0]] : [];
+        const otherNotifications = filteredNotifications.filter(
+          (notification) => notification.normalizedType !== "application"
         );
 
-    const latestApplication =
-      applicationNotifications.length > 0
-        ? [applicationNotifications[0]]
-        : [];
+        const studentNotifications = [...latestApplication, ...otherNotifications].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        );
+        setNotifications(studentNotifications);
+      })
+      .catch((err) => {
+        console.error("Notifications error:", err);
+        setNotifications([]);
+      });
 
-    // Keep all other notification types
-    const otherNotifications =
-      filteredNotifications.filter(
-        (notification) =>
-          notification.normalizedType !== "application"
-      );
+    getMyJobApplications()
+      .then((data) => {
+        const applications = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.applications)
+          ? data.applications
+          : [];
+        setMyApplications(applications);
+      })
+      .catch((err) => {
+        console.error("My applications error:", err.response?.data || err.message);
+        setMyApplications([]);
+      });
+  }, [dismissedKey]);
 
-    // Combine and show newest notifications first
-    const studentNotifications = [
-      ...latestApplication,
-      ...otherNotifications,
-    ].sort(
-      (a, b) =>
-        new Date(b.created_at) -
-        new Date(a.created_at)
-    );
-    setNotifications(studentNotifications);
-  })
-  .catch((err) => {
-    console.error("Notifications error:", err);
-    setNotifications([]);
-  });
-
-  getMyJobApplications()
-  .then((data) => { 
-    const applications = Array.isArray(data)
-      ? data
-      : Array.isArray(data?.applications)
-      ? data.applications
-      : [];
-    setMyApplications(applications);
-  })
-  .catch((err) => {
-    console.error(
-      "My applications error:",
-      err.response?.data || err.message
-    );
-    setMyApplications([]);
-  });
-
-}, []);
+  useEffect(() => {
+    loadDashboardData();
+    const handleTokenReady = () => {
+      loadDashboardData();
+    };
+    window.addEventListener("edu_token_ready", handleTokenReady);
+    return () => window.removeEventListener("edu_token_ready", handleTokenReady);
+  }, [loadDashboardData]);
 
 
 const handleViewInterview = async (jobId) => {
@@ -259,10 +339,15 @@ const handleViewInterview = async (jobId) => {
   // ----------------------------------------------------
   if (!dash) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-500">
-          Loading dashboard...
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-3">
+        <div className="text-gray-500 font-medium">
+          {dashError ? "Unable to load dashboard data." : "Loading dashboard..."}
         </div>
+        {dashError && (
+          <Button size="sm" onClick={() => loadDashboardData()}>
+            Retry
+          </Button>
+        )}
       </div>
     );
   }
@@ -477,6 +562,88 @@ const availableJobs = recommendedJobs.filter(
 
 
       {/* ------------------------------------------------ */}
+      {/* Course Announcements Banner */}
+      {/* ------------------------------------------------ */}
+      {announcements.length > 0 && (
+        <Card className="!p-4 sm:!p-5 border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-50/50 via-white to-white shadow-xs">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 grid place-items-center text-sm font-bold shrink-0">
+                📣
+              </span>
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
+                  Course Announcements
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Click any announcement to open in Community Feed (will clear from dashboard once clicked)
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">
+                {announcements.length} {announcements.length === 1 ? 'New' : 'New'}
+              </span>
+              <button
+                onClick={() => navigate('/app/community', { state: { activeTab: 'Announcements' } })}
+                className="text-xs text-brand-blue-600 hover:underline font-semibold hidden sm:inline"
+              >
+                Community Feed →
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {announcements.map((a) => (
+              <div
+                key={a.id}
+                onClick={() => handleAnnouncementClick(a.id)}
+                className="p-3.5 sm:p-4 rounded-xl bg-white border border-amber-200/80 shadow-xs hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group relative"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-800 text-sm group-hover:text-amber-800 transition-colors">
+                      {a.title}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                      {a.audience === 'course' ? 'My Course' : 'All Learners'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                      {a.educator?.name && (
+                        <span className="font-medium text-slate-700">By {a.educator.name}</span>
+                      )}
+                      <span>•</span>
+                      <span>{fmtRel(a.created_at)}</span>
+                    </div>
+                    <button
+                      onClick={(e) => handleDismissOnly(e, a.id)}
+                      title="Dismiss from dashboard"
+                      className="w-5 h-5 rounded-full text-slate-300 hover:text-slate-600 hover:bg-slate-100 grid place-items-center text-xs transition"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed whitespace-pre-wrap">
+                  {a.message}
+                </p>
+                <div className="mt-2.5 flex items-center justify-between text-[11px] text-amber-700 font-medium pt-2 border-t border-amber-50">
+                  <span className="group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1">
+                    <span>View in Community Feed</span>
+                    <span>→</span>
+                  </span>
+                  <span className="text-slate-400 font-normal">Click to open & clear from dashboard</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+
+      {/* ------------------------------------------------ */}
       {/* Learning progress chart and recent activity */}
       {/* ------------------------------------------------ */}
 
@@ -624,10 +791,10 @@ const availableJobs = recommendedJobs.filter(
 
             <ul className="space-y-2 text-sm">
 
-              {(dash?.recentActivity || []).map((a) => (
+              {(dash?.recentActivity || []).map((a, idx) => (
 
                 <li
-                  key={a.id}
+                  key={a.id || `act-${idx}`}
                   className="flex items-center gap-2"
                 >
 
@@ -886,9 +1053,9 @@ const availableJobs = recommendedJobs.filter(
 
               {job.required_skills?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
-                  {job.required_skills.map((skill) => (
+                  {job.required_skills.map((skill, idx) => (
                     <span
-                      key={skill}
+                      key={`${skill}-${idx}`}
                       className="text-[11px] px-2 py-1 rounded-full bg-brand-blue-50 text-brand-blue-700"
                     >
                       {skill}
@@ -940,7 +1107,7 @@ const availableJobs = recommendedJobs.filter(
   </div>
 ) : (
   <div className="space-y-3">
-    {notifications.map((notification) => {
+    {notifications.map((notification, idx) => {
       const type = String(notification.type || "")
         .trim()
         .toLowerCase()
@@ -968,7 +1135,7 @@ const availableJobs = recommendedJobs.filter(
 
       return (
         <div
-          key={notification.id}
+          key={notification.id || `notif-${idx}`}
           className="p-4 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
         >
           <div className="flex items-start gap-3">
@@ -1059,9 +1226,9 @@ const availableJobs = recommendedJobs.filter(
     }
   >
     <ul className="space-y-2 text-sm">
-      {recs.slice(0, 3).map((r) => (
+      {recs.slice(0, 3).map((r, idx) => (
         <li
-          key={r.id}
+          key={r.id || `rec-${idx}`}
           className="flex items-center gap-2"
         >
           <span className="text-brand-blue-500">
@@ -1069,7 +1236,7 @@ const availableJobs = recommendedJobs.filter(
           </span>
 
           <span className="font-medium text-slate-800">
-            {r.course?.title}
+            {r.title}
           </span>
 
           <span className="text-xs text-slate-500 truncate">

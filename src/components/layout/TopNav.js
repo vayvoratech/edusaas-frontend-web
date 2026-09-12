@@ -89,6 +89,13 @@ export function TopNav({ onOpenNav = () => {} }) {
     };
 
     loadNotifications();
+
+    const handleNotifUpdate = () => {
+      loadNotifications();
+    };
+
+    window.addEventListener('notifications_updated', handleNotifUpdate);
+    return () => window.removeEventListener('notifications_updated', handleNotifUpdate);
   }, [user?.id]);
 
   const [toastMessage, setToastMessage] = useState(null);
@@ -112,6 +119,7 @@ export function TopNav({ onOpenNav = () => {} }) {
         try {
           await markAllNotificationsRead();
           setNotifications(prev => prev.map(n => ({ ...n, read_status: true })));
+          window.dispatchEvent(new CustomEvent('notifications_updated'));
         } catch (err) {
           console.error("Failed to mark all as read:", err);
         }
@@ -129,6 +137,7 @@ export function TopNav({ onOpenNav = () => {} }) {
       try {
         await markNotificationRead(id);
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_status: true } : n));
+        window.dispatchEvent(new CustomEvent('notifications_updated'));
       } catch (err) {
         console.error("Failed to mark as read:", err);
       }
@@ -137,6 +146,18 @@ export function TopNav({ onOpenNav = () => {} }) {
     setOpenNotif(false);
     setDisplayLimit(5);
 
+    if (type === 'announcement' && reference_id) {
+      try {
+        const seenKey = `edu_seen_announcements_${user?.id || 'user'}`;
+        const raw = localStorage.getItem(seenKey);
+        const seen = raw ? JSON.parse(raw) : [];
+        if (!seen.includes(reference_id)) {
+          localStorage.setItem(seenKey, JSON.stringify([...seen, reference_id]));
+        }
+      } catch {}
+      window.dispatchEvent(new CustomEvent('announcements_seen'));
+    }
+
     if (type === 'connection_request') {
       navigate('/app/community', { state: { activeTab: 'Connections' } });
     } else if (type === 'new_post' || type === 'new_job' || type === 'new_course') {
@@ -144,6 +165,8 @@ export function TopNav({ onOpenNav = () => {} }) {
       navigate('/app/community', { state: { scrollToPost: reference_id } });
     } else if (type === 'connection_accepted') {
       navigate('/app/community', { state: { activeTab: 'Connections' } });
+    } else if (type === 'announcement') {
+      navigate('/app/community', { state: { activeTab: 'Announcements' } });
     }
   };
 

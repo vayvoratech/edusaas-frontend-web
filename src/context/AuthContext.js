@@ -75,44 +75,84 @@ export function AuthProvider({ children }) {
     }
   }, [isLoaded, isSignedIn, user]);
 
+  const [isSyncing, setIsSyncing] = React.useState(() => {
+    return !localStorage.getItem('edu_token');
+  });
+
   React.useEffect(() => {
-    if (isLoaded && isSignedIn && user) {
-      const token = localStorage.getItem('edu_token');
-      if (!token) {
-        (async () => {
-          try {
-            const clerkToken = await getToken();
-            const res = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:5000'}/api/users/sync`, {
-              method: "POST",
-              headers: { 
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${clerkToken}`
-              },
-              body: JSON.stringify({
-                clerkId: user.id,
-                emailAddresses: user.emailAddresses,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                username: user.username,
-                unsafeMetadata: user.unsafeMetadata
-              })
-            });
-            const data = await res.json();
-            if (data.accessToken) {
-              localStorage.setItem('edu_token', data.accessToken);
-              if (data.refreshToken) localStorage.setItem('edu_refresh', data.refreshToken);
-              if (data.user) {
-                localStorage.setItem('edu_user', JSON.stringify(data.user));
-                setDbUser(data.user);
-              }
-              window.location.reload();
-            }
-          } catch (err) {
-            console.error("Auto-sync failed:", err);
-          }
-        })();
-      }
+    if (!isLoaded) return;
+    if (!isSignedIn || !user) {
+      setIsSyncing(false);
+      return;
     }
+
+    const token = localStorage.getItem('edu_token');
+    const storedUser = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('edu_user'));
+      } catch {
+        return null;
+      }
+    })();
+
+    // If token exists and belongs to the current Clerk user, we are already synchronized
+    if (token && storedUser && storedUser.clerk_id === user.id) {
+      setIsSyncing(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsSyncing(true);
+
+    (async () => {
+      try {
+        const clerkToken = await getToken();
+        if (!clerkToken) {
+          if (isMounted) setIsSyncing(false);
+          return;
+        }
+
+        const res = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:5000'}/api/users/sync`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${clerkToken}`
+          },
+          body: JSON.stringify({
+            role: user.unsafeMetadata?.role || 'student',
+            domainRoleId: user.unsafeMetadata?.domain_role_id || null,
+            clerkId: user.id,
+            primaryEmailAddress: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress,
+            emailAddresses: user.emailAddresses,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            username: user.username,
+            unsafeMetadata: user.unsafeMetadata
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.accessToken) {
+            localStorage.setItem('edu_token', data.accessToken);
+            if (data.refreshToken) localStorage.setItem('edu_refresh', data.refreshToken);
+            if (data.user) {
+              localStorage.setItem('edu_user', JSON.stringify(data.user));
+              if (isMounted) setDbUser(data.user);
+            }
+            window.dispatchEvent(new CustomEvent('edu_token_ready', { detail: data.accessToken }));
+          }
+        }
+      } catch (err) {
+        console.error("Auto-sync failed:", err);
+      } finally {
+        if (isMounted) setIsSyncing(false);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
   }, [isLoaded, isSignedIn, user, getToken]);
 
   const updateAuthUser = React.useCallback((patch) => {
@@ -177,7 +217,9 @@ export function AuthProvider({ children }) {
       role,
       updateAuthUser,
       authError: null,
-      isAuthenticated: isSignedIn,
+      isLoaded,
+      loading: !isLoaded || (isSignedIn && isSyncing),
+      isAuthenticated: Boolean(isSignedIn || (isLoaded && dbUser)),
       login: async () => {
         return false; // Clerk handles login now
       },
@@ -189,10 +231,11 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('edu_refresh');
         localStorage.removeItem('edu_user');
         setDbUser(null);
+        setIsSyncing(false);
         signOut({ redirectUrl: '/login' });
       },
     }),
-    [mergedUser, backendUser, user, role, updateAuthUser, isSignedIn, signOut]
+    [mergedUser, backendUser, user, role, updateAuthUser, isLoaded, isSignedIn, isSyncing, dbUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

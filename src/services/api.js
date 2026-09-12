@@ -123,7 +123,10 @@ export const getDomainRoles = async () => {
   const res = await api.get("/api/domain-roles");
   return res.data.data;
 };
-export const getUserProfile = (id) => api.get(`/api/users/${id}`).then((r) => r.data);
+export const getUserProfile = (id) => {
+  const targetId = (!id || id === "undefined" || id === "null") ? "me" : id;
+  return api.get(`/api/users/${targetId}`).then((r) => r.data);
+};
 export const updateUserName = (id, name) =>
   api.patch(`/api/users/${id}`, { name }).then((r) => r.data);
 export const saveUserProfile = (id, data) =>
@@ -175,8 +178,10 @@ export const getAssessmentResults = (id) => api.get(`/api/assessments/${id}/resu
 export const getAssessmentOverview = () =>
   api.get("/api/assessments/overview").then((r) => r.data);
 
-export const fetchGapReport = (userId) =>
-  api.get(`/api/gap-report/${userId}`).then((r) => r.data);
+export const fetchGapReport = (userId) => {
+  const targetId = (!userId || userId === "undefined" || userId === "null") ? "me" : userId;
+  return api.get(`/api/gap-report/${targetId}`).then((r) => r.data);
+};
 
 
 // Initial Adaptive Skill Assessment
@@ -271,6 +276,16 @@ export const getCourse = (id) => api.get(`/api/courses/${id}`).then((r) => r.dat
 export const createCourse = (data) => api.post("/api/courses", data).then((r) => r.data);
 export const updateCourse = (id, data) => api.patch(`/api/courses/${id}`, data).then((r) => r.data);
 export const deleteCourse = (id) => api.delete(`/api/courses/${id}`).then((r) => r.data);
+
+// Course Ratings & Feedback
+export const rateCourse = (courseId, data) =>
+  api.post(`/api/courses/${courseId}/ratings`, data).then((r) => r.data);
+export const getMyCourseRating = (courseId) =>
+  api.get(`/api/courses/${courseId}/ratings/me`).then((r) => r.data);
+export const getCourseRatings = (courseId) =>
+  api.get(`/api/courses/${courseId}/ratings`).then((r) => r.data);
+export const getEducatorCourseFeedback = () =>
+  api.get(`/api/courses/educator/reviews`).then((r) => r.data);
 
 // Lessons
 export const getLessonsForCourse = (courseId) =>
@@ -367,7 +382,7 @@ export const inviteCandidate = (jobId, studentId, message) =>
 export const assignCourse = (courseId,{userId,due_date,note,}) =>
     api.post(`/api/courses/${courseId}/assign`, {userId,due_date,note,}).then((r) => r.data);
 export const getMyAssignments = () =>
-  api.get('/api/me/assignments').then((r) => r.data);
+  api.get('/api/tasks').then((r) => r.data).catch(() => []);
 
 export const getCourseAssignments = (courseId) =>
   api.get(`/api/courses/${courseId}/assignments`).then((r) => r.data);
@@ -475,6 +490,8 @@ export const getEligibleStudents = (jobId) =>
 export const getNotifications = () => api.get("/api/notifications").then((r) => r.data);
 export const markNotificationRead = (id) => api.patch(`/api/notifications/${id}/read`).then((r) => r.data);
 export const markAllNotificationsRead = () => api.patch("/api/notifications/read-all").then((r) => r.data);
+export const markAnnouncementNotificationsRead = (announcementId) =>
+  api.patch("/api/notifications/read-announcements", { announcementId }).then((r) => r.data).catch(() => ({}));
 
 // Admin
 export const getAllUsers = (params = {}) =>

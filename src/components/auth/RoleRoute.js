@@ -1,28 +1,31 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
-// A simple loading spinner component to improve user experience
+// Clean branded loading spinner while authentication and backend token sync complete
 function CenteredSpinner() {
-    return <div className="grid place-items-center h-screen w-screen">Loading...</div>;
+    return (
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3">
+            <div className="w-10 h-10 border-4 border-brand-blue-200 border-t-brand-blue-600 rounded-full animate-spin" />
+            <p className="text-sm font-medium text-slate-600">Setting up your dashboard...</p>
+        </div>
+    );
 }
 
 export default function RoleRoute({ allowedRoles }) {
     const { user, role, loading } = useAuth();
 
-    // If we have a user and their role is allowed, render the page.
-    // This is the most important, positive case.
+    // 1. If loading (Clerk or backend sync running), wait and do NOT mount dashboard yet!
+    if (loading) {
+        return <CenteredSpinner />;
+    }
+
+    // 2. If authenticated and role matches, render dashboard
     const normalizedRole = role?.toLowerCase();
     const normalizedAllowed = allowedRoles?.map(r => r.toLowerCase());
     if (user && normalizedRole && (!normalizedAllowed || normalizedAllowed.includes(normalizedRole))) {
         return <Outlet />;
     }
 
-    // If the initial authentication check is still running, show a loading spinner.
-    // This prevents a redirect while we're still figuring out who the user is.
-    if (loading) {
-        return <CenteredSpinner />;
-    }
-
-    // If loading is finished and we still don't have an authorized user, THEN we redirect.
+    // 3. Otherwise, redirect to login
     return <Navigate to="/login" replace />;
 }
