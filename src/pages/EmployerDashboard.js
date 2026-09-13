@@ -363,6 +363,25 @@ console.table(
   // Load all available domain roles
 getDomainRoles()
     .then((data) => {
+      console.log("ALL DOMAIN ROLES FROM API:", data);
+console.table(
+  Array.isArray(data)
+    ? data.map((role) => ({
+        domain_role_id: role.domain_role_id,
+        domain_id: role.domain_id,
+        domain_name: role.domain_name,
+      }))
+    : []
+);
+
+console.log(
+  "UNIQUE ROLE NAMES:",
+  [...new Set(
+    (Array.isArray(data) ? data : [])
+      .map((role) => role.domain_name?.trim())
+      .filter(Boolean)
+  )]
+);
       setDomainRoles(
         Array.isArray(data) ? data : []
       );
@@ -711,10 +730,20 @@ const filteredCandidates = candidates
       // Domain Role Filter
           if (
   domainRoleFilter !== "all" &&
-  candidate.domain_role !== domainRoleFilter
+  String(candidate.domain_role_id) !== String(domainRoleFilter)
 ) {
   return false;
 }
+
+console.table(
+  domainRoles.map((r) => ({
+    domain_role_id: r.domain_role_id,
+    domain_id: r.domain_id,
+    domain_name: r.domain_name,
+    role_name: r.role_name,
+    name: r.name
+  }))
+);
 
   // Application Status Filter
     if (applicationStatusFilter !== "all") {
@@ -792,8 +821,18 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
   pipelinePage * pipelineItemsPerPage
 );
 
-
-
+const sortedDomainRoles = Array.from(
+  new Map(
+    domainRoles.map((role) => [
+      role.domain_role_id,
+      role,
+    ])
+  ).values()
+).sort((a, b) =>
+  (a.domain_name || "").localeCompare(
+    b.domain_name || ""
+  )
+);
 
   return (
     <div className="space-y-6">
@@ -1142,13 +1181,14 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
   >
     <option value="all">All Roles</option>
 
-    {domainRoles.map((role) => (
-      <option key={role.domain_role_id} value={role.domain_id}>
+    {sortedDomainRoles.map((role) => (
+      <option key={role.domain_role_id} value={role.domain_role_id}>
         {role.domain_name}
       </option>
     ))}
   </select>
 </div>
+
 
 
   {/* Match Score Filter */}
@@ -2581,7 +2621,7 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
                     Target Role
                   </div>
                   <div className="text-sm font-semibold text-slate-800 mt-1">
-                    {profileCandidate.role_target || "—"}
+                    {profileCandidate.domain_role || "—"}
                   </div>
                 </div>
 

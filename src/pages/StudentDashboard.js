@@ -1008,7 +1008,6 @@ const availableJobs = recommendedJobs.filter(
 
       )}
 
-
 {/* Eligible Job Opportunities */}
 {/* ------------------------------------------------ */}
 
@@ -1026,64 +1025,162 @@ const availableJobs = recommendedJobs.filter(
       {availableJobs.map((job) => (
         <div
           key={job.id}
-          className="p-4 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
+          className="p-4 rounded-xl border border-slate-200 hover:bg-slate-50 transition"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">💼</span>
+            {/* Job Summary */}
+            <div className="min-w-0 flex-1">
+
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">
+                  💼
+                </span>
 
                 <div>
-                  <h3 className="font-semibold text-slate-900">
+                  <h3 className="font-semibold text-slate-900 text-lg">
                     {job.title}
                   </h3>
 
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Job Opportunity
                   </p>
                 </div>
               </div>
 
-              {job.description && (
-                <p className="text-sm text-slate-600 mt-2 line-clamp-2">
-                  {job.description}
-                </p>
-              )}
+              {/* Basic Job Information */}
+              <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 text-xs text-slate-600">
 
-              {job.required_skills?.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {job.required_skills.map((skill, idx) => (
-                    <span
-                      key={`${skill}-${idx}`}
-                      className="text-[11px] px-2 py-1 rounded-full bg-brand-blue-50 text-brand-blue-700"
-                    >
-                      {skill}
-                    </span>
-                  ))}
+                {job.location && (
+                  <span>
+                    📍 {job.location}
+                  </span>
+                )}
+
+                {job.employment_type && (
+                  <span>
+                    💼 {job.employment_type}
+                  </span>
+                )}
+
+                {job.work_mode && (
+                  <span>
+                    🏠 {job.work_mode}
+                  </span>
+                )}
+
+                {job.salary && (
+                  <span>
+                    💰 {job.salary}
+                  </span>
+                )}
+
+              </div>
+
+              {/* Qualification + Branch */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+
+                {job.qualification && (
+                  <div>
+                    <p className="text-[11px] text-slate-400 uppercase tracking-wide">
+                      Qualification
+                    </p>
+
+                    <p className="text-sm font-medium text-slate-700 mt-0.5">
+                      {job.qualification === "bachelors"
+                        ? "Bachelor's Degree"
+                        : job.qualification === "masters"
+                        ? "Master's Degree"
+                        : job.qualification === "diploma"
+                        ? "Diploma"
+                        : job.qualification === "any"
+                        ? "Any Qualification"
+                        : job.qualification}
+                    </p>
+                  </div>
+                )}
+
+                {job.eligible_branches?.length > 0 && (
+                  <div>
+                    <p className="text-[11px] text-slate-400 uppercase tracking-wide">
+                      Eligible Branches
+                    </p>
+
+                    <p className="text-sm font-medium text-slate-700 mt-0.5">
+                      {Array.isArray(job.eligible_branches)
+                        ? job.eligible_branches.join(", ")
+                        : job.eligible_branches}
+                    </p>
+                  </div>
+                )}
+
+              </div>
+
+             {/* Required Skills */}
+{job.required_skills?.length > 0 && (
+  <div className="mt-4">
+    <p className="text-[11px] text-slate-400 uppercase tracking-wide mb-2">
+      Required Skills
+    </p>
+
+    <div className="flex flex-wrap gap-1.5">
+      {job.required_skills.map((skill, idx) => (
+        <span
+          key={`${skill}-${idx}`}
+          className="text-[11px] px-2 py-1 rounded-full bg-brand-blue-50 text-brand-blue-700"
+        >
+          {skill}
+        </span>
+      ))}
+    </div>
+  </div>
+)}
+
+              {/* Deadline */}
+              {job.application_deadline && (
+                <div className="mt-4 text-xs">
+                  <span className="text-slate-400">
+                    Application Deadline:
+                  </span>{" "}
+                  <span className="font-medium text-slate-700">
+                    {new Date(
+                      job.application_deadline
+                    ).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
                 </div>
               )}
+
             </div>
 
-            <div className="flex flex-col items-start sm:items-end gap-2">
+            {/* Right Side */}
+            <div className="flex flex-col items-start lg:items-end gap-2 shrink-0">
 
               {job.skill_match !== undefined && (
                 <span className="text-xs font-semibold text-brand-green-700">
                   {job.skill_match}% Skill Match
                 </span>
               )}
-            <Link
-  to={`/app/jobs/${job.id}`}
-  className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-brand-blue-600 text-white text-sm hover:bg-brand-blue-700">
-  View Job 
-</Link>
-     </div>
+
+              <Link
+                to={`/app/jobs/${job.id}`}
+                className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-brand-blue-600 text-white text-sm font-medium hover:bg-brand-blue-700 transition"
+              >
+                View Job →
+              </Link>
+
+            </div>
+
           </div>
-             </div>
+        </div>
       ))}
     </div>
   </Card>
 )}
+
 
 
       {/* ------------------------------------------------ */}

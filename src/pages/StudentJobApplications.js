@@ -196,13 +196,24 @@ export default function StudentJobApplications() {
   };
 
   const getInterview = (application) => {
-    return (
-      application?.interview ||
-      interviews[application?.id] ||
-      null
-    );
-  };
+  const interview =
+    application?.interview ||
+    interviews[application?.id] ||
+    null;
 
+  if (!interview) {
+    return null;
+  }
+
+  return interview.interview
+    ? {
+        ...interview.interview,
+        application_id: interview.application_id,
+        job_id: interview.job_id,
+        job_title: interview.job_title,
+      }
+    : interview;
+};
   const hasResume = (application) => {
     return Boolean(
       application?.application_data?.resume
@@ -210,26 +221,25 @@ export default function StudentJobApplications() {
   };
 
   const hasVideo = (application) => {
-    return Boolean(
-      application?.application_data?.video?.key
-    );
-  };
+  return Boolean(
+    application?.application_data?.video?.key
+  );
+};
 
-  const getInterviewLabel = (application) => {
-    const interview = getInterview(application);
 
-    if (!interview) {
-      return "Not scheduled";
-    }
+const getInterviewLabel = (application) => {
+  const interview = getInterview(application);
 
-    return (
-      interview.status
-        ? String(interview.status)
-            .replace(/_/g, " ")
-            .replace(/\b\w/g, (char) => char.toUpperCase())
-        : "Scheduled"
-    );
-  };
+  if (!interview) {
+    return "No interview scheduled";
+  }
+
+  return interview.interview_type
+    ? String(interview.interview_type)
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase())
+    : "Interview scheduled";
+};
 
   /* ---------------------------------------------------------
      Statistics
@@ -351,17 +361,22 @@ export default function StudentJobApplications() {
     try {
       setLoadingInterview(true);
 
-      let interview = getInterview(application);
+       let interview = getInterview(application);
 
-      if (!interview) {
-        interview = await getMyInterview(
-          application.job_id
-        );
-      }
 
-      if (interview) {
-        setSelectedInterview(interview);
-      }
+   if (interview) {
+  setSelectedInterview(
+    interview.interview
+      ? {
+          ...interview.interview,
+          application_id: interview.application_id,
+          job_id: interview.job_id,
+          job_title: interview.job_title,
+        }
+      : interview
+  );
+}
+
     } catch (err) {
       console.error(
         "Failed to load interview:",
@@ -1108,136 +1123,136 @@ return (
           Interview Modal
       ------------------------------------------------------- */}
 
-      {selectedInterview && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-6"
-          onClick={() => setSelectedInterview(null)}
-        >
-          <div
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="border-b border-slate-200 px-6 py-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                    Interview
-                  </p>
+      {/* Interview Details Modal */}
+{selectedInterview && (
+  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-6">
+    <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl">
 
-                  <h2 className="mt-1 text-xl font-bold text-slate-900">
-                    Interview Details
-                  </h2>
-                </div>
+      {/* Header */}
+      <div className="border-b border-slate-200 px-6 py-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+              Interview
+            </p>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedInterview(null)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-5 p-6">
-              {/* Status */}
-              <div className="rounded-2xl bg-emerald-50 p-5">
-                <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">
-                  Status
-                </p>
-
-                <p className="mt-1 text-lg font-bold text-emerald-800">
-                  {selectedInterview.status
-                    ? String(selectedInterview.status)
-                        .replace(/_/g, " ")
-                        .replace(/\b\w/g, (char) =>
-                          char.toUpperCase()
-                        )
-                    : "Scheduled"}
-                </p>
-              </div>
-
-              {/* Date */}
-              {selectedInterview.scheduled_at && (
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Date & Time
-                  </p>
-
-                  <p className="mt-1 text-sm font-semibold text-slate-700">
-                    {formatDate(
-                      selectedInterview.scheduled_at,
-                      true
-                    )}
-                  </p>
-                </div>
-              )}
-
-              {/* Duration */}
-              {selectedInterview.duration && (
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Duration
-                  </p>
-
-                  <p className="mt-1 text-sm font-semibold text-slate-700">
-                    {selectedInterview.duration} minutes
-                  </p>
-                </div>
-              )}
-
-              {/* Interview Type */}
-              {selectedInterview.interview_type && (
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Interview Type
-                  </p>
-
-                  <p className="mt-1 text-sm font-semibold capitalize text-slate-700">
-                    {String(
-                      selectedInterview.interview_type
-                    ).replace(/_/g, " ")}
-                  </p>
-                </div>
-              )}
-
-              {/* Meeting Link */}
-              {selectedInterview.meeting_link && (
-                <a
-                  href={selectedInterview.meeting_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block rounded-xl bg-brand-blue-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-brand-blue-700"
-                >
-                  Join Interview →
-                </a>
-              )}
-
-              {/* Notes */}
-              {selectedInterview.notes && (
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Notes
-                  </p>
-
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                    {selectedInterview.notes}
-                  </p>
-                </div>
-              )}
-
-              {/* Close */}
-              <button
-                type="button"
-                onClick={() => setSelectedInterview(null)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Close
-              </button>
-            </div>
+            <h2 className="mt-1 text-xl font-bold text-slate-900">
+              Interview Details
+            </h2>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setSelectedInterview(null)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            ×
+          </button>
         </div>
-      )}
+      </div>
+
+      {/* Details */}
+      <div className="space-y-5 p-6">
+
+        {/* Status */}
+        <div className="rounded-2xl bg-emerald-50 p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+            Status
+          </p>
+
+          <p className="mt-1 text-lg font-bold text-emerald-800">
+            {selectedInterview.status
+              ? String(selectedInterview.status)
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (char) => char.toUpperCase())
+              : "Scheduled"}
+          </p>
+        </div>
+
+        {/* Date & Time */}
+        {selectedInterview.scheduled_at && (
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Date & Time
+            </p>
+
+            <p className="mt-1 text-sm font-semibold text-slate-700">
+              {formatDate(
+                selectedInterview.scheduled_at,
+                true
+              )}
+            </p>
+          </div>
+        )}
+
+        {/* Duration */}
+        {selectedInterview.duration && (
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Duration
+            </p>
+
+            <p className="mt-1 text-sm font-semibold text-slate-700">
+              {selectedInterview.duration} minutes
+            </p>
+          </div>
+        )}
+
+        {/* Interview Type */}
+        {selectedInterview.interview_type && (
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Interview Type
+            </p>
+
+            <p className="mt-1 text-sm font-semibold capitalize text-slate-700">
+              {String(selectedInterview.interview_type).replace(
+                /_/g,
+                " "
+              )}
+            </p>
+          </div>
+        )}
+
+        {/* Meeting Link */}
+        {selectedInterview.meeting_link && (
+          <a
+            href={selectedInterview.meeting_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-xl bg-brand-blue-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-brand-blue-700"
+          >
+            Join Interview →
+          </a>
+        )}
+
+        {/* Notes */}
+        {selectedInterview.notes && (
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Notes
+            </p>
+
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+              {selectedInterview.notes}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-slate-200 px-6 py-4">
+        <button
+          type="button"
+          onClick={() => setSelectedInterview(null)}
+          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   </div>
 );
