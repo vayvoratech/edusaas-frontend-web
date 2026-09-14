@@ -5,11 +5,23 @@ import { TopNav } from './TopNav';
 import { useAuth } from '../../context/AuthContext';
 
 export function AppLayout() {
-   const { isAuthenticated } = useAuth();
-    const [mobileNavOpen, setMobileNavOpen] = useState(false);
-    const location = useLocation();
+  const { isAuthenticated, loading } = useAuth();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const location = useLocation();
 
-    if (!isAuthenticated) return <Navigate to="/login" replace />;
+  // Wait for Clerk + backend authentication to finish restoring.
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-slate-500">Loading...</div>
+      </div>
+    );
+  }
+
+  // Only redirect after authentication has been fully checked.
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
     const isInitialAssessment =
       location.pathname === "/app/initial-assessment";
