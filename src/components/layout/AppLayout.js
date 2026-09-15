@@ -20,10 +20,12 @@ export function AppLayout() {
     );
   }
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
-    const isInitialAssessment =
-      location.pathname === "/app/initial-assessment";
+  const isInitialAssessment =
+    location.pathname === "/app/initial-assessment";
 
   return (
     <div className="flex bg-slate-50 min-h-screen">

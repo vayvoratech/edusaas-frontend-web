@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useEffect,
+  useState,
+} from 'react';
 import { useUser, useAuth as useClerkAuth } from '@clerk/react';
 
 const AuthContext = createContext(null);
@@ -12,7 +18,7 @@ export function AuthProvider({ children }) {
   const { user, isLoaded, isSignedIn } = useUser();
   const { signOut, getToken } = useClerkAuth();
 
-  const [dbUser, setDbUser] = React.useState(() => {
+  const [dbUser, setDbUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('edu_user')) || null;
     } catch (_) {
@@ -23,12 +29,12 @@ export function AuthProvider({ children }) {
   const setBackendUser = setDbUser;
 
   // Listen for local updates to edu_user (e.g. name edits, avatar changes)
-  React.useEffect(() => {
+  useEffect(() => {
     const handleUserUpdate = (e) => {
       try {
         const stored = e?.detail || JSON.parse(localStorage.getItem('edu_user') || 'null');
         if (stored) setDbUser(stored);
-      } catch (_) {}
+      } catch (_) { }
     };
 
     window.addEventListener('edu_user_updated', handleUserUpdate);
@@ -40,7 +46,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Background sync: Fetch latest user profile from PostgreSQL if signed in with token
-  React.useEffect(() => {
+  useEffect(() => {
     if (isLoaded && isSignedIn && user) {
       const token = localStorage.getItem('edu_token');
       if (token) {
@@ -57,6 +63,7 @@ export function AuthProvider({ children }) {
                 const updated = {
                   ...current,
                   id: data.id,
+                  clerk_id: data.clerk_id || current.clerk_id || user.id,
                   name: data.name,
                   username: data.username,
                   email: data.email,
@@ -75,11 +82,11 @@ export function AuthProvider({ children }) {
     }
   }, [isLoaded, isSignedIn, user]);
 
-  const [isSyncing, setIsSyncing] = React.useState(() => {
+  const [isSyncing, setIsSyncing] = useState(() => {
     return !localStorage.getItem('edu_token');
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn || !user) {
       setIsSyncing(false);
@@ -96,7 +103,14 @@ export function AuthProvider({ children }) {
     })();
 
     // If token exists and belongs to the current Clerk user, we are already synchronized
-    if (token && storedUser && storedUser.clerk_id === user.id) {
+    const isMatchingClerk =
+      storedUser &&
+      (storedUser.clerk_id === user.id ||
+        (storedUser.email &&
+          user.primaryEmailAddress?.emailAddress &&
+          storedUser.email.toLowerCase() === user.primaryEmailAddress.emailAddress.toLowerCase()));
+
+    if (token && isMatchingClerk) {
       setIsSyncing(false);
       return;
     }
@@ -114,7 +128,7 @@ export function AuthProvider({ children }) {
 
         const res = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:5000'}/api/users/sync`, {
           method: "POST",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${clerkToken}`
           },
@@ -137,8 +151,9 @@ export function AuthProvider({ children }) {
             localStorage.setItem('edu_token', data.accessToken);
             if (data.refreshToken) localStorage.setItem('edu_refresh', data.refreshToken);
             if (data.user) {
-              localStorage.setItem('edu_user', JSON.stringify(data.user));
-              if (isMounted) setDbUser(data.user);
+              const fullUser = { ...data.user, clerk_id: user.id };
+              localStorage.setItem('edu_user', JSON.stringify(fullUser));
+              if (isMounted) setDbUser(fullUser);
             }
             window.dispatchEvent(new CustomEvent('edu_token_ready', { detail: data.accessToken }));
           }
@@ -218,14 +233,10 @@ export function AuthProvider({ children }) {
       updateAuthUser,
       authError: null,
       isLoaded,
-      loading: !isLoaded || (isSignedIn && isSyncing),
+      loading: !isLoaded || (isSignedIn && isSyncing && !dbUser && !localStorage.getItem('edu_token')),
       isAuthenticated: Boolean(isSignedIn || (isLoaded && dbUser)),
-      login: async () => {
-        return false; // Clerk handles login now
-      },
-      register: async () => {
-        return false; // Clerk handles register now
-      },
+      login: async () => false,
+      register: async () => false,
       logout: () => {
         localStorage.removeItem('edu_token');
         localStorage.removeItem('edu_refresh');
@@ -238,11 +249,13 @@ export function AuthProvider({ children }) {
     [mergedUser, backendUser, user, role, updateAuthUser, isLoaded, isSignedIn, isSyncing, dbUser, signOut]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
-  return ctx;
-};
+export function useAuth() {
+  return useContext(AuthContext);
+}

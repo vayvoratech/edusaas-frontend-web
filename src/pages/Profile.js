@@ -306,7 +306,7 @@ export default function Profile() {
           const updated = { ...currentStored, name: updatedName };
           localStorage.setItem('edu_user', JSON.stringify(updated));
           window.dispatchEvent(new CustomEvent('edu_user_updated', { detail: updated }));
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // Best effort reload Clerk user in frontend session if supported
@@ -314,7 +314,7 @@ export default function Profile() {
         if (user?.reload && typeof user.reload === 'function') {
           user.reload();
         }
-      } catch (_) {}
+      } catch (_) { }
 
       setIsEditingName(false);
     } catch (err) {
@@ -483,19 +483,19 @@ export default function Profile() {
           {isAdmin
             ? 'Administrator Profile & Platform Governance'
             : isEducator
-            ? 'Educator Profile & Teaching Portfolio'
-            : isEmployer
-            ? 'Employer Profile & Recruitment Hub'
-            : 'Education SaaS Profile Board'}
+              ? 'Educator Profile & Teaching Portfolio'
+              : isEmployer
+                ? 'Employer Profile & Recruitment Hub'
+                : 'Education SaaS Profile Board'}
         </h2>
         <p className="text-sm text-slate-500 mt-1">
           {isAdmin
             ? 'Manage administrative credentials, system access, and platform operations.'
             : isEducator
-            ? 'Manage your professional credentials, authored courses, and teaching impact.'
-            : isEmployer
-            ? 'Manage your company profile, active job postings, and talent pipeline.'
-            : "A complete picture of who you are, what you've learned, and what's next."}
+              ? 'Manage your professional credentials, authored courses, and teaching impact.'
+              : isEmployer
+                ? 'Manage your company profile, recruitment reach, and talent pipeline.'
+                : "A complete picture of who you are, what you've learned, and what's next."}
         </p>
       </div>
 
@@ -654,11 +654,10 @@ export default function Profile() {
                 {display.username}
               </p>
             )}
-            <div className={`text-xs font-semibold px-2.5 py-0.5 rounded-full inline-block mt-2 border ${
-              isAdmin
+            <div className={`text-xs font-semibold px-2.5 py-0.5 rounded-full inline-block mt-2 border ${isAdmin
                 ? 'bg-purple-50 text-purple-700 border-purple-200'
                 : 'bg-brand-blue-50 text-brand-blue-700 border-brand-blue-100'
-            }`}>
+              }`}>
               {isAdmin ? '🛡️ Super Administrator' : cap(display.role)}
             </div>
           </div>
@@ -1070,11 +1069,10 @@ export default function Profile() {
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <span
-                            className={`text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize ${
-                              isActive
+                            className={`text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize ${isActive
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                 : 'bg-amber-50 text-amber-700 border border-amber-200'
-                            }`}
+                              }`}
                           >
                             {c.status || 'Active'}
                           </span>
@@ -1109,81 +1107,119 @@ export default function Profile() {
           </Card>
         ) : isEmployer ? (
           <Card
-            title={`Active Job Openings (${employerJobs.length})`}
+            title="Recruitment Pipeline & Reach"
             className="lg:col-span-2"
             action={
               <Link
-                to="/app/jobs"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-blue-600 hover:text-brand-blue-700 bg-brand-blue-50 hover:bg-brand-blue-100 px-3 py-1.5 rounded-lg border border-brand-blue-200 transition-colors"
+                to="/app/candidates"
+                className="text-xs font-semibold text-brand-blue-600 hover:text-brand-blue-700 hover:underline"
               >
-                <span>+ Post New Job</span>
+                Candidate Pool →
               </Link>
             }
           >
             {loading ? (
-              <div className="grid sm:grid-cols-2 gap-4">
-                <SectionSkeleton lines={4} />
-                <SectionSkeleton lines={4} />
-              </div>
-            ) : employerJobs.length === 0 ? (
-              <EmptyState
-                icon="💼"
-                title="No active job postings published yet."
-                action={
-                  <Link
-                    to="/app/jobs"
-                    className="text-brand-blue-600 hover:text-brand-blue-700 font-medium text-sm mt-2 hover:underline underline-offset-2"
-                  >
-                    Post your first job opening →
-                  </Link>
-                }
-              />
+              <SectionSkeleton lines={4} />
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                {employerJobs.map((j) => {
-                  const isOpen = (j.status || '').toLowerCase() === 'open' || (j.status || '').toLowerCase() === 'active';
-                  return (
-                    <div
-                      key={j.id}
-                      className="flex flex-col justify-between p-4 rounded-xl border border-slate-200/80 bg-white hover:border-brand-blue-300 hover:shadow-sm transition-all group"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span
-                            className={`text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize ${
-                              isOpen
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}
-                          >
-                            {j.status || 'Open'}
-                          </span>
-                          <span className="text-[11px] font-medium text-slate-400 capitalize">
-                            {j.job_type || j.type || 'Full-time'}
-                          </span>
-                        </div>
-                        <h4 className="font-semibold text-slate-800 line-clamp-1 group-hover:text-brand-blue-600 transition-colors">
-                          {j.title}
-                        </h4>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                          {j.description || 'No description provided.'}
-                        </p>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="text-slate-400 truncate max-w-[120px]">
-                          {j.location || 'Remote'}
-                        </span>
-                        <Link
-                          to="/app/jobs"
-                          className="font-medium text-brand-blue-600 hover:text-brand-blue-700 hover:underline shrink-0"
-                        >
-                          View applicants →
-                        </Link>
-                      </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                      Active Openings
                     </div>
-                  );
-                })}
+                    <div className="text-2xl font-bold text-slate-900 mt-1">
+                      {employerStats?.jobOpenings ?? employerJobs.filter((j) => (j.status || '').toLowerCase() === 'open' || (j.status || '').toLowerCase() === 'active').length}
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      Accepting candidates
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                      Total Applicants
+                    </div>
+                    <div className="text-2xl font-bold text-brand-blue-600 mt-1">
+                      {employerStats?.newApplicants ?? 0}
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      Received applications
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                      Top AI Matches
+                    </div>
+                    <div className="text-2xl font-bold text-emerald-600 mt-1">
+                      {employerStats?.topMatches ?? 0}
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      High assessment fits
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                      Pre-Qualified
+                    </div>
+                    <div className="text-2xl font-bold text-slate-900 mt-1">
+                      {(employerStats?.candidateMatches?.strong || 0) + (employerStats?.candidateMatches?.good || 0)}
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      Benchmarked talent
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="font-medium text-slate-600">Candidate Match Distribution</span>
+                    <span className="font-bold text-slate-900">
+                      {employerStats?.topMatches ? `${employerStats.topMatches} Strong Matches` : 'Ready to hire'}
+                    </span>
+                  </div>
+                  <div
+                    className="h-2 bg-slate-100 rounded-full overflow-hidden flex"
+                    role="progressbar"
+                  >
+                    <div
+                      className="h-full bg-emerald-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          employerStats?.candidateMatches?.strong
+                            ? (employerStats.candidateMatches.strong / Math.max(1, (employerStats?.candidateMatches?.strong || 0) + (employerStats?.candidateMatches?.good || 0) + (employerStats?.candidateMatches?.possible || 0))) * 100
+                            : 45
+                        )}%`,
+                      }}
+                      title="Strong Matches"
+                    />
+                    <div
+                      className="h-full bg-brand-blue-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          employerStats?.candidateMatches?.good
+                            ? (employerStats.candidateMatches.good / Math.max(1, (employerStats?.candidateMatches?.strong || 0) + (employerStats?.candidateMatches?.good || 0) + (employerStats?.candidateMatches?.possible || 0))) * 100
+                            : 35
+                        )}%`,
+                      }}
+                      title="Good Matches"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 text-[11px] text-slate-500">
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Strong Fit
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-brand-blue-500 inline-block" /> Good Fit
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" /> Potential Fit
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </Card>
@@ -1624,120 +1660,97 @@ export default function Profile() {
       ) : isEmployer ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <Card
-            title="Recruitment Pipeline & Reach"
+            title="Recruiter Quick Actions & Tools"
             action={
               <Link
-                to="/app/candidates"
+                to="/app/dashboard"
                 className="text-xs font-semibold text-brand-blue-600 hover:text-brand-blue-700 hover:underline"
               >
-                Candidate Pool →
+                Employer Dashboard →
               </Link>
             }
           >
-            {loading ? (
-              <SectionSkeleton lines={4} />
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Active Openings
-                    </div>
-                    <div className="text-2xl font-bold text-slate-900 mt-1">
-                      {employerStats?.jobOpenings ?? employerJobs.filter((j) => (j.status || '').toLowerCase() === 'open' || (j.status || '').toLowerCase() === 'active').length}
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      Accepting candidates
-                    </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Link
+                to="/app/candidates"
+                className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 bg-white hover:border-brand-blue-400 hover:shadow-sm transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 grid place-items-center text-lg font-bold group-hover:scale-105 transition-transform">
+                    👥
                   </div>
-
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Total Applicants
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 group-hover:text-emerald-600 transition-colors">
+                      Candidate Search
                     </div>
-                    <div className="text-2xl font-bold text-brand-blue-600 mt-1">
-                      {employerStats?.newApplicants ?? 0}
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      Received applications
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Top AI Matches
-                    </div>
-                    <div className="text-2xl font-bold text-emerald-600 mt-1">
-                      {employerStats?.topMatches ?? 0}
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      High assessment fits
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Pre-Qualified
-                    </div>
-                    <div className="text-2xl font-bold text-slate-900 mt-1">
-                      {(employerStats?.candidateMatches?.strong || 0) + (employerStats?.candidateMatches?.good || 0)}
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      Benchmarked talent
+                    <div className="text-xs text-slate-500">
+                      Filter pre-assessed talent
                     </div>
                   </div>
                 </div>
+                <span className="text-slate-400 group-hover:text-emerald-600 text-xs font-semibold">Open →</span>
+              </Link>
 
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="font-medium text-slate-600">Candidate Match Distribution</span>
-                    <span className="font-bold text-slate-900">
-                      {employerStats?.topMatches ? `${employerStats.topMatches} Strong Matches` : 'Ready to hire'}
-                    </span>
+              <Link
+                to="/app/community"
+                className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 bg-white hover:border-brand-blue-400 hover:shadow-sm transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-blue-50 text-brand-blue-600 grid place-items-center text-lg font-bold group-hover:scale-105 transition-transform">
+                    💬
                   </div>
-                  <div
-                    className="h-2 bg-slate-100 rounded-full overflow-hidden flex"
-                    role="progressbar"
-                  >
-                    <div
-                      className="h-full bg-emerald-500"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          employerStats?.candidateMatches?.strong
-                            ? (employerStats.candidateMatches.strong / Math.max(1, (employerStats?.candidateMatches?.strong || 0) + (employerStats?.candidateMatches?.good || 0) + (employerStats?.candidateMatches?.possible || 0))) * 100
-                            : 45
-                        )}%`,
-                      }}
-                      title="Strong Matches"
-                    />
-                    <div
-                      className="h-full bg-brand-blue-500"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          employerStats?.candidateMatches?.good
-                            ? (employerStats.candidateMatches.good / Math.max(1, (employerStats?.candidateMatches?.strong || 0) + (employerStats?.candidateMatches?.good || 0) + (employerStats?.candidateMatches?.possible || 0))) * 100
-                            : 35
-                        )}%`,
-                      }}
-                      title="Good Matches"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4 mt-2 text-[11px] text-slate-500">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Strong Fit
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-brand-blue-500 inline-block" /> Good Fit
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" /> Potential Fit
-                    </span>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 group-hover:text-brand-blue-600 transition-colors">
+                      Community
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Engage with educators & peers
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+                <span className="text-slate-400 group-hover:text-brand-blue-600 text-xs font-semibold">Open →</span>
+              </Link>
+
+              <Link
+                to="/app/dashboard"
+                className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 bg-white hover:border-brand-blue-400 hover:shadow-sm transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 grid place-items-center text-lg font-bold group-hover:scale-105 transition-transform">
+                    📊
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 group-hover:text-purple-600 transition-colors">
+                      Hiring Analytics
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Pipeline conversion rates
+                    </div>
+                  </div>
+                </div>
+                <span className="text-slate-400 group-hover:text-purple-600 text-xs font-semibold">Open →</span>
+              </Link>
+
+              <Link
+                to="/app/settings"
+                className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 bg-white hover:border-brand-blue-400 hover:shadow-sm transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 grid place-items-center text-lg font-bold group-hover:scale-105 transition-transform">
+                    ⚙️
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 group-hover:text-amber-600 transition-colors">
+                      Preferences
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Notifications & profile settings
+                    </div>
+                  </div>
+                </div>
+                <span className="text-slate-400 group-hover:text-amber-600 text-xs font-semibold">Open →</span>
+              </Link>
+            </div>
           </Card>
 
           <Card
