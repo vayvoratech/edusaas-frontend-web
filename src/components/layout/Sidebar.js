@@ -11,6 +11,7 @@ const navByRole = {
     { to: '/app/recommendations', label: 'Recommendations', icon: '✨' },
     { to: '/app/community', label: 'Community', icon: '💬' },
     { to: '/app/my-insights', label: 'Insights', icon: '📊' },
+    { to: '/app/engagement-trends', label: 'Engagement Trends', icon: '🗓️' },
     { to: '/app/assessments', label: 'Assessments', icon: '📝' },
     { to: '/app/gap-report', label: 'Gap Report', icon: '📈' },
     { to: '/app/profile', label: 'My Profile', icon: '👤' },
@@ -28,6 +29,7 @@ const navByRole = {
   Employer: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/app/job-listings', label: 'Job Listings', icon: '📋' },
+    { to: '/app/certificate-validation', label: 'Certificate Validation', icon: '🎓' },
     { to: '/app/community', label: 'Community', icon: '💬' },
     { to: '/app/candidates', label: 'Candidates', icon: '🧑‍💼' },
     { to: '/app/analytics', label: 'Analytics', icon: '📈' },
@@ -36,6 +38,8 @@ const navByRole = {
   Admin: [
     { to: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/app/users', label: 'User Management', icon: '👥' },
+    { to: '/app/user-details', label: 'User Details', icon: '📋' },
+    
     { to: '/app/community', label: 'Community', icon: '💬' },
     { to: '/app/reports', label: 'Reports', icon: '📑' },
     { to: '/app/settings', label: 'Settings', icon: '⚙️' },

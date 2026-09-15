@@ -149,7 +149,9 @@ export const getStudentCandidates = () =>
 export const submitAssessment = (data) => api.post("/api/assessments", data).then((r) => r.data);
 export const getAssessmentResults = (id) => api.get(`/api/assessments/${id}/results`).then((r) => r.data);
 export const getAssessmentOverview = () => api.get("/api/assessments/overview").then((r) => r.data);
-export const fetchGapReport = (userId) => api.get(`/api/gap-report/${userId}`).then((r) => r.data);
+export const fetchGapReport = (userId) =>api.get(`/api/gap-report/${userId}`).then((r) => r.data?.data ?? r.data);
+export const getSkillGapAnalysis = (userId) =>
+  api.get(`/api/skill-gap-analysis/${userId}`).then((r) => r.data?.data ?? r.data);
 
 // Initial Adaptive Skill Assessment
 export const startInitialQuiz = () => api.post("/api/assessments/initial-quiz/start").then((r) => r.data);
@@ -238,8 +240,9 @@ export const pauseFinalQuizOnUnload = (sessionId) => {
 // ---------------------------------------------------------
 // Courses & Lessons API
 // ---------------------------------------------------------
-export const getCourses = (params = {}) => api.get("/api/courses", { params }).then((r) => r.data);
-export const getCourse = (id) => api.get(`/api/courses/${id}`).then((r) => r.data);
+export const getCourses = (params = {}) =>
+  api.get("/api/courses", { params }).then((r) => r.data?.data ?? r.data);
+export const getCourse = (id) => api.get(`/api/courses/${id}`).then((r) => r.data?.data ?? r.data);
 export const createCourse = (data) => api.post("/api/courses", data).then((r) => r.data);
 export const updateCourse = (id, data) => api.patch(`/api/courses/${id}`, data).then((r) => r.data);
 export const deleteCourse = (id) => api.delete(`/api/courses/${id}`).then((r) => r.data);
@@ -261,7 +264,7 @@ export const getCourseAssignments = (courseId) => api.get(`/api/courses/${course
 // ---------------------------------------------------------
 // Progress & Enrollments API
 // ---------------------------------------------------------
-export const getMyProgress = () => api.get("/api/progress").then((r) => r.data);
+export const getMyProgress = () => api.get("/api/progress").then((r) => r.data?.data ?? r.data);
 export const updateProgress = (lessonId, patch) =>
   api.patch(`/api/progress/${lessonId}`, patch).then((r) => r.data);
 export const submitQuiz = (lessonId, answers) =>
@@ -270,7 +273,16 @@ export const submitQuiz = (lessonId, answers) =>
 // Enrollments
 export const enrollCourse = (courseId) =>
   api.post("/api/enrollments", { course_id: courseId }).then((r) => r.data);
-export const getMyEnrollments = () => api.get("/api/enrollments").then((r) => r.data);
+export const getMyEnrollments = () =>
+  api.get("/api/enrollments").then((r) => r.data?.data ?? r.data);
+
+export const getMyCourseProficiency = async () => {
+  const [courses, enrollments] = await Promise.all([
+    getCourses(),
+    getMyEnrollments(),
+  ]);
+  return { courses, enrollments };
+};
 
 // ---------------------------------------------------------
 // Jobs & Assignments API
@@ -379,5 +391,9 @@ export const createCommunityPost = (data) =>
 
 export const getRecommendedJobs = () =>
   api.get("/api/jobs/recommended").then((r) => r.data);
+
+//certificatevalidation
+export const validateCertificate = (certificateCode) =>
+  api.get(`/api/certificate-validation/${certificateCode}`).then((r) => r.data);
 
 export default api;

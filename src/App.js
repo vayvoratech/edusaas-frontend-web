@@ -14,6 +14,8 @@ import GapReport from './pages/GapReport';
 import LearningPath from './pages/LearningPath';
 import Profile from './pages/Profile';
 import UserManagement from './pages/UserManagement';
+import UserDetails from './pages/user details';
+import CertificateValidation from './pages/certificatevalidation';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import JobDetails from "./pages/StudentViewJobs";
@@ -27,6 +29,7 @@ import TasksPage from './pages/TasksPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import StudentSettings from './pages/StudentSettings';
 import StudentInsights from './pages/StudentInsights';
+import EngagementTrends from './pages/EngagementTrends';
 import InitialAssessment from './pages/assessments/initial/InitialAssessment';
 import FinalAssessment from './pages/assessments/final/FinalAssessment';
 
@@ -40,7 +43,6 @@ import SendAnnouncement from './pages/SendAnnouncement';
 import JobListings from './pages/JobListings';
 import Candidates from './pages/Candidates';
 import EmployerAnalytics from './pages/EmployerAnalytics';
-
 import Placeholder from './pages/Placeholder';
 import Community from './pages/Community';
 
@@ -109,6 +111,7 @@ export default function App() {
               <Route path="tasks" element={<TasksPage />} />
               <Route path="recommendations" element={<RecommendationsPage />} />
               <Route path="my-insights" element={<StudentInsights />} />
+              <Route path="engagement-trends" element={<EngagementTrends />} />
               <Route path="assessments" element={<SkillAssessment />} />
               <Route path="initial-assessment" element={<InitialAssessment />} />
               <Route path="final-assessment" element={<FinalAssessment />} />
@@ -130,11 +133,13 @@ export default function App() {
               <Route path="job-listings" element={<JobListings />} />
               <Route path="candidates" element={<Candidates />} />
               <Route path="analytics" element={<EmployerAnalytics />} />
+              <Route path="certificate-validation" element={<CertificateValidation />} />
             </Route>
 
             {/* Admin */}
             <Route element={<RoleRoute allowedRoles={["Admin"]} />}>
               <Route path="users" element={<UserManagement />} />
+              <Route path="user-details" element={<UserDetails />} />
               <Route path="reports" element={<Reports />} />
 
               <Route

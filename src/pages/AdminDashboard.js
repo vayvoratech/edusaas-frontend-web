@@ -2,6 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Card, StatPill } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getInsights, getAllUsers } from '../services/api';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+
+const ROLE_COLORS = {
+  Student: '#2563eb',
+  Educator: '#10b981',
+  Employer: '#f59e0b',
+  Admin: '#8b5cf6',
+};
 
 export default function AdminDashboard() {
   const [insights, setInsights] = useState(null);
@@ -21,8 +29,30 @@ export default function AdminDashboard() {
   }, []);
 
   const t = insights?.totals || {};
+
+  const activeUsers = (users || []).filter((user) => {
+    const status = String(user?.status ?? '').trim().toLowerCase();
+    return status !== 'suspended';
+  });
+
+  const roleCounts = activeUsers.reduce((acc, user) => {
+    const rawRole = String(user?.role ?? '').trim();
+    const role = rawRole ? rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase() : 'Unknown';
+    acc[role] = (acc[role] || 0) + 1;
+    return acc;
+  }, {});
+
+  const activeUsersByRole = ['Student', 'Educator', 'Employer', 'Admin']
+    .map((role) => ({
+      name: role,
+      value: roleCounts[role] || 0,
+      color: ROLE_COLORS[role] || '#cbd5e1',
+    }))
+    .filter((item) => item.value > 0);
+
+  const totalActiveUsers = activeUsers.length;
   const stats = [
-    { label: 'Active Users', value: t.users ?? '—', tone: 'blue' },
+    { label: 'Active Users', tone: 'blue', isActiveUsers: true },
     { label: 'Active Courses', value: t.courses ?? '—', tone: 'green' },
     { label: 'Enrollments', value: t.enrollments ?? '—', tone: 'orange' },
     { label: 'Open Jobs', value: t.jobs ?? '—', tone: 'slate' },
@@ -42,13 +72,74 @@ export default function AdminDashboard() {
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Card key={s.label} className="!p-4">
-            <div className="text-xs text-slate-500">{s.label}</div>
-            <div className="text-2xl font-bold text-slate-900 mt-1">{s.value}</div>
-            <StatPill value={`avg score ${insights?.assessments?.average_score ?? 0}%`} tone={s.tone} />
-          </Card>
-        ))}
+        {stats.map((s) => {
+          if (s.isActiveUsers) {
+            return (
+              <Card
+                key={s.label}
+                className="!p-4"
+                title={s.label}
+                action={
+                  <div className="flex items-center gap-2 rounded-full bg-brand-blue-100 px-2.5 py-1 text-xs font-semibold text-brand-blue-700">
+                    <span className="text-[10px] uppercase tracking-wide opacity-75">Total Active Users</span>
+                    <span>{totalActiveUsers}</span>
+                  </div>
+                }
+              >
+                <div className="h-36">
+                  {activeUsersByRole.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={activeUsersByRole}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={24}
+                          outerRadius={56}
+                          paddingAngle={2}
+                          stroke="white"
+                          strokeWidth={2}
+                        >
+                          {activeUsersByRole.map((entry) => (
+                            <Cell key={entry.name} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value, name) => [`${value} users`, name || 'Role']}
+                          labelFormatter={(label) => label}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                      No active users
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {activeUsersByRole.map((entry) => (
+                    <div
+                      key={entry.name}
+                      className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-2.5 py-1 text-xs text-slate-600"
+                    >
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                      {entry.name}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            );
+          }
+
+          return (
+            <Card key={s.label} className="!p-4">
+              <div className="text-xs text-slate-500">{s.label}</div>
+              <div className="text-2xl font-bold text-slate-900 mt-1">{s.value}</div>
+              <StatPill value={`avg score ${insights?.assessments?.average_score ?? 0}%`} tone={s.tone} />
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
