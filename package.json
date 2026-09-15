@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@clerk/react": "^6.15.1",
+    "@monaco-editor/react": "^4.7.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -16,7 +18,7 @@
     "recharts": "^3.8.1",
     "web-vitals": "^2.1.4"
   },
- "scripts": {
+  "scripts": {
     "start": "node --no-deprecation node_modules/react-scripts/scripts/start.js",
     "build": "node --no-deprecation node_modules/react-scripts/scripts/build.js",
     "test": "node --no-deprecation node_modules/react-scripts/scripts/test.js",

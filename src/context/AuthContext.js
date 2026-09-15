@@ -1,94 +1,241 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { loginUser, registerUser, tokenStore, refreshStore, userStore } from '../services/api';
+import React, { createContext, useContext, useMemo } from 'react';
+import { useUser, useAuth as useClerkAuth } from '@clerk/react';
 
 const AuthContext = createContext(null);
 
 const apiToRole = (r) => {
-  if (!r) return 'Student';
-  return r.charAt(0).toUpperCase() + r.slice(1);
+  if (!r) return 'student';
+  return r.toLowerCase();
 };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => userStore.get());
-  const [role, setRole] = useState(() => apiToRole(userStore.get()?.role));
-  const [authError, setAuthError] = useState(null);
+  const { user, isLoaded, isSignedIn } = useUser();
+  const { signOut, getToken } = useClerkAuth();
 
-  useEffect(() => {
-    const stored = userStore.get();
-    if (stored && !user) {
-      setUser(stored);
-      setRole(apiToRole(stored.role));
+  const [dbUser, setDbUser] = React.useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('edu_user')) || null;
+    } catch (_) {
+      return null;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
+  const backendUser = dbUser;
+  const setBackendUser = setDbUser;
+
+  // Listen for local updates to edu_user (e.g. name edits, avatar changes)
+  React.useEffect(() => {
+    const handleUserUpdate = (e) => {
+      try {
+        const stored = e?.detail || JSON.parse(localStorage.getItem('edu_user') || 'null');
+        if (stored) setDbUser(stored);
+      } catch (_) {}
+    };
+
+    window.addEventListener('edu_user_updated', handleUserUpdate);
+    window.addEventListener('storage', handleUserUpdate);
+    return () => {
+      window.removeEventListener('edu_user_updated', handleUserUpdate);
+      window.removeEventListener('storage', handleUserUpdate);
+    };
   }, []);
+
+  // Background sync: Fetch latest user profile from PostgreSQL if signed in with token
+  React.useEffect(() => {
+    if (isLoaded && isSignedIn && user) {
+      const token = localStorage.getItem('edu_token');
+      if (token) {
+        (async () => {
+          try {
+            const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+            const res = await fetch(`${apiBase}/api/users/me`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.name) {
+                const current = JSON.parse(localStorage.getItem('edu_user') || '{}');
+                const updated = {
+                  ...current,
+                  id: data.id,
+                  name: data.name,
+                  username: data.username,
+                  email: data.email,
+                  role: data.role,
+                  avatar_url: data.avatar_url || data.profile?.preferences?.avatar_url || current.avatar_url || null,
+                };
+                localStorage.setItem('edu_user', JSON.stringify(updated));
+                setDbUser(updated);
+              }
+            }
+          } catch (e) {
+            console.debug('Background user profile sync check:', e);
+          }
+        })();
+      }
+    }
+  }, [isLoaded, isSignedIn, user]);
+
+  const [isSyncing, setIsSyncing] = React.useState(() => {
+    return !localStorage.getItem('edu_token');
+  });
+
+  React.useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn || !user) {
+      setIsSyncing(false);
+      return;
+    }
+
+    const token = localStorage.getItem('edu_token');
+    const storedUser = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('edu_user'));
+      } catch {
+        return null;
+      }
+    })();
+
+    // If token exists and belongs to the current Clerk user, we are already synchronized
+    if (token && storedUser && storedUser.clerk_id === user.id) {
+      setIsSyncing(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsSyncing(true);
+
+    (async () => {
+      try {
+        const clerkToken = await getToken();
+        if (!clerkToken) {
+          if (isMounted) setIsSyncing(false);
+          return;
+        }
+
+        const res = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:5000'}/api/users/sync`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${clerkToken}`
+          },
+          body: JSON.stringify({
+            role: user.unsafeMetadata?.role || 'student',
+            domainRoleId: user.unsafeMetadata?.domain_role_id || null,
+            clerkId: user.id,
+            primaryEmailAddress: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress,
+            emailAddresses: user.emailAddresses,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            username: user.username,
+            unsafeMetadata: user.unsafeMetadata
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.accessToken) {
+            localStorage.setItem('edu_token', data.accessToken);
+            if (data.refreshToken) localStorage.setItem('edu_refresh', data.refreshToken);
+            if (data.user) {
+              localStorage.setItem('edu_user', JSON.stringify(data.user));
+              if (isMounted) setDbUser(data.user);
+            }
+            window.dispatchEvent(new CustomEvent('edu_token_ready', { detail: data.accessToken }));
+          }
+        }
+      } catch (err) {
+        console.error("Auto-sync failed:", err);
+      } finally {
+        if (isMounted) setIsSyncing(false);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoaded, isSignedIn, user, getToken]);
+
+  const updateAuthUser = React.useCallback((patch) => {
+    try {
+      const current = JSON.parse(localStorage.getItem('edu_user') || '{}');
+      const updated = { ...current, ...patch };
+      localStorage.setItem('edu_user', JSON.stringify(updated));
+      setDbUser(updated);
+      window.dispatchEvent(new CustomEvent('edu_user_updated', { detail: updated }));
+    } catch (e) {
+      console.error('Failed to update local auth user:', e);
+    }
+  }, []);
+
+  const mergedUser = useMemo(() => {
+    if (!user && !dbUser) return null;
+    const base = user || {};
+    const db = dbUser || {};
+
+    const name =
+      db.name ||
+      base.fullName ||
+      (base.firstName ? `${base.firstName} ${base.lastName || ''}`.trim() : '') ||
+      db.username ||
+      base.username ||
+      'User';
+
+    const firstName = name.split(' ')[0] || 'User';
+
+    const avatar =
+      db.avatar_url ||
+      db.preferences?.avatar_url ||
+      db.avatar ||
+      base.imageUrl ||
+      null;
+
+    const effectiveRole = (
+      db.role ||
+      (base.unsafeMetadata?.role ? apiToRole(base.unsafeMetadata.role) : 'student')
+    ).toLowerCase();
+
+    return {
+      ...base,
+      ...db,
+      id: db.id || base.id,
+      name,
+      firstName,
+      displayName: name,
+      avatar,
+      avatar_url: avatar,
+      role: effectiveRole,
+      clerkUser: user,
+    };
+  }, [user, dbUser]);
+
+  const role = mergedUser?.role || 'student';
 
   const value = useMemo(
     () => ({
-      user,
+      user: mergedUser || backendUser || user,
+      backendUser: dbUser,
       role,
-      authError,
-      isAuthenticated: !!user,
-      // Real API login. Returns true on success, false on failure.
-      login: async ({ email, password }) => {
-        setAuthError(null);
-        try {
-          const {
-            accessToken,
-            refreshToken,
-            user: apiUser,
-          } = await loginUser({ email, password });
-
-          tokenStore.set(accessToken);
-          if (refreshToken) refreshStore.set(refreshToken);
-          userStore.set(apiUser);
-          setUser(apiUser);
-          setRole(apiToRole(apiUser.role));
-          return true;
-        } catch (err) {
-          setAuthError(err.response?.data?.error || err.message || 'Login failed');
-          return false;
-        }
+      updateAuthUser,
+      authError: null,
+      isLoaded,
+      loading: !isLoaded || (isSignedIn && isSyncing),
+      isAuthenticated: Boolean(isSignedIn || (isLoaded && dbUser)),
+      login: async () => {
+        return false; // Clerk handles login now
       },
-
-      register: async (data) => {
-        setAuthError(null);
-        try {
-          const {
-            accessToken,
-            refreshToken,
-            user: apiUser,
-          } = await registerUser(data);
-
-          tokenStore.set(accessToken);
-
-          if (refreshToken) {
-            refreshStore.set(refreshToken);
-          }
-
-          userStore.set(apiUser);
-          setUser(apiUser);
-          setRole(apiToRole(apiUser.role));
-
-          return true;
-        } catch (err) {
-          setAuthError(
-            err.response?.data?.error ||
-            err.message ||
-            "Register failed"
-          );
-          return false;
-        }
+      register: async () => {
+        return false; // Clerk handles register now
       },
-
       logout: () => {
-        tokenStore.clear();
-        userStore.clear?.();
+        localStorage.removeItem('edu_token');
+        localStorage.removeItem('edu_refresh');
         localStorage.removeItem('edu_user');
-        setUser(null);
-        setRole('Student');
+        setDbUser(null);
+        setIsSyncing(false);
+        signOut({ redirectUrl: '/login' });
       },
     }),
-    [user, role, authError]
+    [mergedUser, backendUser, user, role, updateAuthUser, isLoaded, isSignedIn, isSyncing, dbUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

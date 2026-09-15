@@ -5,10 +5,15 @@ class ProctoringService {
       this.getWebSocketUrl();
     this.assessmentType = options.assessmentType || "QUIZ"
 
-    this.frameRate = options.frameRate || 5;
-    this.cameraWidth = options.cameraWidth || 640;
-    this.cameraHeight = options.cameraHeight || 480;
-    this.jpegQuality = options.jpegQuality || 0.65;
+    // Production settings: 1 frame every 1.5 - 2s (0.5 to 0.67 FPS) with 320x240 capture.
+    // Prevents buffer bloat and server OOM while maintaining high fraud detection accuracy.
+    this.frameRate = options.frameRate || 0.67;
+    this.cameraWidth = options.cameraWidth || 320;
+    this.cameraHeight = options.cameraHeight || 240;
+    this.jpegQuality = options.jpegQuality || 0.5;
+
+    this.isProcessingFrame = false;
+    this.frameProcessingTimeout = null;
 
     this.websocket = null;
     this.stream = null;
@@ -33,14 +38,14 @@ class ProctoringService {
     // Callbacks
     // --------------------------------------------------
 
-    this.onConnected = options.onConnected || (() => {});
-    this.onStarted = options.onStarted || (() => {});
-    this.onResult = options.onResult || (() => {});
-    this.onWarning = options.onWarning || (() => {});
-    this.onPause = options.onPause || (() => {});
-    this.onTerminate = options.onTerminate || (() => {});
-    this.onDisconnected = options.onDisconnected || (() => {});
-    this.onError = options.onError || (() => {});
+    this.onConnected = options.onConnected || (() => { });
+    this.onStarted = options.onStarted || (() => { });
+    this.onResult = options.onResult || (() => { });
+    this.onWarning = options.onWarning || (() => { });
+    this.onPause = options.onPause || (() => { });
+    this.onTerminate = options.onTerminate || (() => { });
+    this.onDisconnected = options.onDisconnected || (() => { });
+    this.onError = options.onError || (() => { });
   }
 
   // WebSocket URL
@@ -76,19 +81,34 @@ class ProctoringService {
     }
 
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        
-        video: {
-          width: {
-            ideal: this.cameraWidth,
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: {
+              ideal: this.cameraWidth,
+            },
+            height: {
+              ideal: this.cameraHeight,
+            },
+            facingMode: "user",
           },
-          height: {
-            ideal: this.cameraHeight,
+          audio: true,
+        });
+      } catch (err) {
+        console.warn("Could not capture audio stream in proctoring, falling back to video only:", err);
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: {
+              ideal: this.cameraWidth,
+            },
+            height: {
+              ideal: this.cameraHeight,
+            },
+            facingMode: "user",
           },
-          facingMode: "user",
-        },
-        audio: false,
-      });
+          audio: false,
+        });
+      }
       console.log("CAMERA STREAM:", this.stream);
       console.log("CAMERA TRACKS:", this.stream?.getVideoTracks());
       console.log(
@@ -127,48 +147,48 @@ class ProctoringService {
   }
 
   // START
- async start(sessionId) {
-  if (this.running) {
-    console.warn("Proctoring is already running.");
-    return;
-  }
-
-  if (!sessionId) {
-    throw new Error("Assessment session ID is required.");
-  }
-
-  try {
-    this.terminated = false;
-    this.started = false;
-
-    await this.startCameraPreview();
-
-    // Canvas
-    this.canvas = document.createElement("canvas");
-
-    this.canvas.width = this.cameraWidth;
-    this.canvas.height = this.cameraHeight;
-
-    this.context = this.canvas.getContext("2d");
-
-    if (!this.context) {
-      throw new Error("Unable to create canvas context.");
+  async start(sessionId) {
+    if (this.running) {
+      console.warn("Proctoring is already running.");
+      return;
     }
 
-    // WebSocket
-    await this.connectWebSocket(sessionId);
+    if (!sessionId) {
+      throw new Error("Assessment session ID is required.");
+    }
 
-    // Browser monitoring
-    this.enableBrowserMonitoring();
+    try {
+      this.terminated = false;
+      this.started = false;
 
-    console.log("Waiting for PROCTORING_STARTED...");
-  } catch (error) {
-    console.error("Proctoring start failed:", error);
-    await this.cleanup();
-    this.onError(error);
-    throw error;
+      await this.startCameraPreview();
+
+      // Canvas
+      this.canvas = document.createElement("canvas");
+
+      this.canvas.width = this.cameraWidth;
+      this.canvas.height = this.cameraHeight;
+
+      this.context = this.canvas.getContext("2d");
+
+      if (!this.context) {
+        throw new Error("Unable to create canvas context.");
+      }
+
+      // WebSocket
+      await this.connectWebSocket(sessionId);
+
+      // Browser monitoring
+      this.enableBrowserMonitoring();
+
+      console.log("Waiting for PROCTORING_STARTED...");
+    } catch (error) {
+      console.error("Proctoring start failed:", error);
+      await this.cleanup();
+      this.onError(error);
+      throw error;
+    }
   }
-}
 
   // CONNECT WEBSOCKET
   connectWebSocket(sessionId) {
@@ -360,7 +380,7 @@ class ProctoringService {
       return;
     }
 
-    
+
 
     // --------------------------------------------------
     // Node tells browser that AI has started
@@ -386,9 +406,22 @@ class ProctoringService {
     // --------------------------------------------------
 
     if (data.type === "PROCTORING_RESULT") {
+      this.isProcessingFrame = false;
+      clearTimeout(this.frameProcessingTimeout);
       await this.processResult(data);
 
       this.onResult(data);
+
+      return;
+    }
+
+    // --------------------------------------------------
+    // Gateway Warning / Reconnecting
+    // --------------------------------------------------
+
+    if (data.type === "PROCTORING_WARNING") {
+      console.warn("Proctoring warning from gateway:", data.message);
+      this.onWarning(data);
 
       return;
     }
@@ -398,6 +431,8 @@ class ProctoringService {
     // --------------------------------------------------
 
     if (data.type === "EXAM_TERMINATED") {
+      this.isProcessingFrame = false;
+      clearTimeout(this.frameProcessingTimeout);
       this.terminated = true;
       this.running = false;
       this.started = false;
@@ -416,6 +451,8 @@ class ProctoringService {
     // --------------------------------------------------
 
     if (data.type === "PROCTORING_STOPPED") {
+      this.isProcessingFrame = false;
+      clearTimeout(this.frameProcessingTimeout);
       this.running = false;
       this.started = false;
 
@@ -429,6 +466,8 @@ class ProctoringService {
     // --------------------------------------------------
 
     if (data.type === "PROCTORING_ERROR") {
+      this.isProcessingFrame = false;
+      clearTimeout(this.frameProcessingTimeout);
       const error = new Error(
         data.message || "Proctoring service error."
       );
@@ -452,8 +491,8 @@ class ProctoringService {
   async processResult(data) {
     const fraud =
       data &&
-      typeof data.fraud === "object" &&
-      data.fraud !== null
+        typeof data.fraud === "object" &&
+        data.fraud !== null
         ? data.fraud
         : {};
 
@@ -507,16 +546,16 @@ class ProctoringService {
   }
 
   stopFrameSending() {
-    if (!this.frameInterval) {
-      return;
+    if (this.frameInterval) {
+      clearInterval(this.frameInterval);
+      this.frameInterval = null;
     }
 
-    clearInterval(this.frameInterval);
-
-    this.frameInterval = null;
+    clearTimeout(this.frameProcessingTimeout);
+    this.isProcessingFrame = false;
   }
 
- sendFrame() {
+  sendFrame() {
     if (!this.running) {
       return;
     }
@@ -532,6 +571,13 @@ class ProctoringService {
     if (
       this.websocket.readyState !== WebSocket.OPEN
     ) {
+      return;
+    }
+
+    // FLOW CONTROL: Never send a new frame while the AI model is still
+    // analyzing the previous frame. This prevents WebSocket buffer bloat
+    // and server memory (OOM) crashes on cloud instances.
+    if (this.isProcessingFrame) {
       return;
     }
 
@@ -561,6 +607,14 @@ class ProctoringService {
           this.jpegQuality
         );
 
+      this.isProcessingFrame = true;
+
+      // Safety timeout: if server does not respond in 5s, release lock so proctoring resumes
+      clearTimeout(this.frameProcessingTimeout);
+      this.frameProcessingTimeout = setTimeout(() => {
+        this.isProcessingFrame = false;
+      }, 5000);
+
       this.websocket.send(
         JSON.stringify({
           type: "VIDEO_FRAME",
@@ -568,12 +622,13 @@ class ProctoringService {
         })
       );
     } catch (error) {
+      this.isProcessingFrame = false;
       console.error(
         "Failed to send video frame:",
         error
       );
     }
-  } 
+  }
 
   // BROWSER MONITORING
   enableBrowserMonitoring() {
@@ -662,9 +717,65 @@ class ProctoringService {
       }
     );
 
+    // Screenshot & Screen-capture shortcut detection
+    const handlePrintScreen = (e) => {
+      if (
+        e.key === "PrintScreen" ||
+        e.key === "Snapshot" ||
+        e.code === "PrintScreen"
+      ) {
+        this.handleScreenshotAttempt("PrintScreen key");
+      }
+    };
+
+    this.addBrowserEvent(window, "keyup", handlePrintScreen);
+    this.addBrowserEvent(window, "keydown", (e) => {
+      handlePrintScreen(e);
+
+      // Windows Snipping Tool (Win/Meta/Ctrl + Shift + S)
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        (e.key === "s" || e.key === "S" || e.code === "KeyS")
+      ) {
+        this.handleScreenshotAttempt("Screen snippet shortcut (Shift+S)");
+      }
+
+      // Mac screenshot shortcuts (Cmd + Shift + 3 / 4 / 5)
+      if (
+        e.metaKey &&
+        e.shiftKey &&
+        ["3", "4", "5"].includes(e.key)
+      ) {
+        this.handleScreenshotAttempt("Mac screenshot shortcut");
+      }
+
+      // Print dialog (Ctrl+P / Cmd+P)
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "p" || e.key === "P" || e.code === "KeyP")
+      ) {
+        e.preventDefault();
+        this.handleScreenshotAttempt("Print dialog attempt");
+      }
+    });
+
     console.log(
       "Browser proctoring monitoring enabled."
     );
+  }
+
+  handleScreenshotAttempt(reason = "Screenshot attempt") {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText("").catch(() => { });
+      }
+    } catch (err) { }
+
+    this.sendBrowserViolation("SCREENSHOT_ATTEMPT", {
+      reason,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   addBrowserEvent(target, eventName, handler) {
@@ -743,7 +854,7 @@ class ProctoringService {
     if (
       this.websocket &&
       this.websocket.readyState ===
-        WebSocket.OPEN
+      WebSocket.OPEN
     ) {
       try {
         this.websocket.send(
@@ -789,9 +900,9 @@ class ProctoringService {
       try {
         if (
           this.websocket.readyState ===
-            WebSocket.OPEN ||
+          WebSocket.OPEN ||
           this.websocket.readyState ===
-            WebSocket.CONNECTING
+          WebSocket.CONNECTING
         ) {
           this.websocket.close();
         }

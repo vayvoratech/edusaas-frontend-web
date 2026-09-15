@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Card, StatPill } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { getJobs,  getEligibleStudents, inviteCandidate, getUserProfile } from '../services/api';
+import { getJobs,  getEligibleStudents, getDomainRoles, inviteCandidate, getUserProfile } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const initials = (n) => (n || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
 export default function Candidates() {
+  const navigate = useNavigate();
   const location = useLocation();
   const selectedCandidate = location.state?.candidate;
   const { user } = useAuth();
@@ -28,49 +29,105 @@ export default function Candidates() {
   const [inviteError, setInviteError] = useState(null);
   const [inviteSent, setInviteSent] = useState(false);
 
+  const [domainRoles, setDomainRoles] = useState([]);
+  const [selectedDomainRoleId, setSelectedDomainRoleId] = useState('all');
+
+  const loadCandidates = async (jobList) => {
+  if (!jobList?.length) {
+    setCandidates([]);
+    return;
+  }
+
+  try {
+    setError(null);
+
+    const responses = await Promise.all(
+      jobList.map((job) => getEligibleStudents(job.id))
+    );
+
+    const allCandidates = responses.flatMap(
+      (response) => response?.eligible_students || []
+    );
+
+    // Remove duplicate students who match multiple jobs
+    const uniqueCandidates = Array.from(
+      new Map(
+        allCandidates.map((candidate) => [
+          String(candidate.id),
+          candidate,
+        ])
+      ).values()
+    );
+
+    setCandidates(uniqueCandidates);
+  } catch (e) {
+    setError(e.response?.data?.error || e.message);
+    setCandidates([]);
+  }
+};
+
   useEffect(() => {
-  if (!user?.id) return;
+  let currentUserId = user?.id;
 
-  getJobs({ employer_id: user.id })
-    .then(async (js) => {
-      setJobs(js);
+  try {
+    const stored = JSON.parse(
+      localStorage.getItem("edu_user") || "{}"
+    );
 
-      if (!js.length) {
+    if (stored?.id) currentUserId = stored.id;
+  } catch (e) {}
+
+  if (!currentUserId) return;
+
+  Promise.all([
+    getJobs({ employer_id: currentUserId }),
+    getDomainRoles(),
+  ])
+    .then(async ([js, roles]) => {
+      setJobs(js || []);
+      setDomainRoles(roles || []);
+      setError(null);
+
+      if (!js || !js.length) {
         setCandidates([]);
         return;
       }
 
-      // Use the employer's first posted job
-      const job = js[0];
+      // Keep the first job as the default job for Invite
+      setInviteJob(js[0].id);
 
-      setInviteJob(job.id);
-
-      try {
-        const response = await getEligibleStudents(job.id);
-
-        console.log("ELIGIBLE STUDENTS:", response);
-
-        setCandidates(response.eligible_students || []);
-      } catch (e) {
-        setError(
-          e.response?.data?.error || e.message
-        );
-        setCandidates([]);
-      }
+      // Load candidates from all employer jobs
+      await loadCandidates(js);
     })
     .catch((e) => {
-      setError(
-        e.response?.data?.error || e.message
-      );
+      setError(e.response?.data?.error || e.message);
+      setCandidates([]);
     });
 }, [user?.id]);
 
- const filtered = candidates.filter((c) =>
-  !q ||
-  c.name?.toLowerCase().includes(q.toLowerCase()) ||
-  c.domain_role?.toLowerCase().includes(q.toLowerCase()) ||
-  c.fit_category?.toLowerCase().includes(q.toLowerCase())
+// sorted by domainrole
+  const sortedDomainRoles = [...domainRoles].sort((a, b) =>
+  (a.domain_name || "").localeCompare(
+    b.domain_name || ""
+  )
 );
+
+  const filtered = candidates.filter((c) => {
+  if (
+    selectedDomainRoleId !== "all" &&
+    String(c.domain_role_id) !== String(selectedDomainRoleId)
+  ) {
+    return false;
+  }
+
+  if (!q) return true;
+
+  return (
+    c.name?.toLowerCase().includes(q.toLowerCase()) ||
+    c.domain_role?.toLowerCase().includes(q.toLowerCase()) ||
+    c.fit_category?.toLowerCase().includes(q.toLowerCase())
+  );
+});
 
   const openView = async (c) => {
     setViewing(c);
@@ -85,6 +142,12 @@ export default function Candidates() {
       setViewLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (selectedCandidate) {
+      openView(selectedCandidate);
+    }
+  }, [selectedCandidate]);
 
   const openInvite = (c) => {
     setInviting(c);
@@ -115,18 +178,39 @@ export default function Candidates() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Candidates</h2>
           <p className="text-sm text-slate-500">Skill-matched students for your open roles.</p>
         </div>
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search candidates…"
-          className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-64"
-        />
+        <div className="flex flex-wrap items-center gap-3">
+           {domainRoles.length > 0 && (
+  <select
+    value={selectedDomainRoleId}
+    onChange={(e) => setSelectedDomainRoleId(e.target.value)}
+    className="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue-500"
+  >
+    <option value="all">All Domain Roles</option>
+
+    {sortedDomainRoles.map((role) => (
+      <option
+        key={role.domain_role_id}
+        value={role.domain_role_id}
+      >
+        {role.domain_name}
+      </option>
+    ))}
+  </select>
+)}
+
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search candidates…"
+            className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-full sm:w-64"
+          />
+        </div>
       </div>
 
       {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
@@ -141,10 +225,25 @@ export default function Candidates() {
               {initials(c.name)}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm text-slate-800 truncate">{c.name}</div>
-              <div className="text-xs text-slate-500 truncate">{c.role_target}</div>
+              <div className="flex items-center gap-2">
+                <div className="font-semibold text-sm text-slate-800 truncate">{c.name}</div>
+                {c.ai_hiring_match && (
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      c.ai_hiring_match.match_level === "EXCELLENT"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : c.ai_hiring_match.match_level === "GOOD"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    🤖 AI {c.ai_hiring_match.match_level} ({Math.round(c.ai_hiring_match.match_percentage)}%)
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-slate-500 truncate">{c.domain_role || c.role_target}</div>
             </div>
-            <StatPill label="Match" value={`${c.skill_match}%`} tone={c.skill_match >= 80 ? 'green' : c.skill_match >= 60 ? 'orange' : 'slate'} />
+            <StatPill label="Skill Match" value={`${c.skill_match}%`} tone={c.skill_match >= 80 ? 'green' : c.skill_match >= 60 ? 'orange' : 'slate'} />
             <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => openView(c)}>
               View Profile
             </Button>
@@ -153,11 +252,6 @@ export default function Candidates() {
             </Button>
           </div>
         ))}
-        {filtered.length === 0 && (
-          <Card className="md:col-span-2">
-            <p className="text-sm text-slate-500 text-center py-6">No candidates match.</p>
-          </Card>
-        )}
       </div>
 
       {/* View Profile modal */}
@@ -185,8 +279,14 @@ export default function Candidates() {
             ) : (
               <dl className="space-y-2 text-sm">
                 <Row k="Role" v={viewProfile?.role || viewing.role || '—'} />
-                <Row k="Target role" v={viewing.role_target} />
+                <Row k="Target role" v={viewing.domain_role || viewing.role_target || '—'} />
                 <Row k="Skill match" v={`${viewing.skill_match}%`} />
+                {viewing.ai_hiring_match && (
+                  <Row
+                    k="AI Match Assessment"
+                    v={`${viewing.ai_hiring_match.match_level} (${Math.round(viewing.ai_hiring_match.match_percentage)}% confidence)`}
+                  />
+                )}
                 <Row k="Career goal" v={viewProfile?.profile?.career_goal || '—'} />
                 <Row k="Institution" v={viewProfile?.profile?.institution || '—'} />
                 <Row k="Company" v={viewProfile?.profile?.company || '—'} />

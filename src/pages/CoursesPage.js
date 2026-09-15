@@ -39,7 +39,7 @@ export default function CoursesPage() {
         getCourses({ status: 'active', ...filters }),
         getMyEnrollments().catch(() => []),
         getUserProfile().catch(() => null),
-        fetchGapReport(user.id).catch(() => null),
+        fetchGapReport(user?.id).catch(() => null),
       ]);
       
       // Sort all courses by created_at descending (newest first)
@@ -143,12 +143,23 @@ export default function CoursesPage() {
             </h3>
           </div>
           
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-4 uppercase tracking-wider">
-            <span>{c.provider}</span>
-            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-            <span className={c.difficulty === 'beginner' ? 'text-emerald-600' : c.difficulty === 'advanced' ? 'text-rose-600' : 'text-amber-600'}>
-              {c.difficulty}
-            </span>
+          <div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-4">
+            <div className="flex items-center gap-2 uppercase tracking-wider">
+              <span>{c.provider}</span>
+              <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+              <span className={c.difficulty === 'beginner' ? 'text-emerald-600' : c.difficulty === 'advanced' ? 'text-rose-600' : 'text-amber-600'}>
+                {c.difficulty}
+              </span>
+            </div>
+            {c.rating ? (
+              <div className="flex items-center gap-1 text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60" title={`${c.rating_count} review${c.rating_count === 1 ? '' : 's'}`}>
+                <span>★</span>
+                <span>{c.rating.toFixed(1)}</span>
+                <span className="text-[10px] text-slate-400 font-normal">({c.rating_count})</span>
+              </div>
+            ) : (
+              <span className="text-[10px] text-slate-400 font-medium">New</span>
+            )}
           </div>
 
           {c.description && (

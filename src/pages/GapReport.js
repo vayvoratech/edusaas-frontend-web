@@ -14,8 +14,20 @@ export default function GapReport() {
   
 
   useEffect(() => {
-    if (!user?.id) return;
-    fetchGapReport(user.id).then(setLive).catch(() => { /* fall back to mock */ });
+    let currentUserId = user?.id;
+    try {
+      const stored = JSON.parse(localStorage.getItem("edu_user") || "{}");
+      if (stored?.id) currentUserId = stored.id;
+    } catch (e) {}
+
+    if (!currentUserId) return;
+    fetchGapReport(currentUserId)
+      .then((data) => {
+        setLive(data);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch gap report:", err);
+      });
   }, [user?.id]);
 
   const readiness = live?.readiness_score ?? 0;
@@ -66,7 +78,7 @@ export default function GapReport() {
 
             <Button
               className="mt-8"
-              onClick={() => navigate("/app/initial-assessment")}
+              onClick={() => navigate("/app/assessments/initial")}
             >
               Take Assessment
             </Button>
@@ -140,9 +152,13 @@ export default function GapReport() {
     };
   };
 
-  const domainRole = user?.domain_role || "Target Role";
+  let domainRole = "Target Role";
+  try {
+    const stored = JSON.parse(localStorage.getItem("edu_user") || "{}");
+    if (stored?.domain_role_name) domainRole = stored.domain_role_name;
+  } catch (e) {}
+  if (user?.domain_role) domainRole = user.domain_role;
   const skillsRemaining = needs.length;
-
 
   return (
     <div className="space-y-6">
@@ -152,7 +168,7 @@ export default function GapReport() {
         <div>  
           <h2 className="text-2xl font-bold text-slate-900">Gap Analysis Report</h2>
           <p className="text-sm text-slate-500">
-            Your skills vs. the requirements for Cloud Engineer roles.
+            Your skills vs. the requirements for {domainRole} roles.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -461,29 +477,55 @@ export default function GapReport() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <Card title="Priority Areas" className="h-full">
-          <div className="flex flex-col items-center justify-center py-12 h-full">
-
-            {/* <div className="text-5xl mb-4"> 🎯 </div> */}
-
-            <h3 className="text-lg font-semibold text-slate-800"> AI Priority Ranking </h3>
-
-            <p className="mt-3 text-center text-slate-500 max-w-lg">
-              Skill priority recommendation to learn
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500 mb-2">
+              Skills with the highest gap between your current level and role requirements:
             </p>
-
+            {[...breakdown]
+              .sort((a, b) => b.gap - a.gap)
+              .slice(0, 4)
+              .map((item) => (
+                <div
+                  key={item.skill_id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100"
+                >
+                  <div>
+                    <span className="font-semibold text-sm text-slate-800">
+                      {item.skill_name}
+                    </span>
+                    <p className="text-xs text-slate-500">
+                      Level {item.student_level} / Required {item.required_level}
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                    Gap: -{item.gap}
+                  </span>
+                </div>
+              ))}
           </div>
         </Card>
 
         <Card title="AI Recommendations" className="h-full">
-          <div className="flex flex-col items-center justify-center py-12 h-full">
-
-            {/* <div className="text-5xl mb-4"> 🤖 </div> */}
-
-            <h3 className="text-lg font-semibold text-slate-800"> Personalized Learning Roadmap </h3>
-
-            <p className="mt-3 text-center text-slate-500 max-w-lg">
-              AI recommendation for learning based on skill gap
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500 mb-2">
+              Targeted recommendations generated from your skill gap analysis:
             </p>
+            {(live?.recommendations?.suggestions || []).slice(0, 4).map((s, idx) => (
+              <div
+                key={idx}
+                className="flex items-start gap-3 p-3 rounded-lg bg-blue-50/50 border border-blue-100"
+              >
+                <span className="text-lg">💡</span>
+                <div>
+                  <span className="font-semibold text-sm text-slate-900">
+                    {s.skill}
+                  </span>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {s.suggestion}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       </div>
@@ -534,8 +576,8 @@ export default function GapReport() {
               Estimated Time
             </p>
 
-            <h2 className="text-lg font-semibold text-slate-400 mt-2">
-              AI generated road map
+            <h2 className="text-xl font-bold text-slate-800 mt-2">
+              ~{Math.max(2, skillsRemaining * 3)} Weeks
             </h2>
 
           </div>
@@ -546,8 +588,8 @@ export default function GapReport() {
               Next Best Action
             </p>
 
-            <h2 className="text-lg font-semibold text-slate-400 mt-2">
-              Recommendation engine
+            <h2 className="text-sm font-semibold text-slate-800 mt-2 truncate">
+              Focus on {needs[0]?.name || "Core Skills"}
             </h2>
 
           </div>

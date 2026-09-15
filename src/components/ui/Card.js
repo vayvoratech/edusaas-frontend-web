@@ -1,9 +1,10 @@
 import React from 'react';
 
-export function Card({ children, className = '', title, action }) {
+export function Card({ children, className = '', title, action, ...rest }) {
   return (
     <div
       className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-5 transition hover:shadow-md ${className}`}
+      {...rest}
     >
       {(title || action) && (
         <div className="flex items-center justify-between mb-4">

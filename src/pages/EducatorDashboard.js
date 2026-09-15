@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, Tooltip, CartesianGrid, Legend,
@@ -7,16 +7,116 @@ import {
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
-  getEducatorDashboard, getCourses, getStudentCandidates, getAnnouncements,
+  getEducatorDashboard, getCourses, getStudentCandidates, getAnnouncements, resolveAssetUrl,
+  markAnnouncementNotificationsRead,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+function ReviewerAvatar({ name, avatarUrl, size = "w-8 h-8", textClass = "text-xs" }) {
+  const [imgError, setImgError] = useState(false);
+
+  const initials = (name || '?')
+    .split(' ')
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'S';
+
+  const resolved = !imgError && avatarUrl ? resolveAssetUrl(avatarUrl) : null;
+
+  if (resolved) {
+    return (
+      <img
+        src={resolved}
+        alt=""
+        onError={() => setImgError(true)}
+        className={`${size} rounded-full object-cover border border-slate-200 shrink-0 shadow-2xs`}
+      />
+    );
+  }
+
+  const bgColors = [
+    'bg-blue-100 text-blue-700 border-blue-200',
+    'bg-indigo-100 text-indigo-700 border-indigo-200',
+    'bg-emerald-100 text-emerald-700 border-emerald-200',
+    'bg-amber-100 text-amber-700 border-amber-200',
+    'bg-violet-100 text-violet-700 border-violet-200',
+    'bg-teal-100 text-teal-700 border-teal-200',
+  ];
+  const charSum = (name || 'S').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const colorClass = bgColors[charSum % bgColors.length];
+
+  return (
+    <div
+      className={`${size} rounded-full ${colorClass} border flex items-center justify-center font-bold tracking-wider shrink-0 select-none shadow-2xs ${textClass}`}
+      title={name}
+    >
+      {initials}
+    </div>
+  );
+}
+
 export default function EducatorDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [courses, setCourses] = useState([]);
   const [learners, setLearners] = useState([]);
   const [recent, setRecent] = useState([]);
+
+  const dismissedKey = `edu_dismissed_announcements_${user?.id || 'educator'}`;
+  const getDismissedIds = () => {
+    try {
+      const raw = localStorage.getItem(dismissedKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const markSeenLocally = (id) => {
+    try {
+      const seenKey = `edu_seen_announcements_${user?.id || 'educator'}`;
+      const raw = localStorage.getItem(seenKey);
+      const seen = raw ? JSON.parse(raw) : [];
+      if (!seen.includes(id)) {
+        localStorage.setItem(seenKey, JSON.stringify([...seen, id]));
+      }
+    } catch {}
+  };
+
+  const handleAnnouncementClick = (id) => {
+    try {
+      const dismissed = getDismissedIds();
+      if (!dismissed.includes(id)) {
+        localStorage.setItem(dismissedKey, JSON.stringify([...dismissed, id]));
+      }
+    } catch {}
+    markSeenLocally(id);
+    markAnnouncementNotificationsRead(id).finally(() => {
+      window.dispatchEvent(new CustomEvent('notifications_updated'));
+      window.dispatchEvent(new CustomEvent('announcements_seen'));
+    });
+    setRecent((prev) => prev.filter((a) => a.id !== id));
+    navigate('/app/community', { state: { activeTab: 'Announcements' } });
+  };
+
+  const handleDismissOnly = (e, id) => {
+    e.stopPropagation();
+    try {
+      const dismissed = getDismissedIds();
+      if (!dismissed.includes(id)) {
+        localStorage.setItem(dismissedKey, JSON.stringify([...dismissed, id]));
+      }
+    } catch {}
+    markSeenLocally(id);
+    markAnnouncementNotificationsRead(id).finally(() => {
+      window.dispatchEvent(new CustomEvent('notifications_updated'));
+      window.dispatchEvent(new CustomEvent('announcements_seen'));
+    });
+    setRecent((prev) => prev.filter((a) => a.id !== id));
+  };
 
   useEffect(() => {
     getEducatorDashboard().then(setData).catch(() => {});
@@ -24,7 +124,12 @@ export default function EducatorDashboard() {
       getCourses({ educator_id: user.id, status: 'active' }).then(setCourses).catch(() => {});
     }
     getStudentCandidates().then(setLearners).catch(() => {});
-    getAnnouncements().then(setRecent).catch(() => {});
+    getAnnouncements()
+      .then((list) => {
+        const dismissed = getDismissedIds();
+        setRecent((Array.isArray(list) ? list : []).filter((a) => !dismissed.includes(a.id)));
+      })
+      .catch(() => {});
   }, [user?.id]);
 
   return (
@@ -46,14 +151,28 @@ export default function EducatorDashboard() {
         </Card>
         <Card className="!p-4">
           <div className="text-xs text-slate-500">Course Ratings</div>
-          <div className="text-3xl font-bold text-brand-orange-600 mt-1">{data?.courseRatings ?? 0}</div>
-          <div className="text-[11px] text-slate-500 mt-1">Avg rating {data?.avgRating ?? 0} ★</div>
+          <div className="text-3xl font-bold text-amber-500 mt-1">{data?.courseRatings ?? 0}</div>
+          <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+            <span>Avg rating:</span>
+            <span className="font-semibold text-slate-700">
+              {data?.avgRating ? `${data.avgRating} ★` : 'No reviews yet'}
+            </span>
+          </div>
         </Card>
-        <Card className="!p-4">
-          <div className="text-xs text-slate-500">Upcoming Tasks</div>
-          <div className="text-3xl font-bold text-red-600 mt-1">3</div>
-          <div className="text-[11px] text-slate-500 mt-1">Tasks Pending</div>
-        </Card>
+        <Link to="/app/tasks" className="block group">
+          <Card className="!p-4 hover:border-slate-300 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-slate-500">Upcoming Tasks</div>
+              <span className="text-[10px] text-slate-400 group-hover:text-brand-blue-600 transition-colors">View →</span>
+            </div>
+            <div className="text-3xl font-bold text-rose-600 mt-1">
+              {data?.upcomingTasks ?? 0}
+            </div>
+            <div className="text-[11px] text-slate-500 mt-1">
+              {data?.upcomingTasks === 1 ? '1 Task Pending' : `${data?.upcomingTasks ?? 0} Tasks Pending`}
+            </div>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -117,15 +236,50 @@ export default function EducatorDashboard() {
           </ul>
         </Card>
 
-        <Card title="Announcements">
+        <Card
+          title="Announcements"
+          action={
+            <button
+              onClick={() => navigate('/app/community', { state: { activeTab: 'Announcements' } })}
+              className="text-xs text-brand-blue-600 hover:underline font-semibold"
+            >
+              View Feed →
+            </button>
+          }
+        >
           <ul className="space-y-2 text-sm">
             {recent.slice(0, 4).map((a) => (
-              <li key={a.id} className="flex gap-2">
-                <span className="text-brand-orange-500">📣</span>
-                <span className="text-slate-700 truncate">{a.title}</span>
+              <li
+                key={a.id}
+                onClick={() => handleAnnouncementClick(a.id)}
+                className="group flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-slate-50 transition cursor-pointer border border-transparent hover:border-slate-200"
+                title="Click to view in Community Announcements"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-brand-orange-500 shrink-0">📣</span>
+                  <span className="text-slate-700 font-medium group-hover:text-brand-blue-700 truncate transition-colors">
+                    {a.title}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] text-brand-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    View
+                  </span>
+                  <button
+                    onClick={(e) => handleDismissOnly(e, a.id)}
+                    title="Dismiss from dashboard"
+                    className="w-5 h-5 rounded-full text-slate-300 hover:text-slate-600 hover:bg-slate-200/60 grid place-items-center text-xs transition"
+                  >
+                    ✕
+                  </button>
+                </div>
               </li>
             ))}
-            {recent.length === 0 && <li className="text-slate-400">No announcements.</li>}
+            {recent.length === 0 && (
+              <li className="text-slate-400 py-2 text-center text-xs">
+                No active announcements on dashboard.
+              </li>
+            )}
           </ul>
           <Link to="/app/announcements">
             <Button className="mt-4 w-full" variant="outline">Send Announcement</Button>
@@ -139,6 +293,53 @@ export default function EducatorDashboard() {
         <Link to="/app/insights"><Card className="!p-4"><div className="text-3xl">📈</div><div className="font-semibold mt-2">Insights Report</div></Card></Link>
         <Link to="/app/announcements"><Card className="!p-4"><div className="text-3xl">📣</div><div className="font-semibold mt-2">Send Announcement</div></Card></Link>
       </div>
+
+      {/* Recent Student Feedback Section */}
+      <Card
+        title="Recent Course Feedback & Reviews"
+        action={
+          <Link to="/app/manage-courses" className="text-xs text-brand-blue-600 font-semibold hover:underline flex items-center gap-1">
+            <span>View All in Courses</span>
+            <span>→</span>
+          </Link>
+        }
+      >
+        {data?.recentFeedbacks && data.recentFeedbacks.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.recentFeedbacks.slice(0, 4).map((f) => (
+              <div key={f.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <ReviewerAvatar name={f.user_name} avatarUrl={f.avatar_url} />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm text-slate-800 truncate">{f.user_name}</div>
+                      <div className="text-[11px] text-brand-blue-600 font-medium truncate">{f.course_title}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0.5 text-amber-400 text-xs shrink-0">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span key={star}>{star <= f.rating ? '★' : '☆'}</span>
+                    ))}
+                  </div>
+                </div>
+                {f.review ? (
+                  <p className="text-xs text-slate-600 line-clamp-2 italic pl-10.5">"{f.review}"</p>
+                ) : (
+                  <p className="text-xs text-slate-400 italic pl-10.5">Rated {f.rating} stars with no written comments.</p>
+                )}
+                <div className="text-[10px] text-slate-400 text-right mt-2">
+                  {f.created_at ? new Date(f.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6 text-slate-400 text-sm">
+            <span className="text-2xl block mb-1">💬</span>
+            No student course feedback received yet. When learners rate your courses, reviews will appear here.
+          </div>
+        )}
+      </Card>
 
       <Card title="My Courses" action={<Link to="/app/manage-courses" className="text-xs text-brand-blue-600 hover:underline">Manage →</Link>}>
         {courses.length === 0 ? (

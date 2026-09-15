@@ -5,11 +5,22 @@ import { TopNav } from './TopNav';
 import { useAuth } from '../../context/AuthContext';
 
 export function AppLayout() {
-   const { isAuthenticated } = useAuth();
-    const [mobileNavOpen, setMobileNavOpen] = useState(false);
-    const location = useLocation();
+  const { isAuthenticated, loading, isLoaded } = useAuth();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const location = useLocation();
 
-    if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (loading || !isLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-500 font-medium">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm">Loading EduSaaS...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
     const isInitialAssessment =
       location.pathname === "/app/initial-assessment";

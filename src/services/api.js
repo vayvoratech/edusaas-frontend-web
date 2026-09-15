@@ -123,9 +123,36 @@ export const getDomainRoles = async () => {
   const res = await api.get("/api/domain-roles");
   return res.data.data;
 };
-export const getUserProfile = (id) => api.get(`/api/users/${id}`).then((r) => r.data);
+export const getUserProfile = (id) => {
+  const targetId = (!id || id === "undefined" || id === "null") ? "me" : id;
+  return api.get(`/api/users/${targetId}`).then((r) => r.data);
+};
+export const updateUserName = (id, name) =>
+  api.patch(`/api/users/${id}`, { name }).then((r) => r.data);
 export const saveUserProfile = (id, data) =>
   api.put(`/api/users/${id}/profile`, data).then((r) => r.data);
+
+export const uploadProfileAvatar = (id, imageFile) => {
+  const formData = new FormData();
+  formData.append("avatar", imageFile);
+  return api
+    .post(`/api/users/${id}/avatar`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((r) => r.data);
+};
+
+export const deleteProfileAvatar = (id) =>
+  api.delete(`/api/users/${id}/avatar`).then((r) => r.data);
+
+export const resolveAssetUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  const base = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  return `${base.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export const uploadProfileResume = (id, resumeFile) => {
   const formData = new FormData();
@@ -149,9 +176,7 @@ export const getStudentCandidates = () =>
 export const submitAssessment = (data) => api.post("/api/assessments", data).then((r) => r.data);
 export const getAssessmentResults = (id) => api.get(`/api/assessments/${id}/results`).then((r) => r.data);
 export const getAssessmentOverview = () => api.get("/api/assessments/overview").then((r) => r.data);
-export const fetchGapReport = (userId) =>api.get(`/api/gap-report/${userId}`).then((r) => r.data?.data ?? r.data);
-export const getSkillGapAnalysis = (userId) =>
-  api.get(`/api/skill-gap-analysis/${userId}`).then((r) => r.data?.data ?? r.data);
+export const fetchGapReport = (userId) => api.get(`/api/gap-report/${userId}`).then((r) => r.data);
 
 // Initial Adaptive Skill Assessment
 export const startInitialQuiz = () => api.post("/api/assessments/initial-quiz/start").then((r) => r.data);
@@ -177,7 +202,7 @@ export const pauseInitialQuizOnUnload = (sessionId) => {
     },
     body: JSON.stringify({ session_id: sessionId }),
     keepalive: true,
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 // Initial Coding Assessment
@@ -207,7 +232,7 @@ export const pauseInitialCodingAssessmentOnUnload = (sessionId) => {
     },
     body: JSON.stringify({ session_id: sessionId }),
     keepalive: true,
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 // Final Adaptive Skill Assessment
@@ -234,7 +259,7 @@ export const pauseFinalQuizOnUnload = (sessionId) => {
     },
     body: JSON.stringify({ session_id: sessionId }),
     keepalive: true,
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 // ---------------------------------------------------------
@@ -247,6 +272,16 @@ export const createCourse = (data) => api.post("/api/courses", data).then((r) =>
 export const updateCourse = (id, data) => api.patch(`/api/courses/${id}`, data).then((r) => r.data);
 export const deleteCourse = (id) => api.delete(`/api/courses/${id}`).then((r) => r.data);
 
+// Course Ratings & Feedback
+export const rateCourse = (courseId, data) =>
+  api.post(`/api/courses/${courseId}/ratings`, data).then((r) => r.data);
+export const getMyCourseRating = (courseId) =>
+  api.get(`/api/courses/${courseId}/ratings/me`).then((r) => r.data);
+export const getCourseRatings = (courseId) =>
+  api.get(`/api/courses/${courseId}/ratings`).then((r) => r.data);
+export const getEducatorCourseFeedback = () =>
+  api.get(`/api/courses/educator/reviews`).then((r) => r.data);
+
 // Lessons
 export const getLessonsForCourse = (courseId) =>
   api.get(`/api/courses/${courseId}/lessons`).then((r) => r.data);
@@ -258,7 +293,7 @@ export const getLesson = (lessonId) =>
   api.get(`/api/lessons/lesson/${lessonId}`).then((r) => r.data);
 export const deleteLesson = (lessonId) =>
   api.delete(`/api/lessons/lesson/${lessonId}`).then((r) => r.data);
-export const getCourseAssignments = (courseId) => api.get(`/api/courses/${courseId}/assignments`).then((r) => r.data);
+
 
 
 // ---------------------------------------------------------
@@ -299,7 +334,31 @@ export const updateJob = (id, data) =>
 
 export const deleteJob = (id) => api.delete(`/api/jobs/${id}`).then((r) => r.data);
 
-export const applyJob = (jobId, applicationData, resumeFile) => {
+export const getApplicationVideoUrl = (jobId, applicationId) =>
+  api
+    .get(`/api/jobs/${jobId}/applications/${applicationId}/video`)
+    .then((r) => r.data);
+
+
+export const getApplicationVideoUploadUrl = (
+  jobId,
+  fileName,
+  fileType,
+  fileSize
+) =>
+  api
+    .post(`/api/jobs/${jobId}/application-video-upload-url`, {
+      file_name: fileName,
+      file_type: fileType,
+      file_size: fileSize,
+ })
+.then((r) => r.data);    
+
+export const applyJob = (
+  jobId,
+  applicationData,
+  resumeFile
+) => {
   const formData = new FormData();
 
   formData.append(
@@ -324,10 +383,13 @@ export const inviteCandidate = (jobId, studentId, message) =>
   api.post(`/api/jobs/${jobId}/invite`, { candidate_id: studentId, message }).then((r) => r.data);
 
 // Course assignments (educator → student)
-export const assignCourse = (courseId, { userId, due_date, note, }) =>
-  api.post(`/api/courses/${courseId}/assign`, { userId, due_date, note, }).then((r) => r.data);
+export const assignCourse = (courseId,{userId,due_date,note,}) =>
+    api.post(`/api/courses/${courseId}/assign`, {userId,due_date,note,}).then((r) => r.data);
 export const getMyAssignments = () =>
-  api.get('/api/me/assignments').then((r) => r.data);
+  api.get('/api/tasks').then((r) => r.data).catch(() => []);
+
+export const getCourseAssignments = (courseId) =>
+  api.get(`/api/courses/${courseId}/assignments`).then((r) => r.data);
 
 export const cancelAssignment = (assignmentId) =>
   api.post(`/api/assignments/${assignmentId}/cancel`).then((r) => r.data);
@@ -335,11 +397,105 @@ export const cancelAssignment = (assignmentId) =>
 export const getJobApplications = (jobId) =>
   api.get(`/api/jobs/${jobId}/applications`).then((r) => r.data);
 
+export const getMyJobApplications = () =>
+  api.get("/api/jobs/my-applications").then((r) => r.data);
+
+
+export const updateApplicationStatus = (
+  jobId,
+  applicationId,
+  status
+) =>
+  api
+    .patch(
+      `/api/jobs/${jobId}/applications/${applicationId}/status`,
+      { status }
+    )
+    .then((r) => r.data);
+
+
+export async function scheduleInterview(
+  jobId,
+  applicationId,
+  interviewData
+) {
+  const response = await api.post(
+    `/api/jobs/${jobId}/applications/${applicationId}/interview`,
+    interviewData
+  );
+
+  return response.data;
+}
+
+
+export async function getInterview(
+  jobId,
+  applicationId
+) {
+  const response = await api.get(
+    `/api/jobs/${jobId}/applications/${applicationId}/interview`
+  );
+
+  return response.data;
+}
+
+export async function getMyInterview(jobId) {
+  const response = await api.get(
+    `/api/jobs/${jobId}/my-interview`
+  );
+
+  return response.data;
+}
+
+
+export async function updateInterview(
+  jobId,
+  applicationId,
+  interviewData
+) {
+  const response = await api.put(
+    `/api/jobs/${jobId}/applications/${applicationId}/interview`,
+    interviewData
+  );
+
+  return response.data;
+}
+
+export async function cancelInterview(
+  jobId,
+  applicationId
+) {
+  const response = await api.delete(
+    `/api/jobs/${jobId}/applications/${applicationId}/interview`
+  );
+
+  return response.data;
+}
+
+
+export async function sendApplicantEmail(
+  jobId,
+  applicationId,
+  emailData
+) {
+  const response = await api.post(
+    `/api/jobs/${jobId}/applications/${applicationId}/email`,
+    emailData
+  );
+
+  return response.data;
+}
+
+
 export const getEligibleStudents = (jobId) =>
   api.get(`/api/jobs/${jobId}/eligible-students`).then((r) => r.data);
 
 // Notifications
 export const getNotifications = () => api.get("/api/notifications").then((r) => r.data);
+export const markNotificationRead = (id) => api.patch(`/api/notifications/${id}/read`).then((r) => r.data);
+export const markAllNotificationsRead = () => api.patch("/api/notifications/read-all").then((r) => r.data);
+export const markAnnouncementNotificationsRead = (announcementId) =>
+  api.patch("/api/notifications/read-announcements", { announcementId }).then((r) => r.data).catch(() => ({}));
 
 // Admin
 export const getAllUsers = (params = {}) =>
@@ -380,7 +536,7 @@ export const sendAnnouncement = (data) => api.post("/api/announcements", data).t
 // Dashboards API
 // ---------------------------------------------------------
 export const getStudentDashboard = () => api.get("/api/dashboard/student").then((r) => r.data);
-export const getEducatorDashboard = () => api.get("/api/dashboard/educator").then((r) => r.data);
+export const getEducatorDashboard = (params = {}) => api.get("/api/dashboard/educator", { params }).then((r) => r.data);
 export const getEmployerDashboard = () => api.get("/api/dashboard/employer").then((r) => r.data);
 
 // Community
@@ -388,6 +544,17 @@ export const getCommunityFeed = (params = {}) =>
   api.get("/api/community/feed", { params }).then((r) => r.data);
 export const createCommunityPost = (data) =>
   api.post("/api/community/posts", data).then((r) => r.data);
+export const toggleCommunityPostBookmark = (postId) =>
+  api.post(`/api/community/posts/${postId}/bookmark`).then((r) => r.data);
+
+// Connections & Users
+export const searchUsers = (q) => api.get(`/api/users/search?q=${q}`).then((r) => r.data);
+export const getMyConnections = () => api.get("/api/connections").then((r) => r.data);
+export const getPendingConnections = () => api.get("/api/connections/pending").then((r) => r.data);
+export const sendConnectionRequest = (userId) => api.post(`/api/connections/request/${userId}`).then((r) => r.data);
+export const acceptConnectionRequest = (connectionId) => api.post(`/api/connections/accept/${connectionId}`).then((r) => r.data);
+export const rejectConnectionRequest = (connectionId) => api.post(`/api/connections/reject/${connectionId}`).then((r) => r.data);
+export const removeConnection = (connectionId) => api.delete(`/api/connections/${connectionId}`).then((r) => r.data);
 
 export const getRecommendedJobs = () =>
   api.get("/api/jobs/recommended").then((r) => r.data);
