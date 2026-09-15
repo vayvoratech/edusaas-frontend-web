@@ -230,10 +230,9 @@ export default function StudentDashboard() {
 
     getRecommendedJobs()
       .then((data) => {
-        setRecommendedJobs(Array.isArray(data) ? data : []);
+        setRecommendedJobs(Array.isArray(data) ? data : (data?.jobs || []));
       })
       .catch((err) => {
-        console.error("Recommended jobs error:", err);
         setRecommendedJobs([]);
       });
 
@@ -280,7 +279,6 @@ export default function StudentDashboard() {
         setNotifications(studentNotifications);
       })
       .catch((err) => {
-        console.error("Notifications error:", err);
         setNotifications([]);
       });
 
