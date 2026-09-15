@@ -555,4 +555,57 @@ export const removeConnection = (connectionId) => api.delete(`/api/connections/$
 export const getRecommendedJobs = () =>
   api.get("/api/jobs/recommended").then((r) => r.data);
 
+// ---------------------------------------------------------
+// AI/ML Model APIs (proxied through backend → AIML service)
+// ---------------------------------------------------------
+
+/** Sentiment Analysis — POST /api/aiml/sentiment/predict */
+export const aimlPredictSentiment = (data) =>
+  api.post("/api/aiml/sentiment/predict", data).then((r) => r.data);
+
+/** Toxicity Detection — POST /api/aiml/toxicity/predict */
+export const aimlPredictToxicity = (data) =>
+  api.post("/api/aiml/toxicity/predict", data).then((r) => r.data);
+
+/** Fraud Detection — POST /api/aiml/fraud/predict (educator/admin) */
+export const aimlPredictFraud = (data) =>
+  api.post("/api/aiml/fraud/predict", data).then((r) => r.data);
+
+/** Performance Prediction — POST /api/aiml/performance/predict */
+export const aimlPredictPerformance = (data) =>
+  api.post("/api/aiml/performance/predict", data).then((r) => r.data);
+
+/** Skill Demand — GET list of available skills */
+export const aimlGetSkills = () =>
+  api.get("/api/aiml/skills").then((r) => r.data);
+
+/** Skill Demand — Forecast a single skill (6 periods default) */
+export const aimlForecastSkill = (skill, periods = 6) =>
+  api.get(`/api/aiml/skill-demand/${encodeURIComponent(skill)}?periods=${periods}`).then((r) => r.data);
+
+/** Skill Demand — Batch forecast multiple skills */
+export const aimlForecastBatch = (skills, periods = 6) =>
+  api.post("/api/aiml/skill-demand/batch", { skills, periods }).then((r) => r.data);
+
+/** Dropout Risk Prediction — POST /api/aiml/dropout/predict */
+export const aimlPredictDropout = (data) =>
+  api.post("/api/aiml/dropout/predict", data).then((r) => r.data);
+
+/** Predictive Hiring Compatibility — POST /api/aiml/hiring/predict */
+export const aimlPredictHiring = (data) =>
+  api.post("/api/aiml/hiring/predict", data).then((r) => r.data);
+
+/** Descriptive Answer Evaluation (XLNet) — POST /api/aiml/evaluation/evaluate */
+export const aimlEvaluateAnswer = (data) =>
+  api.post("/api/aiml/evaluation/evaluate", data).then((r) => r.data);
+
+/** Skill Gap Analysis Engine — POST /api/aiml/skill-gap/analyze */
+export const aimlAnalyzeSkillGap = (data) =>
+  api.post("/api/aiml/skill-gap/analyze", data).then((r) => r.data);
+
+/** Multi-File Project Plagiarism — POST /api/aiml/plagiarism/mini-project */
+export const aimlCheckMiniProjectPlagiarism = (data) =>
+  api.post("/api/aiml/plagiarism/mini-project", data).then((r) => r.data);
+
 export default api;
+

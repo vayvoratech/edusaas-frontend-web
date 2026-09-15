@@ -27,7 +27,7 @@ export default function StudentInsights() {
     { name: 'Intermediate', value: 48 },
     { name: 'Advanced', value: 30 },
   ];
-  const skillGapData = (gap?.missing_skills || ['Tech', 'Comm', 'Critical']).map((s, i) => ({
+  const skillGapData = (gap?.missing_skills || ['Tech', 'Communication', 'Critical Thinking']).map((s, i) => ({
     skill: s, value: 90 - i * 15,
   }));
 
@@ -62,6 +62,7 @@ export default function StudentInsights() {
     <div className="space-y-6" id="print-area" ref={printRef}>
       <style>{printStyleHtml}</style>
 
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Insights</h2>
@@ -73,6 +74,7 @@ export default function StudentInsights() {
         </div>
       </div>
 
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card title="Skill Gap Analysis">
           <div className="h-56">

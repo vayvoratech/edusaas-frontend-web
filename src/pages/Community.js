@@ -3,7 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { getCommunityFeed, createCommunityPost, getMyConnections, searchUsers, sendConnectionRequest, getPendingConnections, acceptConnectionRequest, rejectConnectionRequest, removeConnection, toggleCommunityPostBookmark, getDomainRoles, getAnnouncements, markAnnouncementNotificationsRead } from '../services/api';
+import { getCommunityFeed, createCommunityPost, getMyConnections, searchUsers, sendConnectionRequest, getPendingConnections, acceptConnectionRequest, rejectConnectionRequest, removeConnection, toggleCommunityPostBookmark, getDomainRoles, getAnnouncements, markAnnouncementNotificationsRead, aimlPredictSentiment, aimlPredictToxicity } from '../services/api';
 
 const fmtRel = (iso) => {
   if (!iso) return 'Recent';
@@ -142,6 +142,33 @@ export default function Community() {
   const [modalTab, setModalTab] = useState('connections'); // 'connections' or 'pending'
   const [sentRequests, setSentRequests] = useState({}); // { targetUserId: connectionId }
 
+  const [aiChecking, setAiChecking] = useState(false);
+  const [aiToneResult, setAiToneResult] = useState(null);
+
+  const handleAiToneCheck = async () => {
+    const text = `${postTitle} ${postBody}`.trim();
+    if (!text) {
+      showToast("Please enter a title or message first.", "error");
+      return;
+    }
+    try {
+      setAiChecking(true);
+      const [sentRes, toxRes] = await Promise.allSettled([
+        aimlPredictSentiment({ post_text: text }),
+        aimlPredictToxicity({ post_text: text }),
+      ]);
+      const sentiment = sentRes.status === 'fulfilled' && sentRes.value?.data ? sentRes.value.data : null;
+      const toxicity = toxRes.status === 'fulfilled' && toxRes.value?.data ? toxRes.value.data : null;
+      setAiToneResult({ sentiment, toxicity });
+      showToast("AI Tone & Safety analysis complete!", "success");
+    } catch (err) {
+      console.error("AI check error", err);
+      showToast("Could not complete AI check", "error");
+    } finally {
+      setAiChecking(false);
+    }
+  };
+
   const showToast = (message, type = 'success') => {
     setToastMessage({ message, type });
     setTimeout(() => setToastMessage(null), 3000);
@@ -191,6 +218,8 @@ export default function Community() {
           comments: [],
           jobDetails: p.metadata?.jobDetails || null,
           images: p.metadata?.images || [],
+          sentiment: p.metadata?.sentiment || null,
+          toxicity: p.metadata?.toxicity || null,
         }
       });
       setPosts(mappedPosts);
@@ -958,11 +987,27 @@ export default function Community() {
                             {post.avatar}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-bold text-sm text-slate-900 hover:text-indigo-600 cursor-pointer transition-colors">{post.author}</h4>
                               <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${ROLE_CONFIG[post.role]?.bg}`}>
                                 {post.role}
                               </span>
+                              {post.sentiment && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                                  (post.sentiment.sentiment === 'POSITIVE' || post.sentiment.label === 'POSITIVE')
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : (post.sentiment.sentiment === 'NEGATIVE' || post.sentiment.label === 'NEGATIVE')
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                                }`} title={`AI Sentiment: ${post.sentiment.sentiment || post.sentiment.label || 'Neutral'}${post.sentiment.confidence ? ` (${Math.round(post.sentiment.confidence * 100)}%)` : ''}`}>
+                                  {(post.sentiment.sentiment === 'POSITIVE' || post.sentiment.label === 'POSITIVE') ? '😊 Positive' : (post.sentiment.sentiment === 'NEGATIVE' || post.sentiment.label === 'NEGATIVE') ? '😟 Critical' : '⚖️ Neutral'}
+                                </span>
+                              )}
+                              {post.toxicity?.is_toxic && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300" title="Flagged by Toxicity model">
+                                  🛡️ Flagged
+                                </span>
+                              )}
                             </div>
                             <p className="text-xs text-slate-500 font-medium mt-0.5">
                               {post.company || post.course || post.type} <span className="mx-1 opacity-50">•</span> {post.when}
@@ -1519,6 +1564,66 @@ export default function Community() {
                             </button>
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* AI Tone & Safety Pre-Check */}
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={handleAiToneCheck}
+                        disabled={aiChecking || (!postTitle.trim() && !postBody.trim())}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-xl transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {aiChecking ? (
+                          <>
+                            <span className="animate-spin text-xs">⏳</span>
+                            <span>Analyzing Tone & Safety...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>✨</span>
+                            <span>AI Tone & Safety Pre-Check</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {aiToneResult && (
+                      <div className="p-3 bg-gradient-to-r from-slate-50 to-indigo-50/40 border border-indigo-100 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs animate-in fade-in duration-200">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-700">AI Feedback:</span>
+                          {aiToneResult.sentiment ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold border ${
+                              (aiToneResult.sentiment.sentiment === 'POSITIVE' || aiToneResult.sentiment.label === 'POSITIVE')
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : (aiToneResult.sentiment.sentiment === 'NEGATIVE' || aiToneResult.sentiment.label === 'NEGATIVE')
+                                ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                : 'bg-slate-200 text-slate-700 border-slate-300'
+                            }`}>
+                              {(aiToneResult.sentiment.sentiment === 'POSITIVE' || aiToneResult.sentiment.label === 'POSITIVE') ? '😊 Positive' : (aiToneResult.sentiment.sentiment === 'NEGATIVE' || aiToneResult.sentiment.label === 'NEGATIVE') ? '😟 Critical' : '⚖️ Neutral'}
+                              {aiToneResult.sentiment.confidence ? ` (${Math.round(aiToneResult.sentiment.confidence * 100)}%)` : ''}
+                            </span>
+                          ) : null}
+
+                          {aiToneResult.toxicity ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold border ${
+                              aiToneResult.toxicity.is_toxic
+                                ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            }`}>
+                              {aiToneResult.toxicity.is_toxic ? '⚠️ Toxic content flagged' : '🛡️ Safe & Constructive'}
+                              {typeof aiToneResult.toxicity.toxicity_score === 'number' ? ` (${Math.round(aiToneResult.toxicity.toxicity_score * 100)}%)` : ''}
+                            </span>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setAiToneResult(null)}
+                          className="text-slate-400 hover:text-slate-600 font-bold px-1"
+                        >
+                          ✕
+                        </button>
                       </div>
                     )}
                   </div>

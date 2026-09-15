@@ -174,15 +174,6 @@ export default function App() {
                 }
               />
 
-              <Route
-                path="ai-insights"
-                element={
-                  <Placeholder
-                    title="AI Insights Hub"
-                    description="Predictive analytics for future skills."
-                  />
-                }
-              />
 
               <Route
                 path="subscriptions"

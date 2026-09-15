@@ -40,7 +40,6 @@ const navByRole = {
     { to: '/app/community', label: 'Community', icon: '💬' },
     { to: '/app/reports', label: 'Reports', icon: '📑' },
     { to: '/app/settings', label: 'Settings', icon: '⚙️' },
-    { to: '/app/ai-insights', label: 'AI Insights', icon: '🤖' },
     { to: '/app/subscriptions', label: 'Subscriptions', icon: '💳' },
     { to: '/app/profile', label: 'Profile', icon: '👤' },
   ],

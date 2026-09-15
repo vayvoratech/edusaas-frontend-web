@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
       try {
         const stored = e?.detail || JSON.parse(localStorage.getItem('edu_user') || 'null');
         if (stored) setDbUser(stored);
-      } catch (_) {}
+      } catch (_) { }
     };
 
     window.addEventListener('edu_user_updated', handleUserUpdate);
@@ -57,6 +57,7 @@ export function AuthProvider({ children }) {
                 const updated = {
                   ...current,
                   id: data.id,
+                  clerk_id: data.clerk_id || current.clerk_id || user.id,
                   name: data.name,
                   username: data.username,
                   email: data.email,
@@ -96,7 +97,14 @@ export function AuthProvider({ children }) {
     })();
 
     // If token exists and belongs to the current Clerk user, we are already synchronized
-    if (token && storedUser && storedUser.clerk_id === user.id) {
+    const isMatchingClerk =
+      storedUser &&
+      (storedUser.clerk_id === user.id ||
+        (storedUser.email &&
+          user.primaryEmailAddress?.emailAddress &&
+          storedUser.email.toLowerCase() === user.primaryEmailAddress.emailAddress.toLowerCase()));
+
+    if (token && isMatchingClerk) {
       setIsSyncing(false);
       return;
     }
@@ -114,7 +122,7 @@ export function AuthProvider({ children }) {
 
         const res = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:5000'}/api/users/sync`, {
           method: "POST",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${clerkToken}`
           },
@@ -137,8 +145,9 @@ export function AuthProvider({ children }) {
             localStorage.setItem('edu_token', data.accessToken);
             if (data.refreshToken) localStorage.setItem('edu_refresh', data.refreshToken);
             if (data.user) {
-              localStorage.setItem('edu_user', JSON.stringify(data.user));
-              if (isMounted) setDbUser(data.user);
+              const fullUser = { ...data.user, clerk_id: user.id };
+              localStorage.setItem('edu_user', JSON.stringify(fullUser));
+              if (isMounted) setDbUser(fullUser);
             }
             window.dispatchEvent(new CustomEvent('edu_token_ready', { detail: data.accessToken }));
           }
@@ -218,7 +227,7 @@ export function AuthProvider({ children }) {
       updateAuthUser,
       authError: null,
       isLoaded,
-      loading: !isLoaded || (isSignedIn && isSyncing),
+      loading: !isLoaded || (isSignedIn && isSyncing && !dbUser && !localStorage.getItem('edu_token')),
       isAuthenticated: Boolean(isSignedIn || (isLoaded && dbUser)),
       login: async () => {
         return false; // Clerk handles login now
