@@ -205,6 +205,12 @@ export const pauseInitialQuizOnUnload = (sessionId) => {
   }).catch(() => { });
 };
 
+// assessmnent report when student got terminated
+export const submitAssessmentReport = async (data) => {
+  const res = await api.post("/api/assessment-reports", data);
+  return res.data;
+};
+
 // Initial Coding Assessment
 export const startInitialCodingAssessment = (sessionId) =>
   api.post("/api/assessments/initial-coding/start", { session_id: sessionId }).then((r) => r.data);

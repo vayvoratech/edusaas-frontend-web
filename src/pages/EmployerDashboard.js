@@ -910,7 +910,7 @@ const sortedDomainRoles = Array.from(
 
   {/* Selected category */}
   {selectedMatchType && (
-    <div className="mt-3 pt-3 border-t border-slate-100">
+    <div className="mt-1 pt-1 border-t border-slate-100">
 
       <div className="flex justify-between items-center mb-2">
         <span className="text-xs font-semibold text-slate-700">
@@ -1304,25 +1304,6 @@ const sortedDomainRoles = Array.from(
 {/* Candidate Header */}
 <div className="flex items-center gap-3">
 
-  {/* Select Candidate */}
-  <input
-    type="checkbox"
-    checked={selectedCandidateIds.includes(c.id)}
-    onChange={(e) => {
-      if (e.target.checked) {
-        setSelectedCandidateIds((current) => [
-          ...current,
-          c.id,
-        ]);
-      } else {
-        setSelectedCandidateIds((current) =>
-          current.filter((id) => id !== c.id)
-        );
-      }
-    }}
-    className="w-4 h-4 rounded border-slate-300 text-brand-blue-600 focus:ring-brand-blue-500"
-  />
-
   {/* Avatar */}
   <div className="w-10 h-10 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold text-sm">
     {(c.name || "?")[0].toUpperCase()}
@@ -1342,7 +1323,7 @@ const sortedDomainRoles = Array.from(
 </div>
 
         {/* Skills */}
-        <div className="mt-3 text-xs space-y-1">
+        <div className="mt-2 text-xs space-y-1">
 
           {c.matched_skills?.length > 0 && (
             <div>
@@ -1385,7 +1366,7 @@ const sortedDomainRoles = Array.from(
         </div>
 
         {/* Candidate Actions */}
-        <div className="mt-3 pt-3 border-t border-slate-100">
+        <div className="mt-1 pt-1 border-t border-slate-100">
 
           {/* Action Row */}
           <div className="flex justify-between items-center gap-3">
@@ -1406,19 +1387,39 @@ const sortedDomainRoles = Array.from(
                 : "Why recommended? ↓"}
             </button>
 
-            <button
-  type="button"
-  onClick={() => handleViewProfile(c)}
-  className="text-xs font-medium text-brand-blue-600 hover:text-brand-blue-700 hover:underline"
->
-  Review Candidate
-</button>
+            
+<div className="flex flex-col items-end gap-1">
+  {/* Review Candidate */}
+  <button
+    type="button"
+    onClick={() => handleViewProfile(c)}
+    className="px-3 py-1.5 text-xs font-medium rounded-md bg-brand-blue-600 text-white hover:bg-brand-blue-700"
+  >
+    Review Candidate
+  </button>
+
+  {/* Send Email */}
+  <button
+    type="button"
+    disabled={!c.application_id}
+    onClick={() => {
+      setEmailCandidate(c);
+      setEmailForm({
+        subject: "",
+        message: "",
+      });
+    }}
+    className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+  >
+    Send Email
+  </button>
+</div>
 
           </div>
 
           {/* Application Decision */}
 
-            <div className="mt-3 pt-3 border-t border-slate-100">
+            <div className="mt-1 pt-1 border-t border-slate-100">
 
               <div className="flex items-center justify-between gap-3">
 
@@ -1460,7 +1461,7 @@ const sortedDomainRoles = Array.from(
   </button>
 )}
 
-  {/* Submitted */}
+ 
  {/* Submitted */}
 {(!c.application_status ||
   c.application_status === "submitted") && (
@@ -1580,21 +1581,8 @@ const sortedDomainRoles = Array.from(
   </div>
 )}
 
-  {/* Send Email */}
-<button
-  type="button"
-  disabled={!c.application_id}
-  onClick={() => {
-    setEmailCandidate(c);
-    setEmailForm({
-      subject: "",
-      message: "",
-    });
-  }}
-  className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
->
-  Send Email
-</button>
+ 
+
               {/* Status Explanation */}
               {c.application_status ===
                 "shortlisted" && (
@@ -2301,20 +2289,30 @@ const sortedDomainRoles = Array.from(
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  disabled={!c.application_id}
-                  onClick={() => {
-                    setEmailCandidate(c);
-                    setEmailForm({
-                      subject: "",
-                      message: "",
-                    });
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-                >
-                  Send Email
-                </button>
+                {/* Review Candidate */}
+  <button
+    type="button"
+    onClick={() => handleViewProfile(c)}
+    className="px-3 py-1.5 text-xs font-medium rounded-md bg-brand-blue-600 text-white hover:bg-brand-blue-700"
+  >
+    Review Candidate
+  </button>
+
+  {/* Send Email */}
+  <button
+    type="button"
+    disabled={!c.application_id}
+    onClick={() => {
+      setEmailCandidate(c);
+      setEmailForm({
+        subject: "",
+        message: "",
+      });
+    }}
+    className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+  >
+    Send Email
+     </button>
 
               </div>
 

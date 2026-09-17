@@ -145,19 +145,55 @@ export function AuthProvider({ children }) {
           })
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.accessToken) {
-            localStorage.setItem('edu_token', data.accessToken);
-            if (data.refreshToken) localStorage.setItem('edu_refresh', data.refreshToken);
-            if (data.user) {
-              const fullUser = { ...data.user, clerk_id: user.id };
-              localStorage.setItem('edu_user', JSON.stringify(fullUser));
-              if (isMounted) setDbUser(fullUser);
-            }
-            window.dispatchEvent(new CustomEvent('edu_token_ready', { detail: data.accessToken }));
-          }
-        }
+if (res.ok) {
+  const data = await res.json();
+
+  if (data.accessToken) {
+    localStorage.setItem('edu_token', data.accessToken);
+
+    if (data.refreshToken) {
+      localStorage.setItem('edu_refresh', data.refreshToken);
+    }
+
+    if (data.user) {
+      const fullUser = { ...data.user, clerk_id: user.id };
+
+      localStorage.setItem('edu_user', JSON.stringify(fullUser));
+
+      if (isMounted) {
+        setDbUser(fullUser);
+      }
+    }
+
+    window.dispatchEvent(
+      new CustomEvent('edu_token_ready', {
+        detail: data.accessToken,
+      })
+    );
+  }
+} else if (res.status === 403) {
+  const data = await res.json().catch(() => ({}));
+
+  console.warn('[AUTH] Backend rejected login:', data.error);
+
+  localStorage.removeItem('edu_token');
+  localStorage.removeItem('edu_refresh');
+  localStorage.removeItem('edu_user');
+
+  if (isMounted) {
+    setDbUser(null);
+  }
+
+  const errorType = data.error?.toLowerCase().includes('suspended')
+    ? 'suspended'
+    : 'deleted';
+
+  await signOut({
+    redirectUrl: `/login?error=${errorType}`,
+  });
+}
+       
+
       } catch (err) {
         console.error("Auto-sync failed:", err);
       } finally {
