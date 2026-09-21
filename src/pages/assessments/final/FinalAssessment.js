@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   startFinalQuiz,
   activateFinalQuiz,
   heartbeatFinalQuiz,
   pauseFinalQuiz,
   pauseFinalQuizOnUnload,
+  submitAssessmentReport
 } from "../../../services/api";
 import ProctoringService from "../../../services/proctoringServices";
 import FinalQuiz from "./FinalQuiz";
@@ -18,6 +20,15 @@ const FinalAssessment = () => {
   const [quizData, setQuizData] = useState(null)
   const [assessmentState, setAssessmentState] = useState("loading");
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const navigate = useNavigate();
+
+  //report assessmnet termination
+const [showReportForm, setShowReportForm] = useState(false);
+const [reportReason, setReportReason] = useState("");
+const [reportEvidence, setReportEvidence] = useState("");
+const [reportSubmitting, setReportSubmitting] = useState(false);
+const [reportSubmitted, setReportSubmitted] = useState(false);
+const [reportError, setReportError] = useState("");
 
 
 
@@ -605,6 +616,48 @@ const FinalAssessment = () => {
     pointerEvents: "none",
   };
 
+
+  const handleSubmitAssessmentReport = async (e) => {
+  e.preventDefault();
+
+  if (!sessionId) {
+    setReportError("Assessment session not found.");
+    return;
+  }
+
+  if (!reportReason.trim()) {
+    setReportError("Please provide a reason for reporting the termination.");
+    return;
+  }
+
+  try {
+    setReportSubmitting(true);
+    setReportError("");
+
+    await submitAssessmentReport({
+      quiz_session_id: sessionId,
+      assessment_type: "FINAL",
+      reason: reportReason.trim(),
+      evidence: reportEvidence.trim() || null,
+    });
+
+    setReportSubmitted(true);
+    setShowReportForm(false);
+  } catch (err) {
+    console.error(
+      "Assessment report submission failed:",
+      err.response?.data || err.message
+    );
+
+    setReportError(
+      err.response?.data?.error ||
+        "Failed to submit the assessment report."
+    );
+  } finally {
+    setReportSubmitting(false);
+  }
+};
+
   return (
     <>
       {/* Persistent camera element.
@@ -647,13 +700,121 @@ const FinalAssessment = () => {
       )}
 
       {assessmentState === "terminated" && (
-        <div className="assessment-terminated">
-          <h2>Assessment Terminated</h2>
 
-          <p>
-            The assessment was terminated by the proctoring system.
-          </p>
+    <div className="h-full flex items-center justify-center bg-[#111318] p-6">
+      <div className="max-w-md w-full rounded-xl border border-red-500/20 bg-[#181b22] p-8 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-400">
+          !
         </div>
+
+        <h2 className="text-xl font-semibold text-white">
+          Assessment Terminated
+        </h2>
+
+        <p className="mt-2.5 text-sm leading-6 text-slate-400">
+          The assessment was terminated by the proctoring system.
+        </p>
+
+        {!reportSubmitted && !showReportForm && (
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => setShowReportForm(true)}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Report to Admin
+            </button>
+
+            <button
+              type="button"
+              onClick={ () => navigate("/student/dashboard")}
+              className="w-full rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        )}
+
+        {showReportForm && !reportSubmitted && (
+          <form
+            onSubmit={handleSubmitAssessmentReport}
+            className="mt-6 text-left"
+          >
+            <label className="block text-xs font-medium text-slate-300">
+              Reason
+            </label>
+
+            <textarea
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              placeholder="Explain why you believe the assessment was terminated incorrectly..."
+              rows={4}
+              className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#111318] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+            />
+
+            <label className="mt-4 block text-xs font-medium text-slate-300">
+              Additional Evidence / Explanation
+            </label>
+
+            <textarea
+              value={reportEvidence}
+              onChange={(e) => setReportEvidence(e.target.value)}
+              placeholder="Provide any additional details that may help the admin review..."
+              rows={3}
+              className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#111318] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+            />
+
+            {reportError && (
+              <p className="mt-3 text-xs text-red-400">
+                {reportError}
+              </p>
+            )}
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReportForm(false);
+                  setReportError("");
+                }}
+                disabled={reportSubmitting}
+                className="flex-1 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={reportSubmitting}
+                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {reportSubmitting ? "Submitting..." : "Submit Report"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {reportSubmitted && (
+          <div className="mt-6 rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+            <p className="text-sm font-medium text-green-400">
+              Report submitted successfully.
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">
+              An administrator can now review your assessment termination.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => navigate("/student/dashboard")}
+              className="mt-4 w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-600"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
       )}
 
       {assessmentState === "completed" && (

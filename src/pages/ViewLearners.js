@@ -57,12 +57,6 @@ export default function ViewLearners() {
         due_date: assignDue || null,
         note: assignNote || null,
     });
-
-     await assignCourse(assignCourseId, {
-        student_ids: [assignTo.id],
-        due_date: assignDue || null,
-        note: assignNote || null,
-      });
       setAssignDone(true);
     } catch (err) {
       setAssignError(err.response?.data?.error || err.message);
