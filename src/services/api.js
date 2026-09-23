@@ -1,6 +1,4 @@
 
-
-
 import axios from "axios";
 
 // ---------------------------------------------------------
@@ -461,9 +459,33 @@ export const deleteUser = (id) =>
   api.delete(`/api/admin/users/${id}`).then((r) => r.data);
 export const getInsights = () => api.get("/api/admin/insights").then((r) => r.data);
 
+ export const getAdminRecentActivity = (limit = 10) =>
+  api
+    .get("/api/admin/recent-activity", {
+      params: { limit },
+    })
+    .then((r) => r.data);
+
+export const getAssessmentReports = (status = '') =>
+  api
+    .get('/api/admin/assessment-reports', {
+      params: status ? { status } : {},
+    })
+    .then((r) => r.data);
+
+export const getAssessmentReport = (id) =>
+  api.get(`/api/admin/assessment-reports/${id}`).then((r) => r.data);
+
+export const updateAssessmentReport = (id, data) =>
+  api
+    .patch(`/api/admin/assessment-reports/${id}`, data)
+    .then((r) => r.data);
+
 export const getReportsSummary = () => api.get("/api/reports/summary").then((r) => r.data);
 export const getTopReports = () => api.get("/api/reports").then((r) => r.data);
 export const getExportHistory = () => api.get("/api/reports/exports").then((r) => r.data);
+export const generateReport = (type = "Course Performance") =>
+  api.post("/api/reports/generate", { type }).then((r) => r.data);
 
 export const getSettings = () => api.get("/api/settings").then((r) => r.data);
 export const updateSettings = (patch) => api.patch("/api/settings", patch).then((r) => r.data);
@@ -474,6 +496,25 @@ export const updateSettings = (patch) => api.patch("/api/settings", patch).then(
 
 export const updateSubscription = (data) => api.post("/api/subscriptions", data).then((r) => r.data);
 export const getMySubscription = () => api.get("/api/subscriptions").then((r) => r.data);
+
+export const getAdminSubscriptions = () =>
+  api.get("/api/admin/subscriptions").then((r) => r.data);
+
+export const getAdminSubscriptionSummary = () =>
+  api.get("/api/admin/subscriptions/summary").then((r) => r.data);
+
+export const updateAdminSubscriptionPlan = (id, plan_type) =>
+  api
+    .patch(`/api/admin/subscriptions/${id}/plan`, { plan_type })
+    .then((r) => r.data);
+
+export const extendAdminSubscription = (id, months) =>
+  api
+    .patch(`/api/admin/subscriptions/${id}/extend`, { months })
+    .then((r) => r.data);
+
+export const getSubscriptionPlans = () =>
+  api.get("/api/subscription-plans").then((r) => r.data);
 
 export const getMyTasks = (params = {}) => api.get("/api/tasks", { params }).then((r) => r.data);
 export const createTask = (data) => api.post("/api/tasks", data).then((r) => r.data);

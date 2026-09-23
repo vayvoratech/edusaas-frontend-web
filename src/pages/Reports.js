@@ -14,7 +14,7 @@ import {
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Gauge } from '../components/ui/Gauge';
-import { getReportsSummary, getTopReports, getExportHistory } from '../services/api';
+import { getReportsSummary, getTopReports, getExportHistory, generateReport } from '../services/api';
 import { downloadCsv, todayStamp, printStyleHtml } from '../utils/exports';
 
 const fmtDate = (iso) => {
@@ -37,6 +37,7 @@ export default function Reports() {
   const [error, setError] = useState(null);
   const [editingReport, setEditingReport] = useState(null);
   const [editDraft, setEditDraft] = useState({ title: '' });
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -54,6 +55,34 @@ export default function Reports() {
       }
     })();
   }, []);
+
+const onGenerateReport = async () => {
+  setGenerating(true);
+  setError(null);
+
+  try {
+    await generateReport("Course Performance");
+
+    const [s, t, e] = await Promise.all([
+      getReportsSummary(),
+      getTopReports(),
+      getExportHistory(),
+    ]);
+
+    setSummary(s);
+    setTop(t);
+    setExports(e);
+  } catch (err) {
+    setError(
+      err.response?.data?.error ||
+      err.message ||
+      "Failed to generate report"
+    );
+  } finally {
+    setGenerating(false);
+  }
+};
+
 
   const onExportCsv = () => {
     const rows = [
@@ -125,9 +154,30 @@ export default function Reports() {
           <p className="text-sm text-slate-500">Platform performance and export history.</p>
         </div>
         <div className="flex gap-2 no-print">
-          <Button variant="outline" onClick={onExportPdf} disabled={!summary}>📄 Export PDF</Button>
-          <Button variant="primary" onClick={onExportCsv} disabled={!summary}>⬇ Export CSV</Button>
-        </div>
+  <Button
+    variant="primary"
+    onClick={onGenerateReport}
+    disabled={generating}
+  >
+    {generating ? "Generating..." : "＋ Generate Report"}
+  </Button>
+
+  <Button
+    variant="outline"
+    onClick={onExportPdf}
+    disabled={!summary}
+  >
+    📄 Export PDF
+  </Button>
+
+  <Button
+    variant="primary"
+    onClick={onExportCsv}
+    disabled={!summary}
+  >
+    ⬇ Export CSV
+  </Button>
+</div>
       </div>
 
       {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
@@ -151,15 +201,17 @@ export default function Reports() {
         </Card>
         <Card className="!p-4">
           <div className="text-xs text-slate-500">Data Accuracy</div>
-          <div className="text-3xl font-bold text-brand-green-600 mt-1">
-            {summary?.dataAccuracy ?? '—'}%
-          </div>
-          <div className="h-1.5 mt-3 rounded-full bg-brand-green-100 overflow-hidden">
-            <div
-              className="h-full bg-brand-green-500"
-              style={{ width: `${summary?.dataAccuracy ?? 98}%` }}
-            />
-          </div>
+        <div className="text-3xl font-bold text-brand-green-600 mt-1">
+  {summary?.dataAccuracy == null ? 'N/A' : `${summary.dataAccuracy}%`}
+</div>
+{summary?.dataAccuracy != null && (
+  <div className="h-1.5 mt-3 rounded-full bg-brand-green-100 overflow-hidden">
+    <div
+      className="h-full bg-brand-green-500"
+      style={{ width: `${summary.dataAccuracy}%` }}
+    />
+  </div>
+)}
         </Card>
       </div>
 

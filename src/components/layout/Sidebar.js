@@ -12,6 +12,7 @@ const navByRole = {
     { to: '/app/community', label: 'Community', icon: '💬' },
     { to: '/app/my-insights', label: 'Insights', icon: '📊' },
     { to: '/app/assessments', label: 'Assessments', icon: '📝' },
+    { to: '/app/my-subscription', label: 'My Subscription', icon: '💳' },
     { to: '/app/gap-report', label: 'Gap Report', icon: '📈' },
     { to: '/app/job-applications', label: 'Job Applications', icon: '💼' },
     { to: '/app/profile', label: 'My Profile', icon: '👤' },
