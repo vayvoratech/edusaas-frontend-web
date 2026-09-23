@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -52,7 +52,7 @@ export default function AssessmentReviews() {
   const [adminNotes, setAdminNotes] = useState('');
   const [savingDecision, setSavingDecision] = useState(false);
 
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -76,11 +76,11 @@ export default function AssessmentReviews() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
-    loadReports();
-  }, [statusFilter]);
+  loadReports();
+}, [loadReports]);
 
   const pendingCount = useMemo(
     () =>

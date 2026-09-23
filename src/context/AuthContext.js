@@ -33,7 +33,7 @@ export function AuthProvider({ children }) {
   });
 
   const backendUser = dbUser;
-  const setBackendUser = setDbUser;
+
 
   /*
    * ---------------------------------------------------------
