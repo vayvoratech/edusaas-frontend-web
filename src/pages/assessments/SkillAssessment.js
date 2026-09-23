@@ -173,22 +173,23 @@ export default function SkillAssessment() {
 
           <div className="shrink-0">
             {overview.initialAssessment.status === 'Completed' ? (
-              <span className="text-sm font-medium text-green-600">
-                Completed
-              </span>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={() => navigate('/app/initial-assessment')}
-              >
-                {overview.initialAssessment.status === 'Completed'
-                  ? 'View Assessment'
-                  : 'Start Assessment'}
-              </Button>
-            )}
+  <span className="text-sm font-medium text-green-600">
+    Completed
+  </span>
+) : (
+  <Button
+    variant="primary"
+    onClick={() => navigate('/app/initial-assessment')}
+  >
+    {overview.initialAssessment.status === 'In Progress'
+      ? 'Continue Assessment'
+      : 'Start Assessment'}
+  </Button>
+)}
           </div>
         </div>
       </Card>
+
 
       {/* Learning Prerequisites */}
       <Card>

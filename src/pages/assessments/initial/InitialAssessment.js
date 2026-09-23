@@ -6,7 +6,8 @@ import {
   activateInitialQuiz,
   heartbeatInitialQuiz,
   pauseInitialQuiz,
-  pauseInitialQuizOnUnload
+  pauseInitialQuizOnUnload,
+  submitAssessmentReport
 } from "../../../services/api";
 
 import ProctoringService from "../../../services/proctoringServices";
@@ -147,6 +148,12 @@ const InitialAssessment = () => {
   const [loading, setLoading] = useState(false);
   const loadingAssessmentRef = useRef(false);
   const [error, setError] = useState("");
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportEvidence, setReportEvidence] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [reportError, setReportError] = useState("");
   const [startingProctoring, setStartingProctoring] = useState(false);
   const [proctoringWarning, setProctoringWarning] = useState(null);
 
@@ -427,6 +434,46 @@ const InitialAssessment = () => {
       navigate("/app/dashboard");
     }
   };
+
+  const handleSubmitAssessmentReport = async (e) => {
+  e.preventDefault();
+
+  if (!sessionId) {
+    setReportError("Assessment session not found.");
+    return;
+  }
+
+  if (!reportReason.trim()) {
+    setReportError("Please provide a reason for reporting the termination.");
+    return;
+  }
+
+  try {
+    setReportSubmitting(true);
+    setReportError("");
+
+    await submitAssessmentReport({
+      quiz_session_id: sessionId,
+      reason: reportReason.trim(),
+      evidence: reportEvidence.trim() || null,
+    });
+
+    setReportSubmitted(true);
+    setShowReportForm(false);
+  } catch (err) {
+    console.error(
+      "Assessment report submission failed:",
+      err.response?.data || err.message
+    );
+
+    setReportError(
+      err.response?.data?.error ||
+        "Failed to submit the assessment report."
+    );
+  } finally {
+    setReportSubmitting(false);
+  }
+};
 
   // Timer countdown
   useEffect(() => {
@@ -712,6 +759,7 @@ const InitialAssessment = () => {
   }, []);
   // Instructions Screen
   if (page === "instructions") {
+
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
@@ -843,9 +891,10 @@ const InitialAssessment = () => {
 
   // Terminated Screen
   if (page === "terminated") {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
+        <div className="text-center">
           <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
             !
           </div>
@@ -855,19 +904,113 @@ const InitialAssessment = () => {
           </h1>
 
           <p className="mt-4 text-gray-600">
-            Your assessment was terminated because a proctoring violation was detected.
+            Your assessment was terminated because a proctoring violation was
+            detected.
           </p>
 
-          <button
-            onClick={() => handleExitAssessmentToDashboard()}
-            className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-          >
-            Go to Dashboard
-          </button>
+          {reportSubmitted ? (
+            <div className="mt-6 p-4 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
+              Your report has been submitted successfully. An administrator
+              will review your assessment termination.
+            </div>
+          ) : !showReportForm ? (
+            <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReportForm(true);
+                  setReportError("");
+                }}
+                className="px-6 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+              >
+                Report to Admin
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExitAssessmentToDashboard()}
+                className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+          ) : (
+            <form
+              onSubmit={handleSubmitAssessmentReport}
+              className="mt-8 text-left"
+            >
+              <h2 className="text-lg font-semibold text-gray-900">
+                Report Assessment Termination
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Explain why you believe the termination was incorrect.
+              </p>
+
+              <div className="mt-5">
+                <label className="block text-sm font-medium text-gray-700">
+                  Reason <span className="text-red-500">*</span>
+                </label>
+
+                <textarea
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  rows={4}
+                  placeholder="Explain why you are reporting the termination..."
+                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={reportSubmitting}
+                />
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Additional Evidence / Explanation
+                </label>
+
+                <textarea
+                  value={reportEvidence}
+                  onChange={(e) => setReportEvidence(e.target.value)}
+                  rows={4}
+                  placeholder="Provide any additional information that may help the administrator review your report..."
+                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={reportSubmitting}
+                />
+              </div>
+
+              {reportError && (
+                <p className="mt-3 text-sm text-red-600">
+                  {reportError}
+                </p>
+              )}
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReportForm(false);
+                    setReportError("");
+                  }}
+                  disabled={reportSubmitting}
+                  className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={reportSubmitting}
+                  className="px-5 py-2.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50"
+                >
+                  {reportSubmitting ? "Submitting..." : "Submit Report"}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // Expired Screen
   if (page === "expired") {

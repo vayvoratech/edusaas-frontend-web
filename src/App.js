@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -18,7 +19,6 @@ import UserManagement from './pages/UserManagement';
 import UserDetails from './pages/user details';
 import CertificateValidation from './pages/certificatevalidation';
 import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import JobDetails from "./pages/StudentViewJobs";
 import JobApplication from "./pages/JobApplication";
 import StudentJobApplications from './pages/StudentJobApplications';
@@ -50,8 +50,13 @@ import EmployerAnalytics from './pages/EmployerAnalytics';
 import Placeholder from './pages/Placeholder';
 import Community from './pages/Community';
 
+import AssessmentReview from './pages/AssessmentReview';
+import SubscriptionManagement from './pages/SubscriptionManagement';
+import MySubscription from './pages/MySubscription';
+
 function RoleDashboard() {
   const { role } = useAuth();
+
   // Ensure we compare in lowercase as the backend returns lowercase roles like "educator", "student"
   switch (role?.toLowerCase()) {
     case 'educator': return <EducatorDashboard />;
@@ -63,10 +68,8 @@ function RoleDashboard() {
 }
 
 function StudentOrAdminSettings() {
-  const { role } = useAuth();
-  return role?.toLowerCase() === 'admin' ? <Settings /> : <StudentSettings />;
+  return <StudentSettings />;
 }
-
 
 export default function App() {
   return (
@@ -78,7 +81,8 @@ export default function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/onboarding" element={<Onboarding />} />
 
-           <Route path="/app" element={<AppLayout />}>
+          <Route path="/app" element={<AppLayout />}>
+
             {/* Dashboard */}
             <Route
               path="dashboard"
@@ -96,20 +100,20 @@ export default function App() {
               element={<JobApplication />}
             />
 
-
             {/* /app → /app/dashboard */}
             <Route
               index
               element={<Navigate to="dashboard" replace />}
             />
-             
+
             {/* Shared */}
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<StudentOrAdminSettings />} />
             <Route path="community" element={<Community />} />
 
             {/* Student */}
-            <Route element={<RoleRoute allowedRoles={["Student"]} />}>
+              <Route element={<RoleRoute allowedRoles={["Student"]} />}>
+              <Route path="my-subscription" element={<MySubscription />} />
               <Route path="courses" element={<CoursesPage />} />
               <Route path="learning" element={<CoursesPage />} />
               <Route path="learning/:courseId" element={<LearningModule />} />
@@ -123,10 +127,8 @@ export default function App() {
               <Route path="final-assessment" element={<FinalAssessment />} />
               <Route path="gap-report" element={<GapReport />} />
               <Route path="learning-paths" element={<LearningPath />} />
-              <Route path="job-applications" element={<StudentJobApplications />}
-/>
+              <Route path="job-applications" element={<StudentJobApplications />} />
             </Route>
-           
 
             {/* Educator */}
             <Route element={<RoleRoute allowedRoles={["Educator"]} />}>
@@ -135,7 +137,7 @@ export default function App() {
               <Route path="insights" element={<EducatorInsights />} />
               <Route path="announcements" element={<SendAnnouncement />} />
               <Route path="educator-assessments" element={<EducatorAssessments />} />
-              <Route path="educator-assessments/create"element={<CreateMiniProject />} />
+              <Route path="educator-assessments/create" element={<CreateMiniProject />} />
             </Route>
 
             {/* Employer */}
@@ -152,6 +154,7 @@ export default function App() {
               <Route path="users" element={<UserManagement />} />
               <Route path="user-details" element={<UserDetails />} />
               <Route path="reports" element={<Reports />} />
+               <Route path="assessment-reviews" element={<AssessmentReview />} />
 
               <Route
                 path="marketplace"
@@ -183,16 +186,10 @@ export default function App() {
                 }
               />
 
-
               <Route
-                path="subscriptions"
-                element={
-                  <Placeholder
-                    title="Subscription Management"
-                    description="Billing, integrations, and system health."
-                  />
-                }
-              />
+  path="subscriptions"
+  element={<SubscriptionManagement />}
+/>
             </Route>
           </Route>
 
@@ -202,3 +199,6 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+
+

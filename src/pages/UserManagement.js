@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { getAllUsers, updateUser, deleteUser, registerUser } from '../services/api';
+import { getAllUsers, updateUser, deleteUser, getDomainRoles, registerUser } from '../services/api';
 
 const ROLES = ['', 'student', 'educator', 'employer', 'admin'];
 const STATUSES = ['', 'active', 'suspended'];
@@ -34,7 +34,14 @@ export default function UserManagement() {
   // Modals
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [createDraft, setCreateDraft] = useState({ name: '', email: '', password: '', role: 'student' });
+  const [createDraft, setCreateDraft] = useState({
+    name: '', 
+    email: '', 
+    password: '', 
+    role: 'student' , 
+    domain_role_id: "",
+    })
+  const [domainRoles, setDomainRoles] = useState([]);
   const [createError, setCreateError] = useState(null);
   const [submittingCreate, setSubmittingCreate] = useState(false);
 
@@ -56,6 +63,21 @@ export default function UserManagement() {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+  if (!creating) return;
+
+  const loadDomainRoles = async () => {
+    try {
+      const data = await getDomainRoles();
+      setDomainRoles(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load domain roles:', err);
+      setCreateError('Failed to load domain roles.');
+    }
+  };
+
+  loadDomainRoles();
+}, [creating]);
 
   const applyFilters = () => {
     setPage(1);
@@ -130,33 +152,59 @@ export default function UserManagement() {
   };
 
   const onCreate = async (e) => {
-    e.preventDefault();
-    setCreateError(null);
-    const d = createDraft;
-    if (!d.name.trim()) return setCreateError('Name is required');
-    if (!EMAIL_RE.test(d.email.trim())) return setCreateError('Enter a valid email');
-    if (!PWD_RE.test(d.password)) {
-      return setCreateError(
-        'Password must be at least 8 chars with uppercase, lowercase, and a digit.'
-      );
-    }
-    setSubmittingCreate(true);
-    try {
-      await registerUser({
-        name: d.name.trim(),
-        email: d.email.trim().toLowerCase(),
-        password: d.password,
-        role: d.role,
-      });
-      setCreating(false);
-      setCreateDraft({ name: '', email: '', password: '', role: 'student' });
-      await load();
-    } catch (err) {
-      setCreateError(err.response?.data?.error || err.message);
-    } finally {
-      setSubmittingCreate(false);
-    }
-  };
+  e.preventDefault();
+  setCreateError(null);
+
+  const d = createDraft;
+
+  if (!d.name.trim()) {
+    return setCreateError('Name is required');
+  }
+
+  if (!EMAIL_RE.test(d.email.trim())) {
+    return setCreateError('Enter a valid email');
+  }
+
+  if (!PWD_RE.test(d.password)) {
+    return setCreateError(
+      'Password must be at least 8 chars with uppercase, lowercase, and a digit.'
+    );
+  }
+
+  if (d.role === 'student' && !d.domain_role_id) {
+    return setCreateError('Please select a domain role for the student.');
+  }
+
+  setSubmittingCreate(true);
+
+  try {
+    await registerUser({
+      name: d.name.trim(),
+      email: d.email.trim().toLowerCase(),
+      password: d.password,
+      role: d.role,
+      domain_role_id: d.role === 'student' ? d.domain_role_id : null,
+    });
+
+    setCreating(false);
+
+    setCreateDraft({
+      name: '',
+      email: '',
+      password: '',
+      role: 'student',
+      domain_role_id: '',
+    });
+
+    await load();
+  } catch (err) {
+    setCreateError(err.response?.data?.error || err.message);
+  } finally {
+    setSubmittingCreate(false);
+  }
+};
+
+  
 
   const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
   const visible = users.slice((page - 1) * pageSize, page * pageSize);
@@ -367,18 +415,7 @@ export default function UserManagement() {
                 ))}
               </select>
             </div>
-            <div className="mb-5">
-              <label className="text-xs text-slate-500">Status</label>
-              <select
-                value={editing.status || 'active'}
-                onChange={(e) => setEditing({ ...editing, status: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
-              >
-                {STATUSES.slice(1).map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
+         
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setEditing(null)}>
                 Cancel
@@ -426,18 +463,59 @@ export default function UserManagement() {
                 placeholder="Min 8 chars, mixed case + digit"
               />
             </div>
-            <div className="mb-5">
-              <label className="text-xs text-slate-500">Role</label>
-              <select
-                value={createDraft.role}
-                onChange={(e) => setCreateDraft({ ...createDraft, role: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
-              >
-                {ROLES.slice(1).map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
+            <div className="mb-3">
+  <label className="text-xs text-slate-500">Role</label>
+  <select
+    value={createDraft.role}
+    onChange={(e) =>
+      setCreateDraft({
+        ...createDraft,
+        role: e.target.value,
+        domain_role_id:
+          e.target.value === 'student'
+            ? createDraft.domain_role_id
+            : '',
+      })
+    }
+    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
+  >
+    {ROLES.slice(1).map((r) => (
+      <option key={r} value={r}>
+        {r}
+      </option>
+    ))}
+  </select>
+</div>
+
+{createDraft.role === 'student' && (
+  <div className="mb-5">
+    <label className="text-xs text-slate-500">
+      Domain Role
+    </label>
+
+    <select
+      value={createDraft.domain_role_id}
+      onChange={(e) =>
+        setCreateDraft({
+          ...createDraft,
+          domain_role_id: e.target.value,
+        })
+      }
+      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mt-1"
+    >
+      <option value="">Select domain role</option>
+
+      {domainRoles.map((domain) => (
+        <option
+          key={domain.domain_role_id}
+          value={domain.domain_role_id}
+        >
+          {domain.domain_name}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
             {createError && (
               <div className="p-3 mb-3 rounded-lg bg-red-50 text-red-600 text-sm">{createError}</div>
             )}

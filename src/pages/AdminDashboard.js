@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, StatPill } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { getInsights, getAllUsers } from '../services/api';
+import { getInsights, getAllUsers, getAssessmentReports, getAdminRecentActivity } from '../services/api';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 const ROLE_COLORS = {
@@ -40,13 +40,34 @@ export default function AdminDashboard() {
   const [insights, setInsights] = useState(null);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
-
+const [assessmentReports, setAssessmentReports] = useState([]);
+const [recentActivity, setRecentActivity] = useState([]);
   useEffect(() => {
     (async () => {
       try {
-        const [ins, us] = await Promise.all([getInsights(), getAllUsers()]);
-        setInsights(ins);
-        setUsers(us);
+        const [ins, us, reportsResponse, activityResponse] = await Promise.all([
+  getInsights(),
+  getAllUsers(),
+  getAssessmentReports(),
+  getAdminRecentActivity(10),
+]);
+
+setInsights(ins);
+setUsers(us);
+
+const activities = Array.isArray(activityResponse)
+  ? activityResponse
+  : activityResponse?.activities || activityResponse?.data || [];
+
+setRecentActivity(activities);
+
+const reports = Array.isArray(reportsResponse)
+  ? reportsResponse
+  : reportsResponse?.reports ||
+    reportsResponse?.data ||
+    [];
+
+setAssessmentReports(reports);
       } catch (err) {
         setError(err.response?.data?.error || err.message || 'Failed to load admin data');
       }
@@ -74,6 +95,20 @@ export default function AdminDashboard() {
     .filter((item) => item.value > 0);
 
   const totalActiveUsers = activeUsers.length;
+
+  const pendingAssessmentReports = assessmentReports.filter((report) => {
+  const status = String(report?.status ?? '').toLowerCase();
+
+  return [
+    'pending',
+    'open',
+    'submitted',
+    'reviewing',
+    'under_review',
+  ].includes(status);
+});
+
+const pendingAssessmentCount = pendingAssessmentReports.length;
 
   const stats = [
     { label: 'Active Users', tone: 'blue', isActiveUsers: true },
@@ -321,6 +356,89 @@ export default function AdminDashboard() {
             })}
           </div>
 
+{/* Needs Attention */}
+<div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+  <Card
+    title="Needs Attention"
+    className="lg:col-span-2"
+    action={
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        Admin actions
+      </span>
+    }
+  >
+    <div className="space-y-3">
+      <div className="flex items-center justify-between rounded-xl border border-red-100 bg-red-50/60 p-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-100 text-red-600">
+            ⚠️
+          </div>
+
+          <div className="min-w-0">
+            <div className="font-semibold text-slate-800">
+              Assessment Reviews
+            </div>
+
+            <div className="mt-0.5 text-xs text-slate-500">
+              Student termination reports awaiting administrative review
+            </div>
+          </div>
+        </div>
+
+        <div className="ml-3 flex shrink-0 items-center gap-3">
+          <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-bold text-red-700">
+            {pendingAssessmentCount}
+          </span>
+
+          <Button
+            variant="outline"
+            onClick={() => navigate('/app/assessment-reviews')}
+          >
+            Review
+          </Button>
+        </div>
+      </div>
+
+      {pendingAssessmentCount === 0 && (
+        <div className="rounded-xl border border-brand-green-100 bg-brand-green-50 p-3 text-sm text-brand-green-700">
+          ✓ No assessment termination reports are currently awaiting review.
+        </div>
+      )}
+    </div>
+  </Card>
+
+  <Card
+    title="Assessment Activity"
+    action={
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        Current
+      </span>
+    }
+  >
+    <div className="space-y-4">
+      <div>
+        <div className="text-xs text-slate-500">
+          Total reports
+        </div>
+        <div className="mt-1 text-2xl font-bold text-slate-900">
+          {assessmentReports.length}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+        <span className="text-xs text-slate-500">
+          Awaiting review
+        </span>
+
+        <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">
+          {pendingAssessmentCount}
+        </span>
+      </div>
+    </div>
+  </Card>
+</div>
+
+
           {/* Insights + recent users */}
           <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
             <Card
@@ -432,6 +550,60 @@ export default function AdminDashboard() {
               </Button>
             </Card>
           </div>
+
+
+
+          {/* Live activity */}
+<Card
+  title="Live Activity"
+  action={
+    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+      Platform events
+    </span>
+  }
+>
+  {recentActivity.length === 0 ? (
+    <div className="py-8 text-center text-sm text-slate-500">
+      No recent activity available.
+    </div>
+  ) : (
+    <ul className="divide-y divide-slate-100">
+      {recentActivity.map((activity) => (
+        <li
+          key={`${activity.type}-${activity.id}`}
+          className="flex items-start gap-3 py-3"
+        >
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm">
+            {activity.type === 'enrollment' && '📚'}
+            {activity.type === 'lesson' && '▶️'}
+            {activity.type === 'task' && '✅'}
+            {activity.type === 'achievement' && '🏆'}
+            {activity.type === 'certificate' && '🎓'}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-slate-800">
+              {activity.title}
+            </p>
+
+           <p className="mt-0.5 text-xs text-slate-500">
+  {activity.user?.name || activity.user?.email || 'Unknown user'}
+{activity.course
+  ? ` • ${activity.course?.title || activity.course?.name || 'Course'}`
+  : ''}
+  
+</p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {activity.when
+                ? new Date(activity.when).toLocaleString()
+                : 'Recently'}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )}
+</Card>
 
           {/* Quick links */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
