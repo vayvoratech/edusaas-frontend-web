@@ -50,6 +50,10 @@ import EmployerAnalytics from './pages/EmployerAnalytics';
 import Placeholder from './pages/Placeholder';
 import Community from './pages/Community';
 
+import AssessmentReview from './pages/AssessmentReview';
+import SubscriptionManagement from './pages/SubscriptionManagement';
+import MySubscription from './pages/MySubscription';
+
 function RoleDashboard() {
   const { role } = useAuth();
   // Ensure we compare in lowercase as the backend returns lowercase roles like "educator", "student"
@@ -109,7 +113,8 @@ export default function App() {
             <Route path="community" element={<Community />} />
 
             {/* Student */}
-            <Route element={<RoleRoute allowedRoles={["Student"]} />}>
+              <Route element={<RoleRoute allowedRoles={["Student"]} />}>
+              <Route path="my-subscription" element={<MySubscription />} />
               <Route path="courses" element={<CoursesPage />} />
               <Route path="learning" element={<CoursesPage />} />
               <Route path="learning/:courseId" element={<LearningModule />} />
@@ -152,6 +157,7 @@ export default function App() {
               <Route path="users" element={<UserManagement />} />
               <Route path="user-details" element={<UserDetails />} />
               <Route path="reports" element={<Reports />} />
+               <Route path="assessment-reviews" element={<AssessmentReview />} />
 
               <Route
                 path="marketplace"
@@ -185,14 +191,9 @@ export default function App() {
 
 
               <Route
-                path="subscriptions"
-                element={
-                  <Placeholder
-                    title="Subscription Management"
-                    description="Billing, integrations, and system health."
-                  />
-                }
-              />
+  path="subscriptions"
+  element={<SubscriptionManagement />}
+/>
             </Route>
           </Route>
 
