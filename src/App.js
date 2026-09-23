@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -18,7 +19,6 @@ import UserManagement from './pages/UserManagement';
 import UserDetails from './pages/user details';
 import CertificateValidation from './pages/certificatevalidation';
 import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import JobDetails from "./pages/StudentViewJobs";
 import JobApplication from "./pages/JobApplication";
 import StudentJobApplications from './pages/StudentJobApplications';
@@ -52,6 +52,7 @@ import Community from './pages/Community';
 
 function RoleDashboard() {
   const { role } = useAuth();
+
   // Ensure we compare in lowercase as the backend returns lowercase roles like "educator", "student"
   switch (role?.toLowerCase()) {
     case 'educator': return <EducatorDashboard />;
@@ -63,10 +64,8 @@ function RoleDashboard() {
 }
 
 function StudentOrAdminSettings() {
-  const { role } = useAuth();
-  return role?.toLowerCase() === 'admin' ? <Settings /> : <StudentSettings />;
+  return <StudentSettings />;
 }
-
 
 export default function App() {
   return (
@@ -78,7 +77,8 @@ export default function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/onboarding" element={<Onboarding />} />
 
-           <Route path="/app" element={<AppLayout />}>
+          <Route path="/app" element={<AppLayout />}>
+
             {/* Dashboard */}
             <Route
               path="dashboard"
@@ -96,13 +96,12 @@ export default function App() {
               element={<JobApplication />}
             />
 
-
             {/* /app → /app/dashboard */}
             <Route
               index
               element={<Navigate to="dashboard" replace />}
             />
-             
+
             {/* Shared */}
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<StudentOrAdminSettings />} />
@@ -123,10 +122,8 @@ export default function App() {
               <Route path="final-assessment" element={<FinalAssessment />} />
               <Route path="gap-report" element={<GapReport />} />
               <Route path="learning-paths" element={<LearningPath />} />
-              <Route path="job-applications" element={<StudentJobApplications />}
-/>
+              <Route path="job-applications" element={<StudentJobApplications />} />
             </Route>
-           
 
             {/* Educator */}
             <Route element={<RoleRoute allowedRoles={["Educator"]} />}>
@@ -135,7 +132,7 @@ export default function App() {
               <Route path="insights" element={<EducatorInsights />} />
               <Route path="announcements" element={<SendAnnouncement />} />
               <Route path="educator-assessments" element={<EducatorAssessments />} />
-              <Route path="educator-assessments/create"element={<CreateMiniProject />} />
+              <Route path="educator-assessments/create" element={<CreateMiniProject />} />
             </Route>
 
             {/* Employer */}
@@ -183,7 +180,6 @@ export default function App() {
                 }
               />
 
-
               <Route
                 path="subscriptions"
                 element={
@@ -202,3 +198,6 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+
+
