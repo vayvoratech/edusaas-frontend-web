@@ -51,6 +51,9 @@ export default function EmployerDashboard() {
   const [jobs, setJobs] = useState([]);
 
   const [candidates, setCandidates] = useState([]);
+  const [candidateLoading, setCandidateLoading] = useState(false);
+const [candidateError, setCandidateError] = useState("");
+
   const [expandedCandidateId, setExpandedCandidateId] = useState(null);
   const [videoCandidate, setVideoCandidate] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
@@ -100,6 +103,8 @@ useEffect(() => {
     );
 
   if (!user?.id) return;
+  setCandidateLoading(true);
+setCandidateError("");
 
   getJobs({ employer_id: user.id })
     .then(async (jobs) => {
@@ -107,6 +112,7 @@ useEffect(() => {
 
       if (!jobs.length) {
         setCandidates([]);
+        setCandidateLoading(false);
         return;
       }
 
@@ -344,22 +350,36 @@ console.table(
 );
 
         setCandidates(uniqueCandidates);
+        setCandidateError("");
+        setCandidateLoading(false);
       } catch (err) {
-        console.error(
-          "Candidate matching error:",
-          err
-        );
+  console.error(
+    "Candidate matching error:",
+    err
+  );
 
-        setCandidates([]);
-      }
+  setCandidates([]);
+  setCandidateError(
+    err.response?.data?.error ||
+    err.message ||
+    "Failed to load candidates."
+  );
+} finally {
+  setCandidateLoading(false);
+}
     })
     .catch((err) => {
-      console.error("Jobs error:", err);
+  console.error("Jobs error:", err);
 
-      setJobs([]);
-      setCandidates([]);
-    });
-
+  setJobs([]);
+  setCandidates([]);
+  setCandidateError(
+    err.response?.data?.error ||
+    err.message ||
+    "Failed to load candidates."
+  );
+  setCandidateLoading(false);
+});
   // Load all available domain roles
 getDomainRoles()
     .then((data) => {
@@ -1224,13 +1244,31 @@ const sortedDomainRoles = Array.from(
   <div className="space-y-3">
 
     {/* Empty State */}
-    {filteredCandidates.length === 0 && (
-      <div className="text-center text-sm text-slate-400 py-8">
-        {applicationStatusFilter === "all"
-          ? "No eligible candidates available."
-          : `No ${applicationStatusFilter} candidates found.`}
-      </div>
-    )}
+    {candidateLoading ? (
+  <div className="text-center py-8">
+    <div className="text-sm font-medium text-slate-600">
+      Loading candidates...
+    </div>
+    <div className="text-xs text-slate-400 mt-1">
+      Fetching eligible candidates and application details.
+    </div>
+  </div>
+) : candidateError ? (
+  <div className="text-center py-8">
+    <div className="text-sm font-medium text-red-600">
+      Unable to load candidates
+    </div>
+    <div className="text-xs text-slate-400 mt-1">
+      {candidateError}
+    </div>
+  </div>
+) : filteredCandidates.length === 0 ? (
+  <div className="text-center text-sm text-slate-400 py-8">
+    {applicationStatusFilter === "all"
+      ? "No eligible candidates available."
+      : `No ${applicationStatusFilter} candidates found.`}
+  </div>
+) : null}
 
 {/* Bulk Candidate Actions */}
 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
