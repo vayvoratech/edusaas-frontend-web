@@ -3,11 +3,11 @@ import React from 'react';
 export function Card({ children, className = '', title, action, ...rest }) {
   return (
     <div
-      className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-5 transition hover:shadow-md ${className}`}
+      className={`bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 transition-all duration-200 hover:shadow-md hover:border-slate-300/80 ${className}`}
       {...rest}
     >
       {(title || action) && (
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between gap-4 mb-4">
           {title && <h3 className="text-base font-semibold text-slate-900">{title}</h3>}
           {action}
         </div>

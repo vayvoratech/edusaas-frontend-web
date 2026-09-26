@@ -272,6 +272,7 @@ export function Sidebar({
           h-screen
           w-64
           bg-white dark:bg-slate-950
+          shadow-[4px_0_24px_rgba(15,23,42,0.03)]
           border-r
           border-slate-200 dark:border-slate-800
           flex flex-col
@@ -287,7 +288,7 @@ export function Sidebar({
       >
         <div
           className="
-            px-5 py-5
+            px-5 py-4
             border-b
             border-slate-100 dark:border-slate-800
             flex items-center justify-between
@@ -358,7 +359,7 @@ export function Sidebar({
 
         <div
           className="
-            px-3 py-3
+            px-3 py-4
             border-b
             border-slate-100 dark:border-slate-800
           "
@@ -390,7 +391,7 @@ export function Sidebar({
           </div>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
           {items.map((item) => {
             const Icon = item.icon;
 
@@ -406,7 +407,7 @@ export function Sidebar({
                     flex items-center
                     gap-3
                     px-3 py-2.5
-                    rounded-lg
+                    rounded-xl
                     text-sm
                     transition-all
                     duration-200
@@ -415,6 +416,10 @@ export function Sidebar({
                         ? `
                           bg-brand-blue-50
                           dark:bg-brand-blue-500/15
+                          shadow-sm
+                          ring-1
+                          ring-brand-blue-100
+                          dark:ring-brand-blue-500/20
                           text-brand-blue-700
                           dark:text-blue-400
                           font-semibold
@@ -438,7 +443,8 @@ export function Sidebar({
                     shrink-0
                     transition-transform
                     duration-200
-                    group-hover:scale-110
+                    group-hover:translate-x-0.5
+                    group-hover:scale-105
                   "
                 />
 
