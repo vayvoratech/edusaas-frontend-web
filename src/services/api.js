@@ -121,9 +121,36 @@ export const getDomainRoles = async () => {
   const res = await api.get("/api/domain-roles");
   return res.data.data;
 };
-export const getUserProfile = (id) => api.get(`/api/users/${id}`).then((r) => r.data);
+export const getUserProfile = (id) => {
+  const targetId = (!id || id === "undefined" || id === "null") ? "me" : id;
+  return api.get(`/api/users/${targetId}`).then((r) => r.data);
+};
+export const updateUserName = (id, name) =>
+  api.patch(`/api/users/${id}`, { name }).then((r) => r.data);
 export const saveUserProfile = (id, data) =>
   api.put(`/api/users/${id}/profile`, data).then((r) => r.data);
+
+export const uploadProfileAvatar = (id, imageFile) => {
+  const formData = new FormData();
+  formData.append("avatar", imageFile);
+  return api
+    .post(`/api/users/${id}/avatar`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((r) => r.data);
+};
+
+export const deleteProfileAvatar = (id) =>
+  api.delete(`/api/users/${id}/avatar`).then((r) => r.data);
+
+export const resolveAssetUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  const base = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  return `${base.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export const uploadProfileResume = (id, resumeFile) => {
   const formData = new FormData();
@@ -146,13 +173,9 @@ export const getStudentCandidates = () =>
 // ---------------------------------------------------------
 export const submitAssessment = (data) => api.post("/api/assessments", data).then((r) => r.data);
 export const getAssessmentResults = (id) => api.get(`/api/assessments/${id}/results`).then((r) => r.data);
-export const getAssessmentOverview = () =>
-  api.get("/api/assessments/overview").then((r) => r.data);
-
-export const fetchGapReport = (userId) =>
-  api.get(`/api/gap-report/${userId}`).then((r) => r.data);
-
-
+export const getAssessmentOverview = () => api.get("/api/assessments/overview").then((r) => r.data);
+export const fetchGapReport = (userId) => api.get(`/api/gap-report/${userId}`).then((r) => r.data);
+export const getSkillGapAnalysis = (userId) => api.get(`/api/skill-gap-analysis/${userId}`).then((r) => r.data);
 // Initial Adaptive Skill Assessment
 export const startInitialQuiz = () => api.post("/api/assessments/initial-quiz/start").then((r) => r.data);
 export const submitInitialQuizAnswer = ({ sessionId, questionId, answer }) =>
@@ -178,6 +201,27 @@ export const pauseInitialQuizOnUnload = (sessionId) => {
     body: JSON.stringify({ session_id: sessionId }),
     keepalive: true,
   }).catch(() => { });
+};
+
+// assessmnent report when student got terminated
+export const submitAssessmentReport = async (data) => {
+  const res = await api.post("/api/assessment-reports", data);
+  return res.data;
+};
+
+
+export const getAssessmentReportEvidence = async (reportId) => {
+  const res = await api.get(
+    `/api/admin/assessment-reports/${reportId}/evidence`,
+    {
+      responseType: "blob",
+    }
+  );
+
+  return {
+    blob: res.data,
+    contentType: res.headers["content-type"],
+  };
 };
 
 // Initial Coding Assessment
@@ -237,14 +281,56 @@ export const pauseFinalQuizOnUnload = (sessionId) => {
   }).catch(() => { });
 };
 
+//Mini Project APIs (Final Assessment)
+export const getCurrentMiniProject = () => api.get("/api/mini-projects/current").then((r) => r.data);
+
+export const getMiniProjectSubmissions = (assignmentId) =>
+  api
+    .get(`/api/mini-projects/${assignmentId}/submissions`)
+    .then((r) => r.data);
+
+export const submitMiniProject = (
+  assignmentId,
+  repositoryUrl,
+  branch = "main"
+) =>
+  api
+    .post(`/api/mini-projects/${assignmentId}/submissions`, {
+      repository_url: repositoryUrl,
+      branch,
+    })
+    .then((r) => r.data);
+
+export const getMyMiniProjects = () => api.get("/api/mini-projects").then((r) => r.data);
+
+export const createMiniProject = (data) => api.post("/api/mini-projects", data).then((r) => r.data);
+
+export const publishMiniProject = (assignmentId, due_at) =>
+  api
+    .post(`/api/mini-projects/${assignmentId}/publish`, {
+      due_at,
+    })
+    .then((r) => r.data);
+
 // ---------------------------------------------------------
 // Courses & Lessons API
 // ---------------------------------------------------------
-export const getCourses = (params = {}) => api.get("/api/courses", { params }).then((r) => r.data);
-export const getCourse = (id) => api.get(`/api/courses/${id}`).then((r) => r.data);
+export const getCourses = (params = {}) =>
+  api.get("/api/courses", { params }).then((r) => r.data?.data ?? r.data);
+export const getCourse = (id) => api.get(`/api/courses/${id}`).then((r) => r.data?.data ?? r.data);
 export const createCourse = (data) => api.post("/api/courses", data).then((r) => r.data);
 export const updateCourse = (id, data) => api.patch(`/api/courses/${id}`, data).then((r) => r.data);
 export const deleteCourse = (id) => api.delete(`/api/courses/${id}`).then((r) => r.data);
+
+// Course Ratings & Feedback
+export const rateCourse = (courseId, data) =>
+  api.post(`/api/courses/${courseId}/ratings`, data).then((r) => r.data);
+export const getMyCourseRating = (courseId) =>
+  api.get(`/api/courses/${courseId}/ratings/me`).then((r) => r.data);
+export const getCourseRatings = (courseId) =>
+  api.get(`/api/courses/${courseId}/ratings`).then((r) => r.data);
+export const getEducatorCourseFeedback = () =>
+  api.get(`/api/courses/educator/reviews`).then((r) => r.data);
 
 // Lessons
 export const getLessonsForCourse = (courseId) =>
@@ -263,7 +349,7 @@ export const deleteLesson = (lessonId) =>
 // ---------------------------------------------------------
 // Progress & Enrollments API
 // ---------------------------------------------------------
-export const getMyProgress = () => api.get("/api/progress").then((r) => r.data);
+export const getMyProgress = () => api.get("/api/progress").then((r) => r.data?.data ?? r.data);
 export const updateProgress = (lessonId, patch) =>
   api.patch(`/api/progress/${lessonId}`, patch).then((r) => r.data);
 export const submitQuiz = (lessonId, answers) =>
@@ -272,7 +358,16 @@ export const submitQuiz = (lessonId, answers) =>
 // Enrollments
 export const enrollCourse = (courseId) =>
   api.post("/api/enrollments", { course_id: courseId }).then((r) => r.data);
-export const getMyEnrollments = () => api.get("/api/enrollments").then((r) => r.data);
+export const getMyEnrollments = () =>
+  api.get("/api/enrollments").then((r) => r.data?.data ?? r.data);
+
+export const getMyCourseProficiency = async () => {
+  const [courses, enrollments] = await Promise.all([
+    getCourses(),
+    getMyEnrollments(),
+  ]);
+  return { courses, enrollments };
+};
 
 // ---------------------------------------------------------
 // Jobs & Assignments API
@@ -341,7 +436,7 @@ export const inviteCandidate = (jobId, studentId, message) =>
 export const assignCourse = (courseId,{userId,due_date,note,}) =>
     api.post(`/api/courses/${courseId}/assign`, {userId,due_date,note,}).then((r) => r.data);
 export const getMyAssignments = () =>
-  api.get('/api/me/assignments').then((r) => r.data);
+  api.get('/api/tasks').then((r) => r.data).catch(() => []);
 
 export const getCourseAssignments = (courseId) =>
   api.get(`/api/courses/${courseId}/assignments`).then((r) => r.data);
@@ -355,6 +450,10 @@ export const getJobApplications = (jobId) =>
 export const getMyJobApplications = () =>
   api.get("/api/jobs/my-applications").then((r) => r.data);
 
+export const updateReport = async (id, data) => {
+  const res = await api.patch(`/api/reports/${id}`, data);
+  return res.data;
+};
 
 export const updateApplicationStatus = (
   jobId,
@@ -449,6 +548,8 @@ export const getEligibleStudents = (jobId) =>
 export const getNotifications = () => api.get("/api/notifications").then((r) => r.data);
 export const markNotificationRead = (id) => api.patch(`/api/notifications/${id}/read`).then((r) => r.data);
 export const markAllNotificationsRead = () => api.patch("/api/notifications/read-all").then((r) => r.data);
+export const markAnnouncementNotificationsRead = (announcementId) =>
+  api.patch("/api/notifications/read-announcements", { announcementId }).then((r) => r.data).catch(() => ({}));
 
 // Admin
 export const getAllUsers = (params = {}) =>
@@ -482,6 +583,10 @@ export const updateAssessmentReport = (id, data) =>
     .then((r) => r.data);
 
 export const getReportsSummary = () => api.get("/api/reports/summary").then((r) => r.data);
+
+export const getPlatformHealth = () =>
+  api.get("/api/health").then((r) => r.data);
+
 export const getTopReports = () => api.get("/api/reports").then((r) => r.data);
 export const getExportHistory = () => api.get("/api/reports/exports").then((r) => r.data);
 export const generateReport = (type = "Course Performance") =>
@@ -555,4 +660,61 @@ export const removeConnection = (connectionId) => api.delete(`/api/connections/$
 export const getRecommendedJobs = () =>
   api.get("/api/jobs/recommended").then((r) => r.data);
 
+//certificatevalidation
+export const validateCertificate = (certificateCode) =>
+  api.get(`/api/certificate-validation/${certificateCode}`).then((r) => r.data);
+
+// ---------------------------------------------------------
+// AI/ML Model APIs (proxied through backend → AIML service)
+// ---------------------------------------------------------
+
+/** Sentiment Analysis — POST /api/aiml/sentiment/predict */
+export const aimlPredictSentiment = (data) =>
+  api.post("/api/aiml/sentiment/predict", data).then((r) => r.data);
+
+/** Toxicity Detection — POST /api/aiml/toxicity/predict */
+export const aimlPredictToxicity = (data) =>
+  api.post("/api/aiml/toxicity/predict", data).then((r) => r.data);
+
+/** Fraud Detection — POST /api/aiml/fraud/predict (educator/admin) */
+export const aimlPredictFraud = (data) =>
+  api.post("/api/aiml/fraud/predict", data).then((r) => r.data);
+
+/** Performance Prediction — POST /api/aiml/performance/predict */
+export const aimlPredictPerformance = (data) =>
+  api.post("/api/aiml/performance/predict", data).then((r) => r.data);
+
+/** Skill Demand — GET list of available skills */
+export const aimlGetSkills = () =>
+  api.get("/api/aiml/skills").then((r) => r.data);
+
+/** Skill Demand — Forecast a single skill (6 periods default) */
+export const aimlForecastSkill = (skill, periods = 6) =>
+  api.get(`/api/aiml/skill-demand/${encodeURIComponent(skill)}?periods=${periods}`).then((r) => r.data);
+
+/** Skill Demand — Batch forecast multiple skills */
+export const aimlForecastBatch = (skills, periods = 6) =>
+  api.post("/api/aiml/skill-demand/batch", { skills, periods }).then((r) => r.data);
+
+/** Dropout Risk Prediction — POST /api/aiml/dropout/predict */
+export const aimlPredictDropout = (data) =>
+  api.post("/api/aiml/dropout/predict", data).then((r) => r.data);
+
+/** Predictive Hiring Compatibility — POST /api/aiml/hiring/predict */
+export const aimlPredictHiring = (data) =>
+  api.post("/api/aiml/hiring/predict", data).then((r) => r.data);
+
+/** Descriptive Answer Evaluation (XLNet) — POST /api/aiml/evaluation/evaluate */
+export const aimlEvaluateAnswer = (data) =>
+  api.post("/api/aiml/evaluation/evaluate", data).then((r) => r.data);
+
+/** Skill Gap Analysis Engine — POST /api/aiml/skill-gap/analyze */
+export const aimlAnalyzeSkillGap = (data) =>
+  api.post("/api/aiml/skill-gap/analyze", data).then((r) => r.data);
+
+/** Multi-File Project Plagiarism — POST /api/aiml/plagiarism/mini-project */
+export const aimlCheckMiniProjectPlagiarism = (data) =>
+  api.post("/api/aiml/plagiarism/mini-project", data).then((r) => r.data);
+
 export default api;
+

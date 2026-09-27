@@ -51,6 +51,9 @@ export default function EmployerDashboard() {
   const [jobs, setJobs] = useState([]);
 
   const [candidates, setCandidates] = useState([]);
+  const [candidateLoading, setCandidateLoading] = useState(false);
+const [candidateError, setCandidateError] = useState("");
+
   const [expandedCandidateId, setExpandedCandidateId] = useState(null);
   const [videoCandidate, setVideoCandidate] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
@@ -100,6 +103,8 @@ useEffect(() => {
     );
 
   if (!user?.id) return;
+  setCandidateLoading(true);
+setCandidateError("");
 
   getJobs({ employer_id: user.id })
     .then(async (jobs) => {
@@ -107,6 +112,7 @@ useEffect(() => {
 
       if (!jobs.length) {
         setCandidates([]);
+        setCandidateLoading(false);
         return;
       }
 
@@ -162,7 +168,7 @@ console.log("APPLICATIONS RETURNED:", applications);
   application_id: application?.id,
   application_status: application?.status,
 });
- 
+
 console.log(
   "FULL NANI APPLICATION:",
   JSON.stringify(application, null, 2)
@@ -197,7 +203,7 @@ console.log(
   // Video availability
   has_video: Boolean(application?.application_data?.video),
 };
-                  
+
                 }),
               };
             } catch (error) {
@@ -216,6 +222,77 @@ console.log(
             }
           })
         );
+
+
+// Show candidates as soon as matching/application data is available.
+// Interview details will be loaded separately and should not block the UI.
+const initialCandidates = responses.flatMap(
+  ({ candidates }) => candidates
+);
+
+const initialCandidateMap = new Map();
+
+for (const candidate of initialCandidates) {
+  const existing = initialCandidateMap.get(candidate.id);
+
+  if (!existing) {
+    initialCandidateMap.set(candidate.id, candidate);
+    continue;
+  }
+
+  const candidateHasVideo = Boolean(
+    candidate.application_data?.video
+  );
+
+  const existingHasVideo = Boolean(
+    existing.application_data?.video
+  );
+
+  if (candidateHasVideo && !existingHasVideo) {
+    initialCandidateMap.set(candidate.id, candidate);
+    continue;
+  }
+
+  if (!candidateHasVideo && existingHasVideo) {
+    continue;
+  }
+
+  if (
+    candidate.application_id &&
+    !existing.application_id
+  ) {
+    initialCandidateMap.set(candidate.id, candidate);
+    continue;
+  }
+
+  if (
+    !candidate.application_id &&
+    existing.application_id
+  ) {
+    continue;
+  }
+
+  if (
+    Number(candidate.skill_match || 0) >
+    Number(existing.skill_match || 0)
+  ) {
+    initialCandidateMap.set(candidate.id, candidate);
+  }
+}
+
+const initialUniqueCandidates = Array.from(
+  initialCandidateMap.values()
+).sort(
+  (a, b) =>
+    Number(b.skill_match || 0) -
+    Number(a.skill_match || 0)
+);
+
+setCandidates(initialUniqueCandidates);
+setCandidateError("");
+setCandidateLoading(false);
+
+
 
 // Load existing interviews for shortlisted candidates
 const responsesWithInterviews = await Promise.all(
@@ -344,25 +421,58 @@ console.table(
 );
 
         setCandidates(uniqueCandidates);
+        setCandidateError("");
+        setCandidateLoading(false);
       } catch (err) {
-        console.error(
-          "Candidate matching error:",
-          err
-        );
+  console.error(
+    "Candidate matching error:",
+    err
+  );
 
-        setCandidates([]);
-      }
+  setCandidates([]);
+  setCandidateError(
+    err.response?.data?.error ||
+    err.message ||
+    "Failed to load candidates."
+  );
+} finally {
+  setCandidateLoading(false);
+}
     })
     .catch((err) => {
-      console.error("Jobs error:", err);
+  console.error("Jobs error:", err);
 
-      setJobs([]);
-      setCandidates([]);
-    });
-
+  setJobs([]);
+  setCandidates([]);
+  setCandidateError(
+    err.response?.data?.error ||
+    err.message ||
+    "Failed to load candidates."
+  );
+  setCandidateLoading(false);
+});
   // Load all available domain roles
 getDomainRoles()
     .then((data) => {
+      console.log("ALL DOMAIN ROLES FROM API:", data);
+console.table(
+  Array.isArray(data)
+    ? data.map((role) => ({
+        domain_role_id: role.domain_role_id,
+        domain_id: role.domain_id,
+        domain_name: role.domain_name,
+      }))
+    : []
+);
+
+console.log(
+  "UNIQUE ROLE NAMES:",
+  [...new Set(
+    (Array.isArray(data) ? data : [])
+      .map((role) => role.domain_name?.trim())
+      .filter(Boolean)
+  )]
+);
       setDomainRoles(
         Array.isArray(data) ? data : []
       );
@@ -711,10 +821,20 @@ const filteredCandidates = candidates
       // Domain Role Filter
           if (
   domainRoleFilter !== "all" &&
-  candidate.domain_role !== domainRoleFilter
+  String(candidate.domain_role_id) !== String(domainRoleFilter)
 ) {
   return false;
 }
+
+console.table(
+  domainRoles.map((r) => ({
+    domain_role_id: r.domain_role_id,
+    domain_id: r.domain_id,
+    domain_name: r.domain_name,
+    role_name: r.role_name,
+    name: r.name
+  }))
+);
 
   // Application Status Filter
     if (applicationStatusFilter !== "all") {
@@ -792,8 +912,18 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
   pipelinePage * pipelineItemsPerPage
 );
 
-
-
+const sortedDomainRoles = Array.from(
+  new Map(
+    domainRoles.map((role) => [
+      role.domain_role_id,
+      role,
+    ])
+  ).values()
+).sort((a, b) =>
+  (a.domain_name || "").localeCompare(
+    b.domain_name || ""
+  )
+);
 
   return (
     <div className="space-y-6">
@@ -871,7 +1001,7 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
 
   {/* Selected category */}
   {selectedMatchType && (
-    <div className="mt-3 pt-3 border-t border-slate-100">
+    <div className="mt-1 pt-1 border-t border-slate-100">
 
       <div className="flex justify-between items-center mb-2">
         <span className="text-xs font-semibold text-slate-700">
@@ -1142,13 +1272,14 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
   >
     <option value="all">All Roles</option>
 
-    {domainRoles.map((role) => (
-      <option key={role.domain_role_id} value={role.domain_id}>
+    {sortedDomainRoles.map((role) => (
+      <option key={role.domain_role_id} value={role.domain_role_id}>
         {role.domain_name}
       </option>
     ))}
   </select>
 </div>
+
 
 
   {/* Match Score Filter */}
@@ -1184,13 +1315,31 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
   <div className="space-y-3">
 
     {/* Empty State */}
-    {filteredCandidates.length === 0 && (
-      <div className="text-center text-sm text-slate-400 py-8">
-        {applicationStatusFilter === "all"
-          ? "No eligible candidates available."
-          : `No ${applicationStatusFilter} candidates found.`}
-      </div>
-    )}
+    {candidateLoading ? (
+  <div className="text-center py-8">
+    <div className="text-sm font-medium text-slate-600">
+      Loading candidates...
+    </div>
+    <div className="text-xs text-slate-400 mt-1">
+      Fetching eligible candidates and application details.
+    </div>
+  </div>
+) : candidateError ? (
+  <div className="text-center py-8">
+    <div className="text-sm font-medium text-red-600">
+      Unable to load candidates
+    </div>
+    <div className="text-xs text-slate-400 mt-1">
+      {candidateError}
+    </div>
+  </div>
+) : filteredCandidates.length === 0 ? (
+  <div className="text-center text-sm text-slate-400 py-8">
+    {applicationStatusFilter === "all"
+      ? "No eligible candidates available."
+      : `No ${applicationStatusFilter} candidates found.`}
+  </div>
+) : null}
 
 {/* Bulk Candidate Actions */}
 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -1264,25 +1413,6 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
 {/* Candidate Header */}
 <div className="flex items-center gap-3">
 
-  {/* Select Candidate */}
-  <input
-    type="checkbox"
-    checked={selectedCandidateIds.includes(c.id)}
-    onChange={(e) => {
-      if (e.target.checked) {
-        setSelectedCandidateIds((current) => [
-          ...current,
-          c.id,
-        ]);
-      } else {
-        setSelectedCandidateIds((current) =>
-          current.filter((id) => id !== c.id)
-        );
-      }
-    }}
-    className="w-4 h-4 rounded border-slate-300 text-brand-blue-600 focus:ring-brand-blue-500"
-  />
-
   {/* Avatar */}
   <div className="w-10 h-10 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold text-sm">
     {(c.name || "?")[0].toUpperCase()}
@@ -1302,7 +1432,7 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
 </div>
 
         {/* Skills */}
-        <div className="mt-3 text-xs space-y-1">
+        <div className="mt-2 text-xs space-y-1">
 
           {c.matched_skills?.length > 0 && (
             <div>
@@ -1345,7 +1475,7 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
         </div>
 
         {/* Candidate Actions */}
-        <div className="mt-3 pt-3 border-t border-slate-100">
+        <div className="mt-1 pt-1 border-t border-slate-100">
 
           {/* Action Row */}
           <div className="flex justify-between items-center gap-3">
@@ -1366,19 +1496,39 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
                 : "Why recommended? ↓"}
             </button>
 
-            <button
-  type="button"
-  onClick={() => handleViewProfile(c)}
-  className="text-xs font-medium text-brand-blue-600 hover:text-brand-blue-700 hover:underline"
->
-  Review Candidate
-</button>
+
+<div className="flex flex-col items-end gap-1">
+  {/* Review Candidate */}
+  <button
+    type="button"
+    onClick={() => handleViewProfile(c)}
+    className="px-3 py-1.5 text-xs font-medium rounded-md bg-brand-blue-600 text-white hover:bg-brand-blue-700"
+  >
+    Review Candidate
+  </button>
+
+  {/* Send Email */}
+  <button
+    type="button"
+    disabled={!c.application_id}
+    onClick={() => {
+      setEmailCandidate(c);
+      setEmailForm({
+        subject: "",
+        message: "",
+      });
+    }}
+    className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+  >
+    Send Email
+  </button>
+</div>
 
           </div>
 
           {/* Application Decision */}
 
-            <div className="mt-3 pt-3 border-t border-slate-100">
+            <div className="mt-1 pt-1 border-t border-slate-100">
 
               <div className="flex items-center justify-between gap-3">
 
@@ -1420,11 +1570,11 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
   </button>
 )}
 
-  {/* Submitted */}
- {/* Submitted */}
-{(!c.application_status ||
-  c.application_status === "submitted") && (
-  <>
+ {/* Candidate Status Actions */}
+<div className="flex flex-wrap gap-2">
+
+  {/* Shortlist - show when NOT already shortlisted */}
+  {c.application_status !== "shortlisted" && (
     <button
       type="button"
       disabled={
@@ -1433,13 +1583,16 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
       onClick={() =>
         handleApplicationStatus(c, "shortlisted")
       }
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {updatingApplicationId === (c.application_id || c.id)
         ? "Updating..."
         : "Shortlist"}
     </button>
+  )}
 
+  {/* Reject - show when NOT already rejected */}
+  {c.application_status !== "rejected" && (
     <button
       type="button"
       disabled={
@@ -1454,79 +1607,33 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
           handleApplicationStatus(c, "rejected");
         }
       }}
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {updatingApplicationId === (c.application_id || c.id) &&
-      c.application_status === "submitted"
+      {updatingApplicationId === (c.application_id || c.id)
         ? "Updating..."
         : "Reject"}
     </button>
-  </>
-)}
-
-  {/* Shortlisted */}
-  {c.application_status === "shortlisted" && (
-    <>
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "submitted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-      >
-        {updatingApplicationId === c.application_id
-          ? "Updating..."
-          : "Move to Submitted"}
-      </button>
-
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "rejected")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
-      >
-        Reject
-      </button>
-    </>
   )}
 
-  {/* Rejected */}
-  {c.application_status === "rejected" && (
-    <>
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "shortlisted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
-      >
-        Shortlist
-      </button>
-
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "submitted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-      >
-        Move to Submitted
-      </button>
-    </>
+  {/* Move to Submitted - show when NOT already submitted */}
+  {c.application_status !== "submitted" && (
+    <button
+      type="button"
+      disabled={
+        updatingApplicationId === (c.application_id || c.id)
+      }
+      onClick={() =>
+        handleApplicationStatus(c, "submitted")
+      }
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {updatingApplicationId === (c.application_id || c.id)
+        ? "Updating..."
+        : "Move to Submitted"}
+    </button>
   )}
+
+</div>
 
 </div>
       </div>
@@ -1540,21 +1647,8 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
   </div>
 )}
 
-  {/* Send Email */}
-<button
-  type="button"
-  disabled={!c.application_id}
-  onClick={() => {
-    setEmailCandidate(c);
-    setEmailForm({
-      subject: "",
-      message: "",
-    });
-  }}
-  className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
->
-  Send Email
-</button>
+
+
               {/* Status Explanation */}
               {c.application_status ===
                 "shortlisted" && (
@@ -2261,20 +2355,30 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  disabled={!c.application_id}
-                  onClick={() => {
-                    setEmailCandidate(c);
-                    setEmailForm({
-                      subject: "",
-                      message: "",
-                    });
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-                >
-                  Send Email
-                </button>
+                {/* Review Candidate */}
+  <button
+    type="button"
+    onClick={() => handleViewProfile(c)}
+    className="px-3 py-1.5 text-xs font-medium rounded-md bg-brand-blue-600 text-white hover:bg-brand-blue-700"
+  >
+    Review Candidate
+  </button>
+
+  {/* Send Email */}
+  <button
+    type="button"
+    disabled={!c.application_id}
+    onClick={() => {
+      setEmailCandidate(c);
+      setEmailForm({
+        subject: "",
+        message: "",
+      });
+    }}
+    className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+  >
+    Send Email
+     </button>
 
               </div>
 
@@ -2581,7 +2685,7 @@ const paginatedPipelineCandidates = pipelineCandidates.slice(
                     Target Role
                   </div>
                   <div className="text-sm font-semibold text-slate-800 mt-1">
-                    {profileCandidate.role_target || "—"}
+                    {profileCandidate.domain_role || "—"}
                   </div>
                 </div>
 

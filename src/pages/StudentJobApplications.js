@@ -402,98 +402,101 @@ export default function StudentJobApplications() {
 
  const ApplicationProgress = ({ application }) => {
   const interview = getInterview(application);
-  const isInterviewScheduled = !!interview;
   const status = normalizeStatus(application.status);
 
-  const isRejected = status === "rejected";
+  const isShortlisted =
+    status === "shortlisted" ||
+    status === "selected" ||
+    !!interview;
 
-  if (isRejected) {
+  const isInterviewScheduled = !!interview;
+
+  const Step = ({ completed, active, number, label }) => (
+    <div className="flex shrink-0 items-center gap-2">
+      <div
+        className={`flex h-7 w-7 items-center justify-center rounded-full ${
+          completed
+            ? "bg-emerald-500 text-white"
+            : active
+            ? "border-2 border-brand-blue-500 bg-brand-blue-50 text-brand-blue-600"
+            : "border-2 border-slate-300 bg-white text-slate-400"
+        }`}
+      >
+        {completed ? "✓" : number}
+      </div>
+
+      <span
+        className={`font-medium ${
+          completed
+            ? "text-emerald-600"
+            : active
+            ? "text-brand-blue-600"
+            : "text-slate-400"
+        }`}
+      >
+        {label}
+      </span>
+    </div>
+  );
+
+  if (status === "rejected") {
     return (
       <div className="mt-4 flex items-center gap-2 text-xs">
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white">
-            ✓
-          </div>
-          <span className="font-medium text-slate-700">
-            Submitted
-          </span>
-        </div>
+        <Step
+          completed
+          number="1"
+          label="Submitted"
+        />
 
         <div className="h-px flex-1 bg-slate-200" />
 
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white">
-            ✕
-          </div>
-          <span className="font-medium text-red-600">
-            Rejected
-          </span>
-        </div>
+        <Step
+          completed
+          number="2"
+          label="Rejected"
+        />
       </div>
     );
   }
 
   return (
     <div className="mt-4 flex items-center gap-2 text-xs">
-      {/* Submitted */}
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white">
-          ✓
-        </div>
-        <span className="font-medium text-slate-700">
-          Submitted
-        </span>
-      </div>
+      <Step
+        completed
+        number="1"
+        label="Submitted"
+      />
 
       <div className="h-px flex-1 bg-slate-200" />
 
-      {/* Under Review */}
-      <div className="flex shrink-0 items-center gap-2">
-        <div
-          className={`flex h-7 w-7 items-center justify-center rounded-full ${
-            isInterviewScheduled
-              ? "bg-emerald-500 text-white"
-              : "border-2 border-brand-blue-400 bg-white text-brand-blue-600"
-          }`}
-        >
-          {isInterviewScheduled ? "✓" : "2"}
-        </div>
-
-        <span
-          className={`font-medium ${
-            isInterviewScheduled
-              ? "text-emerald-600"
-              : "text-slate-700"
-          }`}
-        >
-          Under Review
-        </span>
-      </div>
+      <Step
+        completed={isShortlisted}
+        active={!isShortlisted}
+        number="2"
+        label="Under Review"
+      />
 
       <div className="h-px flex-1 bg-slate-200" />
 
-      {/* Interview */}
-      <div className="flex shrink-0 items-center gap-2">
-        <div
-          className={`flex h-7 w-7 items-center justify-center rounded-full ${
-            isInterviewScheduled
-              ? "bg-emerald-500 text-white"
-              : "border-2 border-slate-300 bg-white text-slate-400"
-          }`}
-        >
-          {isInterviewScheduled ? "✓" : "3"}
-        </div>
+      <Step
+        completed={isShortlisted}
+        active={isShortlisted && !isInterviewScheduled}
+        number="3"
+        label="Shortlisted"
+      />
 
-        <span
-          className={`font-medium ${
-            isInterviewScheduled
-              ? "text-emerald-600"
-              : "text-slate-400"
-          }`}
-        >
-          {isInterviewScheduled ? "Interview Scheduled" : "Interview"}
-        </span>
-      </div>
+      <div className="h-px flex-1 bg-slate-200" />
+
+      <Step
+        completed={isInterviewScheduled}
+        active={isShortlisted && !isInterviewScheduled}
+        number="4"
+        label={
+          isInterviewScheduled
+            ? "Interview Scheduled"
+            : "Interview"
+        }
+      />
     </div>
   );
 };

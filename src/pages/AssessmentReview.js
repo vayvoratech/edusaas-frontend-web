@@ -1,10 +1,11 @@
-ï»¿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
   getAssessmentReports,
   getAssessmentReport,
+  getAssessmentReportEvidence,
   updateAssessmentReport,
 } from '../services/api';
 
@@ -48,11 +49,39 @@ export default function AssessmentReviews() {
 
   const [selectedReport, setSelectedReport] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
 
   const [adminNotes, setAdminNotes] = useState('');
   const [savingDecision, setSavingDecision] = useState(false);
 
-  const loadReports = async () => {
+
+
+  const handleViewEvidence = async (reportId) => {
+  try {
+    setEvidenceLoading(true);
+
+    const { blob } = await getAssessmentReportEvidence(reportId);
+
+    const fileUrl = URL.createObjectURL(blob);
+    window.open(fileUrl, "_blank");
+
+    setTimeout(() => {
+      URL.revokeObjectURL(fileUrl);
+    }, 60000);
+  } catch (err) {
+    console.error("Failed to open assessment evidence:", err);
+
+    setError(
+      err.response?.data?.error ||
+      err.response?.data?.message ||
+      "Failed to open evidence file."
+    );
+  } finally {
+    setEvidenceLoading(false);
+  }
+};
+
+  const loadReports = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -76,11 +105,11 @@ export default function AssessmentReviews() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
-    loadReports();
-  }, [statusFilter]);
+  loadReports();
+}, [loadReports]);
 
   const pendingCount = useMemo(
     () =>
@@ -286,7 +315,7 @@ export default function AssessmentReviews() {
                           {report.student_email ||
                             report.user_email ||
                             report.student?.email ||
-                            'â€”'}
+                            '—'}
                         </div>
                       </td>
 
@@ -355,7 +384,7 @@ export default function AssessmentReviews() {
                   disabled={savingDecision}
                   className="rounded-lg px-3 py-1 text-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
-                  Ã—
+                  ×
                 </button>
               </div>
             </div>
@@ -378,7 +407,7 @@ export default function AssessmentReviews() {
                     {selectedReport.student_email ||
                       selectedReport.user_email ||
                       selectedReport.student?.email ||
-                      'â€”'}
+                      '—'}
                   </div>
                 </div>
 
@@ -396,7 +425,7 @@ export default function AssessmentReviews() {
                   </div>
 
                   <div className="mt-1 text-sm text-slate-500">
-                    Session ID: {selectedReport.quiz_session_id || 'â€”'}
+                    Session ID: {selectedReport.quiz_session_id || '—'}
                   </div>
                 </div>
               </div>
@@ -411,21 +440,43 @@ export default function AssessmentReviews() {
                 </div>
               </div>
 
-              <div>
-                <div className="text-sm font-semibold text-slate-900">
-                  Student Evidence / Explanation
-                </div>
+              <div className="text-sm font-semibold text-slate-900">
+  Student Evidence / Explanation
+</div>
 
-                <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
-                  {selectedReport.evidence ? (
-                    selectedReport.evidence
-                  ) : (
-                    <span className="text-slate-400">
-                      No additional evidence was provided by the student.
-                    </span>
-                  )}
-                </div>
-              </div>
+<div className="mt-2 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
+  {selectedReport.additional_evidence ? (
+    selectedReport.additional_evidence
+  ) : (
+    <span className="text-slate-400">
+      No written explanation was provided by the student.
+    </span>
+  )}
+</div>
+
+{selectedReport.evidence && (
+  <div className="mt-4">
+    <div className="text-sm font-semibold text-slate-900">
+      Supporting Evidence File
+    </div>
+
+    <div className="mt-2 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <span className="text-sm text-slate-700">
+        {selectedReport.evidence}
+      </span>
+
+     <button
+  type="button"
+  onClick={() => handleViewEvidence(selectedReport.id)}
+  disabled={evidenceLoading}
+  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {evidenceLoading ? "Opening..." : "View Evidence"}
+</button>
+    </div>
+  </div>
+)}
+
 
               <div>
                 <label className="text-sm font-semibold text-slate-900">
