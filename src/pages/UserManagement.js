@@ -297,7 +297,9 @@ export default function UserManagement() {
                           {initials(u.name)}
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-800">{u.name}</div>
+                          <div className="font-semibold text-slate-800">{u.name && u.name.trim().toLowerCase()  !== 'user'
+                            ? u.name : u.username || u.name}
+                            </div>
                           <div className="text-xs text-slate-500">{u.email}</div>
                         </div>
                       </div>

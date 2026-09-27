@@ -26,6 +26,7 @@ const FinalAssessment = () => {
 const [showReportForm, setShowReportForm] = useState(false);
 const [reportReason, setReportReason] = useState("");
 const [reportEvidence, setReportEvidence] = useState("");
+const [reportEvidenceFile, setReportEvidenceFile] = useState(null);
 const [reportSubmitting, setReportSubmitting] = useState(false);
 const [reportSubmitted, setReportSubmitted] = useState(false);
 const [reportError, setReportError] = useState("");
@@ -634,12 +635,21 @@ const [reportError, setReportError] = useState("");
     setReportSubmitting(true);
     setReportError("");
 
-    await submitAssessmentReport({
-      quiz_session_id: sessionId,
-      assessment_type: "FINAL",
-      reason: reportReason.trim(),
-      evidence: reportEvidence.trim() || null,
-    });
+   const formData = new FormData();
+
+formData.append("quiz_session_id", sessionId);
+formData.append("assessment_type", "FINAL");
+formData.append("reason", reportReason.trim());
+
+if (reportEvidence.trim()) {
+  formData.append("additional_evidence", reportEvidence.trim());
+}
+
+if (reportEvidenceFile) {
+  formData.append("evidence", reportEvidenceFile);
+}
+
+await submitAssessmentReport(formData);
 
     setReportSubmitted(true);
     setShowReportForm(false);
@@ -751,6 +761,24 @@ const [reportError, setReportError] = useState("");
               rows={4}
               className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#111318] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
             />
+
+      {/* Accept evidence file */}
+            <label className="mt-4 block text-xs font-medium text-slate-300">
+  Supporting Evidence
+</label>
+
+<input
+  type="file"
+  accept=".png,.jpg,.jpeg,.pdf"
+  onChange={(e) =>
+    setReportEvidenceFile(e.target.files?.[0] || null)
+  }
+  className="mt-1.5 block w-full text-sm text-slate-300"
+/>
+
+<p className="mt-1 text-xs text-slate-500">
+  Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
+</p>
 
             <label className="mt-4 block text-xs font-medium text-slate-300">
               Additional Evidence / Explanation

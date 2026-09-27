@@ -209,6 +209,21 @@ export const submitAssessmentReport = async (data) => {
   return res.data;
 };
 
+
+export const getAssessmentReportEvidence = async (reportId) => {
+  const res = await api.get(
+    `/api/admin/assessment-reports/${reportId}/evidence`,
+    {
+      responseType: "blob",
+    }
+  );
+
+  return {
+    blob: res.data,
+    contentType: res.headers["content-type"],
+  };
+};
+
 // Initial Coding Assessment
 export const startInitialCodingAssessment = (sessionId) =>
   api.post("/api/assessments/initial-coding/start", { session_id: sessionId }).then((r) => r.data);
@@ -435,6 +450,10 @@ export const getJobApplications = (jobId) =>
 export const getMyJobApplications = () =>
   api.get("/api/jobs/my-applications").then((r) => r.data);
 
+export const updateReport = async (id, data) => {
+  const res = await api.patch(`/api/reports/${id}`, data);
+  return res.data;
+};
 
 export const updateApplicationStatus = (
   jobId,
@@ -564,6 +583,10 @@ export const updateAssessmentReport = (id, data) =>
     .then((r) => r.data);
 
 export const getReportsSummary = () => api.get("/api/reports/summary").then((r) => r.data);
+
+export const getPlatformHealth = () =>
+  api.get("/api/health").then((r) => r.data);
+
 export const getTopReports = () => api.get("/api/reports").then((r) => r.data);
 export const getExportHistory = () => api.get("/api/reports/exports").then((r) => r.data);
 export const generateReport = (type = "Course Performance") =>

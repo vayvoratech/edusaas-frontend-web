@@ -94,101 +94,207 @@ export default function SkillAssessment() {
         </div>
       </div>
 
-      {/* Initial Assessment */}
-      <Card>
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                ✓
-              </div>
-
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Initial Assessment
-                  </h3>
-
-                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                    Skill Assessment
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-sm text-slate-500 mt-2 max-w-2xl">
-              Evaluate your current skills through the initial assessment
-              to determine your readiness level and identify skill gaps.
-            </p>
-
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                  Status
-                </span>
-
-                <p
-                  className={`mt-1 text-sm font-semibold ${
-                    overview.initialAssessment.status === 'Completed'
-                      ? 'text-green-600'
-                      : 'text-amber-600'
-                  }`}
-                >
-                  {overview.initialAssessment.status}
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                  Questions
-                </span>
-
-                <p className="mt-1 text-sm font-semibold text-slate-700">
-                  {overview.initialAssessment.questionsAnswered}/
-                  {overview.initialAssessment.totalQuestions}
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-orange-50 px-3 py-2.5">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-orange-500">
-                  Readiness
-                </span>
-
-                <p className="mt-1 text-sm font-semibold text-orange-600">
-                  {overview.initialAssessment.readinessScore ?? '—'}
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                  Purpose
-                </span>
-
-                <p className="mt-1 text-sm font-semibold text-slate-700">
-                  Skill & Readiness
-                </p>
-              </div>
-            </div>
+    {/* Initial Assessment */}
+<Card>
+  <div className="flex flex-col gap-5">
+    {/* Header */}
+    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            ✓
           </div>
 
-          <div className="shrink-0">
-            {overview.initialAssessment.status === 'Completed' ? (
-  <span className="text-sm font-medium text-green-600">
-    Completed
-  </span>
-) : (
-  <Button
-    variant="primary"
-    onClick={() => navigate('/app/initial-assessment')}
-  >
-    {overview.initialAssessment.status === 'In Progress'
-      ? 'Continue Assessment'
-      : 'Start Assessment'}
-  </Button>
-)}
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-semibold text-slate-900">
+                Initial Assessment
+              </h3>
+
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                Skill Assessment
+              </span>
+            </div>
           </div>
         </div>
-      </Card>
+
+        <p className="mt-2 max-w-2xl text-sm text-slate-500">
+          Complete both stages to evaluate your current skills, readiness,
+          and skill gaps.
+        </p>
+      </div>
+
+      {/* Action */}
+      <div className="shrink-0">
+        {overview.initialAssessment.status === "Completed" ? (
+          <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700">
+            ✓ Completed
+          </span>
+        ) : (
+          <Button
+            variant="primary"
+            onClick={() => navigate("/app/initial-assessment")}
+          >
+            {overview.codingAssessment?.status === "In Progress"
+              ? "Continue Coding Assessment"
+              : overview.initialAssessment.status === "In Progress"
+              ? "Continue Assessment"
+              : "Start Assessment"}
+          </Button>
+        )}
+      </div>
+    </div>
+
+    {/* Assessment stages */}
+    <div className="grid gap-3 md:grid-cols-2">
+      {/* Initial Quiz */}
+      <div
+        className={`rounded-xl border p-4 ${
+          overview.initialAssessment.questionsAnswered >=
+            overview.initialAssessment.totalQuestions &&
+          overview.initialAssessment.totalQuestions > 0
+            ? "border-green-200 bg-green-50/50"
+            : "border-slate-200 bg-slate-50"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Stage 1
+            </p>
+
+            <h4 className="mt-1 text-sm font-semibold text-slate-900">
+              Initial Quiz
+            </h4>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Knowledge and skill assessment
+            </p>
+          </div>
+
+          {overview.initialAssessment.questionsAnswered >=
+            overview.initialAssessment.totalQuestions &&
+          overview.initialAssessment.totalQuestions > 0 ? (
+            <span className="text-sm font-medium text-green-600">
+              ✓ Completed
+            </span>
+          ) : (
+            <span className="text-sm font-medium text-amber-600">
+              In Progress
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 text-xs text-slate-500">
+          Questions:{" "}
+          <span className="font-semibold text-slate-700">
+            {overview.initialAssessment.questionsAnswered}/
+            {overview.initialAssessment.totalQuestions}
+          </span>
+        </div>
+      </div>
+
+      {/* Coding Assessment */}
+      <div
+        className={`rounded-xl border p-4 ${
+          overview.codingAssessment?.status === "Completed"
+            ? "border-green-200 bg-green-50/50"
+            : overview.codingAssessment?.status === "In Progress"
+            ? "border-blue-200 bg-blue-50/50"
+            : "border-slate-200 bg-slate-50"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Stage 2
+            </p>
+
+            <h4 className="mt-1 text-sm font-semibold text-slate-900">
+              Coding Assessment
+            </h4>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Practical coding evaluation
+            </p>
+          </div>
+
+          {overview.codingAssessment?.status === "Completed" ? (
+            <span className="text-sm font-medium text-green-600">
+              ✓ Completed
+            </span>
+          ) : overview.codingAssessment?.status === "In Progress" ? (
+            <span className="text-sm font-medium text-blue-600">
+              In Progress
+            </span>
+          ) : (
+            <span className="text-sm font-medium text-slate-500">
+              Not Started
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 text-xs text-slate-500">
+          {overview.codingAssessment?.status === "Completed"
+            ? "Coding assessment completed."
+            : overview.codingAssessment?.status === "In Progress"
+            ? "Continue your coding assessment."
+            : "Complete the Initial Quiz first."}
+        </div>
+      </div>
+    </div>
+
+    {/* Assessment metrics */}
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+          Overall Status
+        </span>
+
+        <p
+          className={`mt-1 text-sm font-semibold ${
+            overview.initialAssessment.status === "Completed"
+              ? "text-green-600"
+              : "text-amber-600"
+          }`}
+        >
+          {overview.initialAssessment.status}
+        </p>
+      </div>
+
+      <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+          Questions
+        </span>
+
+        <p className="mt-1 text-sm font-semibold text-slate-700">
+          {overview.initialAssessment.questionsAnswered}/
+          {overview.initialAssessment.totalQuestions}
+        </p>
+      </div>
+
+      <div className="rounded-lg bg-orange-50 px-3 py-2.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-orange-500">
+          Readiness
+        </span>
+
+        <p className="mt-1 text-sm font-semibold text-orange-600">
+          {overview.initialAssessment.readinessScore ?? "—"}
+        </p>
+      </div>
+
+      <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+          Purpose
+        </span>
+
+        <p className="mt-1 text-sm font-semibold text-slate-700">
+          Skill & Readiness
+        </p>
+      </div>
+    </div>
+  </div>
+</Card>
 
 
       {/* Learning Prerequisites */}

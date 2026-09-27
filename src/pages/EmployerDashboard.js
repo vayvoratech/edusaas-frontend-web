@@ -168,7 +168,7 @@ console.log("APPLICATIONS RETURNED:", applications);
   application_id: application?.id,
   application_status: application?.status,
 });
- 
+
 console.log(
   "FULL NANI APPLICATION:",
   JSON.stringify(application, null, 2)
@@ -203,7 +203,7 @@ console.log(
   // Video availability
   has_video: Boolean(application?.application_data?.video),
 };
-                  
+
                 }),
               };
             } catch (error) {
@@ -222,6 +222,77 @@ console.log(
             }
           })
         );
+
+
+// Show candidates as soon as matching/application data is available.
+// Interview details will be loaded separately and should not block the UI.
+const initialCandidates = responses.flatMap(
+  ({ candidates }) => candidates
+);
+
+const initialCandidateMap = new Map();
+
+for (const candidate of initialCandidates) {
+  const existing = initialCandidateMap.get(candidate.id);
+
+  if (!existing) {
+    initialCandidateMap.set(candidate.id, candidate);
+    continue;
+  }
+
+  const candidateHasVideo = Boolean(
+    candidate.application_data?.video
+  );
+
+  const existingHasVideo = Boolean(
+    existing.application_data?.video
+  );
+
+  if (candidateHasVideo && !existingHasVideo) {
+    initialCandidateMap.set(candidate.id, candidate);
+    continue;
+  }
+
+  if (!candidateHasVideo && existingHasVideo) {
+    continue;
+  }
+
+  if (
+    candidate.application_id &&
+    !existing.application_id
+  ) {
+    initialCandidateMap.set(candidate.id, candidate);
+    continue;
+  }
+
+  if (
+    !candidate.application_id &&
+    existing.application_id
+  ) {
+    continue;
+  }
+
+  if (
+    Number(candidate.skill_match || 0) >
+    Number(existing.skill_match || 0)
+  ) {
+    initialCandidateMap.set(candidate.id, candidate);
+  }
+}
+
+const initialUniqueCandidates = Array.from(
+  initialCandidateMap.values()
+).sort(
+  (a, b) =>
+    Number(b.skill_match || 0) -
+    Number(a.skill_match || 0)
+);
+
+setCandidates(initialUniqueCandidates);
+setCandidateError("");
+setCandidateLoading(false);
+
+
 
 // Load existing interviews for shortlisted candidates
 const responsesWithInterviews = await Promise.all(
@@ -1425,7 +1496,7 @@ const sortedDomainRoles = Array.from(
                 : "Why recommended? ↓"}
             </button>
 
-            
+
 <div className="flex flex-col items-end gap-1">
   {/* Review Candidate */}
   <button
@@ -1499,11 +1570,11 @@ const sortedDomainRoles = Array.from(
   </button>
 )}
 
- 
- {/* Submitted */}
-{(!c.application_status ||
-  c.application_status === "submitted") && (
-  <>
+ {/* Candidate Status Actions */}
+<div className="flex flex-wrap gap-2">
+
+  {/* Shortlist - show when NOT already shortlisted */}
+  {c.application_status !== "shortlisted" && (
     <button
       type="button"
       disabled={
@@ -1512,13 +1583,16 @@ const sortedDomainRoles = Array.from(
       onClick={() =>
         handleApplicationStatus(c, "shortlisted")
       }
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {updatingApplicationId === (c.application_id || c.id)
         ? "Updating..."
         : "Shortlist"}
     </button>
+  )}
 
+  {/* Reject - show when NOT already rejected */}
+  {c.application_status !== "rejected" && (
     <button
       type="button"
       disabled={
@@ -1533,79 +1607,33 @@ const sortedDomainRoles = Array.from(
           handleApplicationStatus(c, "rejected");
         }
       }}
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {updatingApplicationId === (c.application_id || c.id) &&
-      c.application_status === "submitted"
+      {updatingApplicationId === (c.application_id || c.id)
         ? "Updating..."
         : "Reject"}
     </button>
-  </>
-)}
-
-  {/* Shortlisted */}
-  {c.application_status === "shortlisted" && (
-    <>
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "submitted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-      >
-        {updatingApplicationId === c.application_id
-          ? "Updating..."
-          : "Move to Submitted"}
-      </button>
-
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "rejected")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
-      >
-        Reject
-      </button>
-    </>
   )}
 
-  {/* Rejected */}
-  {c.application_status === "rejected" && (
-    <>
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "shortlisted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
-      >
-        Shortlist
-      </button>
-
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "submitted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-      >
-        Move to Submitted
-      </button>
-    </>
+  {/* Move to Submitted - show when NOT already submitted */}
+  {c.application_status !== "submitted" && (
+    <button
+      type="button"
+      disabled={
+        updatingApplicationId === (c.application_id || c.id)
+      }
+      onClick={() =>
+        handleApplicationStatus(c, "submitted")
+      }
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {updatingApplicationId === (c.application_id || c.id)
+        ? "Updating..."
+        : "Move to Submitted"}
+    </button>
   )}
+
+</div>
 
 </div>
       </div>
@@ -1619,7 +1647,7 @@ const sortedDomainRoles = Array.from(
   </div>
 )}
 
- 
+
 
               {/* Status Explanation */}
               {c.application_status ===

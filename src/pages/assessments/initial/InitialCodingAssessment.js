@@ -315,6 +315,7 @@ const InitialCodingAssessment = ({
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportEvidence, setReportEvidence] = useState("");
+  const [reportEvidenceFile, setReportEvidenceFile] = useState(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [reportError, setReportError] = useState("");
@@ -1020,12 +1021,21 @@ const handleSubmitAssessmentReport = async (e) => {
     setReportSubmitting(true);
     setReportError("");
 
-    await submitAssessmentReport({
-      quiz_session_id: sid,
-      assessment_type: "CODING",
-      reason: reportReason.trim(),
-      evidence: reportEvidence.trim() || null,
-    });
+    const formData = new FormData();
+
+formData.append("quiz_session_id", sid);
+formData.append("assessment_type", "CODING");
+formData.append("reason", reportReason.trim());
+
+if (reportEvidence.trim()) {
+  formData.append("additional_evidence", reportEvidence.trim());
+}
+
+if (reportEvidenceFile) {
+  formData.append("evidence", reportEvidenceFile);
+}
+
+await submitAssessmentReport(formData);
 
     setReportSubmitted(true);
     setShowReportForm(false);
@@ -1540,6 +1550,24 @@ const handleSubmitAssessmentReport = async (e) => {
               rows={3}
               className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#111318] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
             />
+
+
+                <label className="mt-4 block text-xs font-medium text-slate-300">
+                    Supporting Evidence
+                 </label>
+
+                  <input
+                  type="file"
+                 accept=".png,.jpg,.jpeg,.pdf"
+                onChange={(e) =>
+                setReportEvidenceFile(e.target.files?.[0] || null)
+                  }
+               className="mt-1.5 block w-full text-sm text-slate-300"
+               />
+
+             <p className="mt-1 text-xs text-slate-500">
+            Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
+            </p>
 
             {reportError && (
               <p className="mt-3 text-xs text-red-400">
