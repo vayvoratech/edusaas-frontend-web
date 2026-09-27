@@ -5,9 +5,63 @@ import {
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
-  getCourses, createCourse, updateCourse, deleteCourse, createLesson, updateLesson, getLessonsForCourse, deleteLesson
+  getCourses,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+  createLesson,
+  updateLesson,
+  getLessonsForCourse,
+  deleteLesson,
+  getCourseRatings,
+  resolveAssetUrl,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+
+function ReviewerAvatar({ name, avatarUrl, size = "w-8 h-8", textClass = "text-xs" }) {
+  const [imgError, setImgError] = useState(false);
+
+  const initials = (name || '?')
+    .split(' ')
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'S';
+
+  const resolved = !imgError && avatarUrl ? resolveAssetUrl(avatarUrl) : null;
+
+  if (resolved) {
+    return (
+      <img
+        src={resolved}
+        alt=""
+        onError={() => setImgError(true)}
+        className={`${size} rounded-full object-cover border border-slate-200 shrink-0 shadow-2xs`}
+      />
+    );
+  }
+
+  const bgColors = [
+    'bg-blue-100 text-blue-700 border-blue-200',
+    'bg-indigo-100 text-indigo-700 border-indigo-200',
+    'bg-emerald-100 text-emerald-700 border-emerald-200',
+    'bg-amber-100 text-amber-700 border-amber-200',
+    'bg-violet-100 text-violet-700 border-violet-200',
+    'bg-teal-100 text-teal-700 border-teal-200',
+  ];
+  const charSum = (name || 'S').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const colorClass = bgColors[charSum % bgColors.length];
+
+  return (
+    <div
+      className={`${size} rounded-full ${colorClass} border flex items-center justify-center font-bold tracking-wider shrink-0 select-none shadow-2xs ${textClass}`}
+      title={name}
+    >
+      {initials}
+    </div>
+  );
+}
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b'];
 const STATUSES = ['', 'active', 'draft', 'archived'];
@@ -24,6 +78,25 @@ export default function ManageCourses() {
   const [lessons, setLessons] = useState([]); // Holds lesson data for a course
   const [error, setError] = useState(null);
   const [thumbnailFile, setThumbnailFile] = useState(null);
+
+  // Course Feedback Modal state
+  const [feedbackCourse, setFeedbackCourse] = useState(null);
+  const [feedbackData, setFeedbackData] = useState({ average_rating: 0, total_reviews: 0, reviews: [], distribution: {} });
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+
+  const onOpenFeedback = async (course) => {
+    setFeedbackCourse(course);
+    setLoadingFeedback(true);
+    try {
+      const data = await getCourseRatings(course.id);
+      setFeedbackData(data);
+    } catch (err) {
+      console.error("Failed to load course reviews:", err);
+      setFeedbackData({ average_rating: 0, total_reviews: 0, reviews: [], distribution: {} });
+    } finally {
+      setLoadingFeedback(false);
+    }
+  };
 
   // Fetches courses from the API based on current filters
   const load = async () => {
@@ -189,15 +262,16 @@ export default function ManageCourses() {
                   <th className="text-left px-5 py-3 font-medium">Category</th>
                   <th className="text-left px-5 py-3 font-medium">Status</th>
                   <th className="text-left px-5 py-3 font-medium">Difficulty</th>
+                  <th className="text-left px-5 py-3 font-medium">Rating & Feedback</th>
                   <th className="text-right px-5 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {sorted.length === 0 ? (
-                  <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-400">No courses.</td></tr>
+                  <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-400">No courses.</td></tr>
                 ) : (
                   sorted.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50/50">
+                    <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-5 py-3 font-medium text-slate-800">{c.title}</td>
                       <td className="px-5 py-3 text-slate-600">{c.category || '—'}</td>
                       <td className="px-5 py-3">
@@ -210,7 +284,35 @@ export default function ManageCourses() {
                         </span>
                       </td>
                       <td className="px-5 py-3 capitalize text-slate-600">{c.difficulty || 'beginner'}</td>
-                      <td className="px-5 py-3 text-right">
+                      <td className="px-5 py-3">
+                        {c.rating ? (
+                          <button
+                            onClick={() => onOpenFeedback(c)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all cursor-pointer shadow-2xs"
+                            title="Click to view student reviews and comments"
+                          >
+                            <span className="text-amber-500 font-bold">★</span>
+                            <span>{c.rating.toFixed(1)}</span>
+                            <span className="text-amber-700/70 font-normal">({c.rating_count} review{c.rating_count === 1 ? '' : 's'})</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onOpenFeedback(c)}
+                            className="text-xs text-slate-400 hover:text-slate-600 transition underline underline-offset-2"
+                            title="No reviews yet. Click to inspect."
+                          >
+                            No reviews yet
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-right whitespace-nowrap">
+                        <button
+                          className="text-xs px-2.5 py-1 rounded border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-medium mr-1.5 transition inline-flex items-center gap-1"
+                          onClick={() => onOpenFeedback(c)}
+                          title="View Student Feedback & Reviews"
+                        >
+                          💬 Reviews
+                        </button>
                         <button
                           className="text-xs px-2 py-1 rounded border border-slate-300 hover:bg-slate-100 mr-1"
                           onClick={async () => {
@@ -779,6 +881,141 @@ export default function ManageCourses() {
             {/* The user said "When Create Course is clicked: For now only log the following object". My `onSave` function does this. */}
             {/* The user said "Do NOT change the API yet". My `onSave` function still calls the original `createCourse` with only course data. */}
             {/* The user said "Reset both when the modal closes". I've added `setStep(1)` and `setLessons([])` to the close/cancel handlers. */}
+          </div>
+        </div>
+      )}
+
+      {/* COURSE FEEDBACK & REVIEWS MODAL */}
+      {feedbackCourse && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-amber-600 mb-1">
+                    Student Reviews & Feedback
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900 leading-tight">
+                    {feedbackCourse.title}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                    <span className="capitalize">{feedbackCourse.category || 'General'}</span>
+                    <span>•</span>
+                    <span className="capitalize">{feedbackCourse.difficulty || 'Beginner'}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setFeedbackCourse(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 grid place-items-center text-sm font-bold shrink-0 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {loadingFeedback ? (
+                <div className="py-12 text-center text-slate-500 text-sm">
+                  Loading student reviews...
+                </div>
+              ) : (
+                <>
+                  {/* Summary Metric Header */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 rounded-2xl bg-amber-50/50 border border-amber-100 items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-700 flex flex-col items-center justify-center font-black">
+                        <span className="text-2xl leading-none">
+                          {feedbackData.average_rating ? feedbackData.average_rating.toFixed(1) : '—'}
+                        </span>
+                        <span className="text-[9px] uppercase font-bold text-amber-600 mt-0.5">out of 5</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-0.5 text-amber-400 text-base">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span key={star}>
+                              {star <= Math.round(feedbackData.average_rating || 0) ? '★' : '☆'}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="text-xs font-medium text-slate-600 mt-1">
+                          {feedbackData.total_reviews} student rating{feedbackData.total_reviews === 1 ? '' : 's'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-2 space-y-1">
+                      {[5, 4, 3, 2, 1].map((s) => {
+                        const count = feedbackData.distribution?.[s] || 0;
+                        const pct = feedbackData.total_reviews > 0 ? Math.round((count / feedbackData.total_reviews) * 100) : 0;
+                        return (
+                          <div key={s} className="flex items-center gap-2 text-xs">
+                            <span className="w-6 text-slate-500 font-medium">{s}★</span>
+                            <div className="flex-1 h-1.5 bg-slate-200/70 rounded-full overflow-hidden">
+                              <div className="h-full bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="w-8 text-right text-slate-400 font-mono text-[11px]">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Reviews List */}
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 mb-3">
+                      Student Comments & Ratings ({feedbackData.reviews?.length || 0})
+                    </h3>
+                    {feedbackData.reviews && feedbackData.reviews.length > 0 ? (
+                      <div className="space-y-3">
+                        {feedbackData.reviews.map((rev) => (
+                          <div key={rev.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2.5">
+                                <ReviewerAvatar name={rev.user_name} avatarUrl={rev.avatar_url} size="w-7 h-7" textClass="text-[11px]" />
+                                <div>
+                                  <div className="text-xs font-semibold text-slate-800">{rev.user_name}</div>
+                                  <div className="text-[10px] text-slate-400">
+                                    {rev.created_at ? new Date(rev.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-0.5 text-amber-400 text-xs">
+                                {[1, 2, 3, 4, 5].map((st) => (
+                                  <span key={st}>{st <= rev.rating ? '★' : '☆'}</span>
+                                ))}
+                              </div>
+                            </div>
+                            {rev.review ? (
+                              <p className="text-xs text-slate-700 leading-relaxed pl-9">
+                                "{rev.review}"
+                              </p>
+                            ) : (
+                              <p className="text-xs text-slate-400 italic pl-9">Rated {rev.rating} stars with no written comments.</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-10 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                        <span className="text-3xl mb-1 block">💬</span>
+                        <p className="text-sm font-semibold text-slate-700">No ratings yet</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          When enrolled students complete and rate this course, their feedback will show here.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+              <Button variant="outline" onClick={() => setFeedbackCourse(null)}>
+                Close
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -18,11 +18,10 @@ const RoleSelector = ({ selectedRole, onSelectRole }) => (
         key={r.id}
         type="button"
         onClick={() => onSelectRole(r.id)}
-        className={`text-left p-4 rounded-xl border-2 transition ${
-          selectedRole === r.id
+        className={`text-left p-4 rounded-xl border-2 transition ${selectedRole === r.id
             ? 'border-brand-blue-500 bg-brand-blue-50'
             : 'border-slate-200 hover:border-slate-300'
-        }`}
+          }`}
       >
         <div className="flex items-center gap-2 mb-2">
           <span className="text-2xl">{r.emoji}</span>
@@ -42,19 +41,51 @@ export default function Onboarding() {
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
   const navigate = useNavigate();
-  
+
   const [role, setRole] = useState('student');
   const [domainRoles, setDomainRoles] = useState([]);
   const [domainRoleId, setDomainRoleId] = useState('');
-  
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (isLoaded && user?.unsafeMetadata?.role) {
-      navigate('/app/dashboard');
+      const token = localStorage.getItem('edu_token');
+      if (token) {
+        navigate('/app/dashboard', { replace: true });
+      } else {
+        (async () => {
+          try {
+            const clerkToken = await getToken();
+            const res = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:5000'}/api/users/sync`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${clerkToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                role: user.unsafeMetadata.role,
+                domainRoleId: user.unsafeMetadata.domain_role_id || null
+              })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.accessToken) {
+                localStorage.setItem('edu_token', data.accessToken);
+                if (data.refreshToken) localStorage.setItem('edu_refresh', data.refreshToken);
+                if (data.user) localStorage.setItem('edu_user', JSON.stringify(data.user));
+              }
+            }
+          } catch (e) {
+            console.error('Onboarding redirect sync error:', e);
+          } finally {
+            navigate('/app/dashboard', { replace: true });
+          }
+        })();
+      }
     }
-  }, [isLoaded, user, navigate]);
+  }, [isLoaded, user, getToken, navigate]);
 
   useEffect(() => {
     const loadDomainRoles = async () => {
@@ -85,7 +116,7 @@ export default function Onboarding() {
 
       // 1. Get Clerk token
       const clerkToken = await getToken();
-      
+
       // 2. Call the new backend sync endpoint FIRST
       const response = await fetch(`${process.env.REACT_APP_API_BASE || 'http://localhost:5000'}/api/users/sync`, {
         method: 'POST',
@@ -102,7 +133,7 @@ export default function Onboarding() {
       }
 
       const data = await response.json();
-      
+
       // 3. Store custom JWTs so legacy API endpoints keep working perfectly!
       localStorage.setItem('edu_token', data.accessToken);
       localStorage.setItem('edu_refresh', data.refreshToken);
@@ -114,7 +145,7 @@ export default function Onboarding() {
           role: role,
           domain_role_id: role === 'student' ? domainRoleId : null
         }
-      });      
+      });
 
       // Redirect to dashboard
       navigate('/app/dashboard');
@@ -142,7 +173,7 @@ export default function Onboarding() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-slate-200">
-          
+
           <div className="mb-2 text-sm font-medium text-slate-700">I am joining as a...</div>
           <RoleSelector selectedRole={role} onSelectRole={setRole} />
 

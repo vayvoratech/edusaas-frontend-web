@@ -1,9 +1,18 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { getCommunityFeed, createCommunityPost, getMyConnections, searchUsers, sendConnectionRequest, getPendingConnections, acceptConnectionRequest, rejectConnectionRequest, removeConnection, toggleCommunityPostBookmark, getDomainRoles } from '../services/api';
+import { getCommunityFeed, createCommunityPost, getMyConnections, searchUsers, sendConnectionRequest, getPendingConnections, acceptConnectionRequest, rejectConnectionRequest, removeConnection, toggleCommunityPostBookmark, getDomainRoles, getAnnouncements, markAnnouncementNotificationsRead, aimlPredictSentiment, aimlPredictToxicity } from '../services/api';
+
+const fmtRel = (iso) => {
+  if (!iso) return 'Recent';
+  const diff = (new Date() - new Date(iso)) / 60000;
+  if (diff < 1) return 'Just now';
+  if (diff < 60) return `${Math.round(diff)}m ago`;
+  if (diff < 1440) return `${Math.round(diff / 60)}h ago`;
+  return `${Math.round(diff / 1440)}d ago`;
+};
 
 const DEFAULT_DOMAIN_ROLES = [
   'AI Engineer',
@@ -43,6 +52,7 @@ export default function Community() {
   const userRole = authRole || 'Student';
 
   const [posts, setPosts] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'All');
 
@@ -51,6 +61,59 @@ export default function Community() {
       setActiveTab(location.state.activeTab);
     }
   }, [location.state?.activeTab]);
+
+  const seenKey = `edu_seen_announcements_${user?.id || 'user'}`;
+  const getSeenAnnouncementIds = () => {
+    try {
+      const raw = localStorage.getItem(seenKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+  const [seenAnnouncementIds, setSeenAnnouncementIds] = useState(getSeenAnnouncementIds);
+
+  useEffect(() => {
+    const handleSeenUpdate = () => {
+      setSeenAnnouncementIds(getSeenAnnouncementIds());
+    };
+    window.addEventListener('announcements_seen', handleSeenUpdate);
+    return () => window.removeEventListener('announcements_seen', handleSeenUpdate);
+  }, [user?.id]);
+
+  const unseenAnnouncementsCount = announcements.filter(
+    (a) => !seenAnnouncementIds.includes(a.id)
+  ).length;
+
+  useEffect(() => {
+    getAnnouncements()
+      .then((data) => setAnnouncements(Array.isArray(data) ? data : []))
+      .catch(() => setAnnouncements([]));
+  }, []);
+
+  // When user opens/views the Announcements tab, mark all current announcements as seen automatically
+  useEffect(() => {
+    if (activeTab === 'Announcements' && announcements.length > 0) {
+      const currentSeen = getSeenAnnouncementIds();
+      const allIds = announcements.map((a) => a.id);
+      const hasUnseen = allIds.some((id) => !currentSeen.includes(id));
+
+      if (hasUnseen) {
+        const updated = Array.from(new Set([...currentSeen, ...allIds]));
+        try {
+          localStorage.setItem(seenKey, JSON.stringify(updated));
+        } catch {}
+        setSeenAnnouncementIds(updated);
+
+        markAnnouncementNotificationsRead()
+          .then(() => {
+            window.dispatchEvent(new CustomEvent('notifications_updated'));
+            window.dispatchEvent(new CustomEvent('announcements_seen'));
+          })
+          .catch(() => {});
+      }
+    }
+  }, [activeTab, announcements]);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedComments, setExpandedComments] = useState({});
   const [composerOpen, setComposerOpen] = useState(false);
@@ -78,6 +141,33 @@ export default function Community() {
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
   const [modalTab, setModalTab] = useState('connections'); // 'connections' or 'pending'
   const [sentRequests, setSentRequests] = useState({}); // { targetUserId: connectionId }
+
+  const [aiChecking, setAiChecking] = useState(false);
+  const [aiToneResult, setAiToneResult] = useState(null);
+
+  const handleAiToneCheck = async () => {
+    const text = `${postTitle} ${postBody}`.trim();
+    if (!text) {
+      showToast("Please enter a title or message first.", "error");
+      return;
+    }
+    try {
+      setAiChecking(true);
+      const [sentRes, toxRes] = await Promise.allSettled([
+        aimlPredictSentiment({ post_text: text }),
+        aimlPredictToxicity({ post_text: text }),
+      ]);
+      const sentiment = sentRes.status === 'fulfilled' && sentRes.value?.data ? sentRes.value.data : null;
+      const toxicity = toxRes.status === 'fulfilled' && toxRes.value?.data ? toxRes.value.data : null;
+      setAiToneResult({ sentiment, toxicity });
+      showToast("AI Tone & Safety analysis complete!", "success");
+    } catch (err) {
+      console.error("AI check error", err);
+      showToast("Could not complete AI check", "error");
+    } finally {
+      setAiChecking(false);
+    }
+  };
 
   const showToast = (message, type = 'success') => {
     setToastMessage({ message, type });
@@ -128,6 +218,8 @@ export default function Community() {
           comments: [],
           jobDetails: p.metadata?.jobDetails || null,
           images: p.metadata?.images || [],
+          sentiment: p.metadata?.sentiment || null,
+          toxicity: p.metadata?.toxicity || null,
         }
       });
       setPosts(mappedPosts);
@@ -293,6 +385,7 @@ export default function Community() {
         (activeTab === 'Projects' && p.type === 'Project') ||
         (activeTab === 'Discussions' && p.type === 'Discussion') ||
         (activeTab === 'Connections' && false) || // Hide posts when in Connections tab
+        (activeTab === 'Announcements' && false) || // Hide posts when in Announcements tab
         (activeTab === 'Bookmarks' && p.bookmarked);
 
       const q = searchQuery.toLowerCase().trim();
@@ -306,6 +399,17 @@ export default function Community() {
       return matchesTab && matchesSearch;
     });
   }, [posts, activeTab, searchQuery]);
+
+  const filteredAnnouncements = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return announcements;
+    return announcements.filter(
+      (a) =>
+        a.title?.toLowerCase().includes(q) ||
+        a.message?.toLowerCase().includes(q) ||
+        a.educator?.name?.toLowerCase().includes(q)
+    );
+  }, [announcements, searchQuery]);
 
   // Intersection Observer Fallback for scroll animations
   useEffect(() => {
@@ -737,6 +841,7 @@ export default function Community() {
               <nav className="space-y-1">
                 {[
                   { label: 'All Updates', id: 'All', icon: '🌐' },
+                  { label: 'Announcements', id: 'Announcements', icon: '📣' },
                   { label: 'Network & Connections', id: 'Connections', icon: '🤝' },
                   { label: 'Saved Posts', id: 'Bookmarks', icon: '🔖' },
                   { label: 'Job Board', id: 'Jobs', icon: '💼' },
@@ -757,6 +862,11 @@ export default function Community() {
                       <span className="text-lg opacity-80">{tab.icon}</span> {tab.label}
                     </span>
                     <div className="flex items-center gap-2">
+                      {tab.id === 'Announcements' && unseenAnnouncementsCount > 0 && (
+                        <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                          {unseenAnnouncementsCount}
+                        </span>
+                      )}
                       {tab.id === 'Connections' && pendingRequests.length > 0 && (
                         <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                           {pendingRequests.length}
@@ -775,7 +885,7 @@ export default function Community() {
           {/* Middle Column (Main Feed or Network Tab) */}
           <div className="lg:col-span-6 space-y-6">
             
-            {activeTab !== 'Connections' && (
+            {activeTab !== 'Connections' && activeTab !== 'Announcements' && (
               <>
                 {/* Quick Post Prompt */}
             <Card onClick={() => setComposerOpen(true)} className="p-4 border border-slate-200 shadow-sm rounded-2xl bg-white flex items-center gap-4 cursor-text hover:shadow-md transition-shadow group">
@@ -877,11 +987,27 @@ export default function Community() {
                             {post.avatar}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-bold text-sm text-slate-900 hover:text-indigo-600 cursor-pointer transition-colors">{post.author}</h4>
                               <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${ROLE_CONFIG[post.role]?.bg}`}>
                                 {post.role}
                               </span>
+                              {post.sentiment && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                                  (post.sentiment.sentiment === 'POSITIVE' || post.sentiment.label === 'POSITIVE')
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : (post.sentiment.sentiment === 'NEGATIVE' || post.sentiment.label === 'NEGATIVE')
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                                }`} title={`AI Sentiment: ${post.sentiment.sentiment || post.sentiment.label || 'Neutral'}${post.sentiment.confidence ? ` (${Math.round(post.sentiment.confidence * 100)}%)` : ''}`}>
+                                  {(post.sentiment.sentiment === 'POSITIVE' || post.sentiment.label === 'POSITIVE') ? '😊 Positive' : (post.sentiment.sentiment === 'NEGATIVE' || post.sentiment.label === 'NEGATIVE') ? '😟 Critical' : '⚖️ Neutral'}
+                                </span>
+                              )}
+                              {post.toxicity?.is_toxic && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300" title="Flagged by Toxicity model">
+                                  🛡️ Flagged
+                                </span>
+                              )}
                             </div>
                             <p className="text-xs text-slate-500 font-medium mt-0.5">
                               {post.company || post.course || post.type} <span className="mx-1 opacity-50">•</span> {post.when}
@@ -1150,6 +1276,123 @@ export default function Community() {
             </Card>
           </div>
         )}
+
+        {/* Announcements Tab View */}
+        {activeTab === 'Announcements' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <Card className="p-6 border border-slate-200 shadow-lg rounded-2xl bg-white overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-36 h-36 bg-amber-500/10 rounded-bl-full -z-10"></div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-amber-500/30 shrink-0">
+                    📣
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-extrabold text-slate-900">Announcements Feed</h2>
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                        Official
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Verified broadcasts from course educators and platform leaders.
+                    </p>
+                  </div>
+                </div>
+                {(userRole === 'Educator' || userRole === 'Admin') && (
+                  <Link
+                    to="/app/announcements"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl shadow-md shadow-amber-500/20 transition-all active:scale-95 whitespace-nowrap shrink-0"
+                  >
+                    <span>+ Send Announcement</span>
+                  </Link>
+                )}
+              </div>
+            </Card>
+
+            {/* Announcements List */}
+            {filteredAnnouncements.length === 0 ? (
+              <Card className="p-16 text-center border border-slate-200 rounded-[2rem] bg-gradient-to-b from-white to-slate-50 shadow-sm relative overflow-hidden">
+                <div className="text-6xl mb-4 animate-float drop-shadow-md">📣</div>
+                <h3 className="text-xl font-extrabold text-slate-800 mb-2">No Announcements Yet</h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto">
+                  {searchQuery
+                    ? `No announcements match "${searchQuery}".`
+                    : 'Newly broadcasted notices and course updates from your educators will be notified and displayed right here.'}
+                </p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {filteredAnnouncements.map((a) => (
+                  <Card
+                    key={a.id}
+                    className="p-6 border border-slate-200 shadow-md rounded-2xl bg-white hover:border-amber-300 hover:shadow-xl transition-all duration-300 relative group overflow-hidden"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white font-bold text-sm grid place-items-center shadow-md shadow-amber-500/20 shrink-0">
+                          {a.educator?.name
+                            ? a.educator.name
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .substring(0, 2)
+                                .toUpperCase()
+                            : 'ED'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-sm text-slate-900">
+                              {a.educator?.name || 'Course Instructor'}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                              Verified Educator
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
+                            <span>{fmtRel(a.created_at)}</span>
+                            <span>•</span>
+                            <span className="capitalize">
+                              {a.audience === 'course'
+                                ? 'Targeted to Course Learners'
+                                : `${a.audience} Audience`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-bold border border-amber-200/60 shrink-0 flex items-center gap-1">
+                        <span>📣</span> Notice
+                      </span>
+                    </div>
+
+                    <div className="mt-3">
+                      <h3 className="text-base font-extrabold text-slate-900 group-hover:text-amber-800 transition-colors">
+                        {a.title}
+                      </h3>
+                      <p className="text-sm text-slate-600 mt-2 leading-relaxed whitespace-pre-wrap">
+                        {a.message}
+                      </p>
+                    </div>
+
+                    {a.attachment && (
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
+                        <a
+                          href={a.attachment}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline bg-indigo-50/70 px-3 py-1.5 rounded-lg border border-indigo-100"
+                        >
+                          <span>📎</span> View Attached Resource
+                        </a>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
           {/* Right Column (Trending / Spotlights) */}
@@ -1321,6 +1564,66 @@ export default function Community() {
                             </button>
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* AI Tone & Safety Pre-Check */}
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={handleAiToneCheck}
+                        disabled={aiChecking || (!postTitle.trim() && !postBody.trim())}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-xl transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {aiChecking ? (
+                          <>
+                            <span className="animate-spin text-xs">⏳</span>
+                            <span>Analyzing Tone & Safety...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>✨</span>
+                            <span>AI Tone & Safety Pre-Check</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {aiToneResult && (
+                      <div className="p-3 bg-gradient-to-r from-slate-50 to-indigo-50/40 border border-indigo-100 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs animate-in fade-in duration-200">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-700">AI Feedback:</span>
+                          {aiToneResult.sentiment ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold border ${
+                              (aiToneResult.sentiment.sentiment === 'POSITIVE' || aiToneResult.sentiment.label === 'POSITIVE')
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : (aiToneResult.sentiment.sentiment === 'NEGATIVE' || aiToneResult.sentiment.label === 'NEGATIVE')
+                                ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                : 'bg-slate-200 text-slate-700 border-slate-300'
+                            }`}>
+                              {(aiToneResult.sentiment.sentiment === 'POSITIVE' || aiToneResult.sentiment.label === 'POSITIVE') ? '😊 Positive' : (aiToneResult.sentiment.sentiment === 'NEGATIVE' || aiToneResult.sentiment.label === 'NEGATIVE') ? '😟 Critical' : '⚖️ Neutral'}
+                              {aiToneResult.sentiment.confidence ? ` (${Math.round(aiToneResult.sentiment.confidence * 100)}%)` : ''}
+                            </span>
+                          ) : null}
+
+                          {aiToneResult.toxicity ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold border ${
+                              aiToneResult.toxicity.is_toxic
+                                ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            }`}>
+                              {aiToneResult.toxicity.is_toxic ? '⚠️ Toxic content flagged' : '🛡️ Safe & Constructive'}
+                              {typeof aiToneResult.toxicity.toxicity_score === 'number' ? ` (${Math.round(aiToneResult.toxicity.toxicity_score * 100)}%)` : ''}
+                            </span>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setAiToneResult(null)}
+                          className="text-slate-400 hover:text-slate-600 font-bold px-1"
+                        >
+                          ✕
+                        </button>
                       </div>
                     )}
                   </div>

@@ -1,7 +1,13 @@
 import React from 'react';
-import { SignUp } from '@clerk/react';
+import { SignUp, useUser } from '@clerk/react';
+import { Navigate } from 'react-router-dom';
 
 export default function Signup() {
+  const { isLoaded, isSignedIn } = useUser();
+
+  if (isLoaded && isSignedIn) {
+    return <Navigate to="/app/dashboard" replace />;
+  }
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-white">
       {/* Branding Panel */}

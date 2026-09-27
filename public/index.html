@@ -24,6 +24,38 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
+    <script>
+      // Suppress benign ResizeObserver loop errors triggered by Monaco Editor in development overlay
+      (function () {
+        var isResizeObserverError = function (msg) {
+          return (
+            typeof msg === 'string' &&
+            (msg.indexOf('ResizeObserver loop completed with undelivered notifications') !== -1 ||
+             msg.indexOf('ResizeObserver loop limit exceeded') !== -1)
+          );
+        };
+
+        window.addEventListener(
+          'error',
+          function (e) {
+            var msg = e.message || (e.error && e.error.message);
+            if (isResizeObserverError(msg)) {
+              e.stopImmediatePropagation();
+              e.preventDefault();
+            }
+          },
+          true
+        );
+
+        var origConsoleError = console.error;
+        console.error = function () {
+          for (var i = 0; i < arguments.length; i++) {
+            if (isResizeObserverError(arguments[i])) return;
+          }
+          origConsoleError.apply(console, arguments);
+        };
+      })();
+    </script>
     <title>EduSaaS — Skill Platform</title>
   </head>
   <body>

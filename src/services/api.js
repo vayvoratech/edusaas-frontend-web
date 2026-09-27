@@ -209,7 +209,6 @@ export const submitAssessmentReport = async (data) => {
   return res.data;
 };
 
-
 export const getAssessmentReportEvidence = async (reportId) => {
   const res = await api.get(
     `/api/admin/assessment-reports/${reportId}/evidence`,
@@ -223,7 +222,6 @@ export const getAssessmentReportEvidence = async (reportId) => {
     contentType: res.headers["content-type"],
   };
 };
-
 // Initial Coding Assessment
 export const startInitialCodingAssessment = (sessionId) =>
   api.post("/api/assessments/initial-coding/start", { session_id: sessionId }).then((r) => r.data);

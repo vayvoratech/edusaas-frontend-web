@@ -151,6 +151,7 @@ const InitialAssessment = () => {
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportEvidence, setReportEvidence] = useState("");
+
   const [reportEvidenceFile, setReportEvidenceFile] = useState(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
@@ -453,7 +454,7 @@ const InitialAssessment = () => {
     setReportSubmitting(true);
     setReportError("");
 
-    const formData = new FormData();
+const formData = new FormData();
 
 formData.append("quiz_session_id", sessionId);
 formData.append("assessment_type", "INITIAL");
@@ -986,25 +987,24 @@ await submitAssessmentReport(formData);
                   className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={reportSubmitting}
                 />
+{/* report evidence */}
+<label className="mt-4 block text-sm font-medium text-gray-700">
+  Supporting Evidence
+</label>
 
-     {/* report evidence */}
-                <label className="mt-4 block text-sm font-medium text-gray-700">
-              Supporting Evidence
-               </label>
+<input
+  type="file"
+  accept=".png,.jpg,.jpeg,.pdf"
+  onChange={(e) =>
+    setReportEvidenceFile(e.target.files?.[0] || null)
+  }
+  className="mt-2 block w-full text-sm text-gray-700"
+  disabled={reportSubmitting}
+/>
 
-                <input
-              type="file"
-            accept=".png,.jpg,.jpeg,.pdf"
-             onChange={(e) =>
-             setReportEvidenceFile(e.target.files?.[0] || null)
-              }
-               className="mt-2 block w-full text-sm text-gray-700"
-                disabled={reportSubmitting}
-            />
-
-            <p className="mt-1 text-xs text-gray-500">
-             Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
-                </p>
+<p className="mt-1 text-xs text-gray-500">
+  Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
+</p>
               </div>
 
               {reportError && (

@@ -94,7 +94,7 @@ export default function SkillAssessment() {
         </div>
       </div>
 
-    {/* Initial Assessment */}
+{/* Initial Assessment */}
 <Card>
   <div className="flex flex-col gap-5">
     {/* Header */}
@@ -116,9 +116,10 @@ export default function SkillAssessment() {
               </span>
             </div>
           </div>
-        </div>
+               </div>
+      </div>
 
-        <p className="mt-2 max-w-2xl text-sm text-slate-500">
+      <p className="mt-2 max-w-2xl text-sm text-slate-500">
           Complete both stages to evaluate your current skills, readiness,
           and skill gaps.
         </p>
@@ -163,26 +164,13 @@ export default function SkillAssessment() {
               Stage 1
             </p>
 
-            <h4 className="mt-1 text-sm font-semibold text-slate-900">
-              Initial Quiz
-            </h4>
+<h4 className="mt-1 text-sm font-semibold text-slate-900">
+  Initial Quiz
+</h4>
 
-            <p className="mt-1 text-xs text-slate-500">
-              Knowledge and skill assessment
-            </p>
-          </div>
-
-          {overview.initialAssessment.questionsAnswered >=
-            overview.initialAssessment.totalQuestions &&
-          overview.initialAssessment.totalQuestions > 0 ? (
-            <span className="text-sm font-medium text-green-600">
-              ✓ Completed
-            </span>
-          ) : (
-            <span className="text-sm font-medium text-amber-600">
-              In Progress
-            </span>
-          )}
+<p className="mt-1 text-xs text-slate-500">
+  Knowledge and skill assessment
+</p>
         </div>
 
         <div className="mt-3 text-xs text-slate-500">
@@ -295,6 +283,7 @@ export default function SkillAssessment() {
     </div>
   </div>
 </Card>
+
 
 
       {/* Learning Prerequisites */}

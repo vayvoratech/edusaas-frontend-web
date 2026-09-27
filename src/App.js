@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -15,8 +16,9 @@ import GapReport from './pages/GapReport';
 import LearningPath from './pages/LearningPath';
 import Profile from './pages/Profile';
 import UserManagement from './pages/UserManagement';
+import UserDetails from './pages/user details';
+import CertificateValidation from './pages/certificatevalidation';
 import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import JobDetails from "./pages/StudentViewJobs";
 import JobApplication from "./pages/JobApplication";
 import StudentJobApplications from './pages/StudentJobApplications';
@@ -29,6 +31,7 @@ import TasksPage from './pages/TasksPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import StudentSettings from './pages/StudentSettings';
 import StudentInsights from './pages/StudentInsights';
+import EngagementTrends from './pages/EngagementTrends';
 import InitialAssessment from './pages/assessments/initial/InitialAssessment';
 import FinalAssessment from './pages/assessments/final/FinalAssessment';
 
@@ -37,12 +40,13 @@ import ManageCourses from './pages/ManageCourses';
 import ViewLearners from './pages/ViewLearners';
 import EducatorInsights from './pages/EducatorInsights';
 import SendAnnouncement from './pages/SendAnnouncement';
+import EducatorAssessments from './pages/EducatorAssessments';
+import CreateMiniProject from './pages/CreateMiniProject';
 
 // New employer pages
 import JobListings from './pages/JobListings';
 import Candidates from './pages/Candidates';
 import EmployerAnalytics from './pages/EmployerAnalytics';
-
 import Placeholder from './pages/Placeholder';
 import Community from './pages/Community';
 
@@ -52,6 +56,7 @@ import MySubscription from './pages/MySubscription';
 
 function RoleDashboard() {
   const { role } = useAuth();
+
   // Ensure we compare in lowercase as the backend returns lowercase roles like "educator", "student"
   switch (role?.toLowerCase()) {
     case 'educator': return <EducatorDashboard />;
@@ -63,10 +68,8 @@ function RoleDashboard() {
 }
 
 function StudentOrAdminSettings() {
-  const { role } = useAuth();
-  return role?.toLowerCase() === 'admin' ? <Settings /> : <StudentSettings />;
+  return <StudentSettings />;
 }
-
 
 export default function App() {
   return (
@@ -78,31 +81,31 @@ export default function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/onboarding" element={<Onboarding />} />
 
-           <Route path="/app" element={<AppLayout />}>
-{/* Dashboard */}
-<Route
-  path="dashboard"
-  element={<RoleDashboard />}
-/>
+          <Route path="/app" element={<AppLayout />}>
 
-{/* Job Details */}
-<Route
-  path="jobs/:id"
-  element={<JobDetails />}
-/>
+            {/* Dashboard */}
+            <Route
+              path="dashboard"
+              element={<RoleDashboard />}
+            />
 
-<Route
-  path="jobs/:id/apply"
-  element={<JobApplication />}
-/>
+            {/* Job Details */}
+            <Route
+              path="jobs/:id"
+              element={<JobDetails />}
+            />
 
+            <Route
+              path="jobs/:id/apply"
+              element={<JobApplication />}
+            />
 
-{/* /app → /app/dashboard */}
-<Route
-  index
-  element={<Navigate to="dashboard" replace />}
-/>
-             
+            {/* /app → /app/dashboard */}
+            <Route
+              index
+              element={<Navigate to="dashboard" replace />}
+            />
+
             {/* Shared */}
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<StudentOrAdminSettings />} />
@@ -118,15 +121,14 @@ export default function App() {
               <Route path="tasks" element={<TasksPage />} />
               <Route path="recommendations" element={<RecommendationsPage />} />
               <Route path="my-insights" element={<StudentInsights />} />
+              <Route path="engagement-trends" element={<EngagementTrends />} />
               <Route path="assessments" element={<SkillAssessment />} />
               <Route path="initial-assessment" element={<InitialAssessment />} />
               <Route path="final-assessment" element={<FinalAssessment />} />
               <Route path="gap-report" element={<GapReport />} />
               <Route path="learning-paths" element={<LearningPath />} />
-              <Route path="job-applications" element={<StudentJobApplications />}
-/>
+              <Route path="job-applications" element={<StudentJobApplications />} />
             </Route>
-           
 
             {/* Educator */}
             <Route element={<RoleRoute allowedRoles={["Educator"]} />}>
@@ -134,6 +136,8 @@ export default function App() {
               <Route path="learners" element={<ViewLearners />} />
               <Route path="insights" element={<EducatorInsights />} />
               <Route path="announcements" element={<SendAnnouncement />} />
+              <Route path="educator-assessments" element={<EducatorAssessments />} />
+              <Route path="educator-assessments/create" element={<CreateMiniProject />} />
             </Route>
 
             {/* Employer */}
@@ -142,11 +146,13 @@ export default function App() {
               <Route path="jobs" element={<Navigate to="/app/job-listings" replace />} />
               <Route path="candidates" element={<Candidates />} />
               <Route path="analytics" element={<EmployerAnalytics />} />
+              <Route path="certificate-validation" element={<CertificateValidation />} />
             </Route>
 
             {/* Admin */}
             <Route element={<RoleRoute allowedRoles={["Admin"]} />}>
               <Route path="users" element={<UserManagement />} />
+              <Route path="user-details" element={<UserDetails />} />
               <Route path="reports" element={<Reports />} />
                <Route path="assessment-reviews" element={<AssessmentReview />} />
 
@@ -181,16 +187,6 @@ export default function App() {
               />
 
               <Route
-                path="ai-insights"
-                element={
-                  <Placeholder
-                    title="AI Insights Hub"
-                    description="Predictive analytics for future skills."
-                  />
-                }
-              />
-
-              <Route
   path="subscriptions"
   element={<SubscriptionManagement />}
 />
@@ -203,3 +199,6 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+
+

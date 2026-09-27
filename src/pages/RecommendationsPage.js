@@ -114,6 +114,7 @@ import {
   enrollCourse,
   getMyEnrollments,
   fetchGapReport,
+  getCourses,
 } from "../services/api";
 
 const iconFor = (title) => {
@@ -137,6 +138,8 @@ export default function RecommendationsPage() {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
   const [enrolledIds, setEnrolledIds] = useState(new Set());
+  const [coursesCatalog, setCoursesCatalog] = useState([]);
+  const [userEnrollments, setUserEnrollments] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -147,17 +150,29 @@ export default function RecommendationsPage() {
           if (stored?.id) currentUserId = stored.id;
         } catch (e) {}
 
-        const [r, e, gap] = await Promise.all([
+        const [r, e, gap, catalogRes] = await Promise.all([
           getMyRecommendations(),
           getMyEnrollments().catch(() => []),
           currentUserId
             ? fetchGapReport(currentUserId).catch(() => null)
             : Promise.resolve(null),
+          getCourses().catch(() => []),
         ]);
 
         if (gap) {
           setGapData(gap);
         }
+
+        const enrollmentList = Array.isArray(e) ? e : [];
+        setUserEnrollments(enrollmentList);
+        setEnrolledIds(new Set(enrollmentList.map((x) => x.course_id)));
+
+        const catalogList = Array.isArray(catalogRes?.courses)
+          ? catalogRes.courses
+          : Array.isArray(catalogRes)
+          ? catalogRes
+          : [];
+        setCoursesCatalog(catalogList);
 
         const list = Array.isArray(r) ? r : [];
         const aiItem = list.find(
@@ -173,7 +188,6 @@ export default function RecommendationsPage() {
           }
         }
         setRecs(list.filter((x) => x.type !== "ai_suggestions"));
-        setEnrolledIds(new Set(e.map((x) => x.course_id)));
       } catch (err) {
         setError(err.response?.data?.error || err.message);
       }
@@ -444,23 +458,69 @@ export default function RecommendationsPage() {
         </div>
         <div className="grid md:grid-cols-5 gap-4">
           {(learningPathway.length > 0
-            ? learningPathway.map((item) =>
-                typeof item === "string"
-                  ? item
-                  : item.course_name || item.title || item.step || JSON.stringify(item)
-              )
+            ? learningPathway.map((item, index) => {
+                if (typeof item === "string") {
+                  return { title: item, status: null };
+                }
+                let title = (item.course_name || item.title || item.course_title || item.step || "").trim();
+                const targetId = String(item.course_id || item.id || "");
+                if (!title && targetId) {
+                  const foundCatalog = coursesCatalog.find((c) => String(c.id) === targetId);
+                  const foundEnrollment = userEnrollments.find(
+                    (en) => String(en.course_id || en.course?.id) === targetId
+                  );
+                  const foundAi = aiRecs.find((c) => String(c.id || c.course_id) === targetId);
+                  const foundRec = recs.find((r) => String(r.course_id || r.course?.id) === targetId);
+
+                  title = (
+                    foundCatalog?.title ||
+                    foundEnrollment?.course?.title ||
+                    foundEnrollment?.title ||
+                    foundAi?.title ||
+                    foundAi?.course_name ||
+                    foundRec?.course?.title ||
+                    ""
+                  ).trim();
+                }
+
+                if (!title && String(item.status).toUpperCase() === "COMPLETED") {
+                  const compEnr = userEnrollments.find((en) => en.status === "completed" || en.completed);
+                  if (compEnr?.course?.title) {
+                    title = compEnr.course.title;
+                  }
+                }
+
+                if (!title) {
+                  title = item.status ? `Module ${index + 1}` : `Step ${index + 1}`;
+                }
+                return {
+                  title,
+                  status: item.status || null,
+                };
+              })
             : gapData?.missing_skills?.length > 0
-            ? gapData.missing_skills.map((s) => `${s} Mastery`)
+            ? gapData.missing_skills.map((s) => ({ title: `${s} Mastery`, status: null }))
             : []
-          ).map((step, index, arr) => (
-            <div key={step + index} className="relative">
+          ).map((stepObj, index, arr) => (
+            <div key={`${stepObj.title}-${index}`} className="relative">
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 text-center h-full flex flex-col justify-center items-center">
                 <div className="text-3xl font-bold text-blue-600">
                   {index + 1}
                 </div>
-                <div className="font-semibold mt-3 text-sm text-slate-800">
-                  {step}
+                <div className="font-semibold mt-3 text-sm text-slate-800 capitalize">
+                  {stepObj.title}
                 </div>
+                {stepObj.status && (
+                  <span
+                    className={`mt-2 text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full ${
+                      String(stepObj.status).toUpperCase() === "COMPLETED"
+                        ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                        : "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                    }`}
+                  >
+                    {String(stepObj.status).toUpperCase() === "COMPLETED" ? "✓ Completed" : "Recommended"}
+                  </span>
+                )}
               </div>
               {index !== arr.length - 1 && (
                 <div className="hidden md:block absolute top-1/2 -right-4 text-2xl text-blue-300">

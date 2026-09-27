@@ -1495,7 +1495,7 @@ const sortedDomainRoles = Array.from(
                 ? "Hide Match Details ↑"
                 : "Why recommended? ↓"}
             </button>
-
+            
 
 <div className="flex flex-col items-end gap-1">
   {/* Review Candidate */}
@@ -1570,26 +1570,25 @@ const sortedDomainRoles = Array.from(
   </button>
 )}
 
- {/* Candidate Status Actions */}
-<div className="flex flex-wrap gap-2">
 
-  {/* Shortlist - show when NOT already shortlisted */}
-  {c.application_status !== "shortlisted" && (
-    <button
-      type="button"
-      disabled={
-        updatingApplicationId === (c.application_id || c.id)
-      }
-      onClick={() =>
-        handleApplicationStatus(c, "shortlisted")
-      }
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {updatingApplicationId === (c.application_id || c.id)
-        ? "Updating..."
-        : "Shortlist"}
-    </button>
-  )}
+{/* Shortlist - show when NOT already shortlisted */}
+{c.application_status !== "shortlisted" && (
+  <button
+    type="button"
+    disabled={
+      updatingApplicationId === (c.application_id || c.id)
+    }
+    onClick={() =>
+      handleApplicationStatus(c, "shortlisted")
+    }
+    className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    {updatingApplicationId === (c.application_id || c.id)
+      ? "Updating..."
+      : "Shortlist"}
+  </button>
+)}
+
 
   {/* Reject - show when NOT already rejected */}
   {c.application_status !== "rejected" && (
@@ -1647,8 +1646,6 @@ const sortedDomainRoles = Array.from(
   </div>
 )}
 
-
-
               {/* Status Explanation */}
               {c.application_status ===
                 "shortlisted" && (
@@ -1682,11 +1679,6 @@ const sortedDomainRoles = Array.from(
               )}
 
             </div>
-
-
-
-
-
 
           {/* Expanded Match Details */}
           {expandedCandidateId === c.id && (
@@ -1836,8 +1828,6 @@ const sortedDomainRoles = Array.from(
           )}
 
         </div>
-
-      </div>
     ))}
 
   {/*pagination*/}
@@ -1883,13 +1873,11 @@ const sortedDomainRoles = Array.from(
       {/* Header */}
       <div className="flex items-center justify-between border-b px-5 py-4">
         <div>
-          <h2 className="text-base font-semibold text-slate-800">
-  <h2 className="text-base font-semibold text-slate-800">
+         <h2 className="text-base font-semibold text-slate-800">
   {interviewCandidate?.interview &&
   interviewCandidate.interview.status !== "cancelled"
     ? "Edit Interview"
     : "Schedule Interview"}
-</h2>
 </h2>
           <p className="mt-1 text-xs text-slate-500">
             {interviewCandidate.name}

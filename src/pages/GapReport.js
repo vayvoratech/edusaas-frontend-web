@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Gauge } from '../components/ui/Gauge';
 import { SkillBar } from '../components/ui/SkillBar';
 import { useAuth } from '../context/AuthContext';
-import { fetchGapReport } from '../services/api';
+import { fetchGapReport, aimlAnalyzeSkillGap } from '../services/api';
 
 export default function GapReport() {
   const navigate = useNavigate()
@@ -86,6 +86,9 @@ export default function GapReport() {
           </div>
 
         </Card>
+
+        {/* Live AI Skill Gap Simulator */}
+        <AISkillGapSimulator user={user} />
 
       </div>
 
@@ -598,6 +601,203 @@ export default function GapReport() {
 
       </Card>
 
+      {/* Interactive AI Skill Gap Simulator */}
+      <AISkillGapSimulator user={user} />
+
     </div>
+  );
+}
+
+// ─── AI Skill Gap Simulator Component ────────────────────────────────────────
+const PRESET_CAREER_ROLES = {
+  'Full Stack Developer': ['React', 'Node.js', 'SQL', 'TypeScript', 'Git', 'REST APIs'],
+  'AI / ML Engineer': ['Python', 'Machine Learning', 'TensorFlow', 'SQL', 'Data Analysis', 'Docker'],
+  'Cloud & DevOps Engineer': ['Docker', 'Kubernetes', 'AWS', 'Linux', 'CI/CD', 'Python'],
+  'Data Scientist': ['Python', 'Statistics', 'SQL', 'Pandas', 'Data Visualization', 'Machine Learning'],
+};
+
+const COMMON_STUDENT_SKILLS = [
+  'Python', 'JavaScript', 'React', 'SQL', 'Git', 'HTML/CSS',
+  'Node.js', 'Docker', 'Linux', 'Data Analysis',
+];
+
+function AISkillGapSimulator() {
+  const [selectedRole, setSelectedRole] = useState('Full Stack Developer');
+  const [mySkills, setMySkills] = useState(['Python', 'JavaScript', 'SQL', 'Git']);
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const toggleSkill = (skill) => {
+    if (mySkills.includes(skill)) {
+      setMySkills(mySkills.filter((s) => s !== skill));
+    } else {
+      setMySkills([...mySkills, skill]);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    setLoading(true);
+    setError(null);
+    const required = PRESET_CAREER_ROLES[selectedRole] || [];
+    try {
+      const res = await aimlAnalyzeSkillGap({
+        student_skills: mySkills,
+        required_skills: required,
+      });
+      const result = res?.data?.result || res?.result || res?.data || res;
+      setAnalysis(result);
+    } catch (err) {
+      console.warn('Skill gap API offline, using fallback computation', err);
+      // Fallback computation
+      const matched = required.filter((r) => mySkills.map((s) => s.toLowerCase()).includes(r.toLowerCase()));
+      const missing = required.filter((r) => !mySkills.map((s) => s.toLowerCase()).includes(r.toLowerCase()));
+      const readiness = Math.round((matched.length / required.length) * 100);
+      setAnalysis({
+        readiness_score: readiness,
+        missing_skills: missing,
+        matched_skills: matched,
+        report: required.map((r) => ({
+          skill_name: r,
+          status: mySkills.map((s) => s.toLowerCase()).includes(r.toLowerCase()) ? 'Ready' : 'Needs Improvement',
+          gap: mySkills.map((s) => s.toLowerCase()).includes(r.toLowerCase()) ? 0 : 2,
+        })),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="p-6 border border-slate-200 shadow-sm rounded-2xl bg-white mt-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span>🧩</span> AI Career Skill Gap Simulator
+          </h3>
+          <p className="text-xs text-slate-500">
+            Powered by the AIML Skill Gap Engine: test your skill proficiency against target industry career tracks.
+          </p>
+        </div>
+        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full w-fit">
+          Live AI Engine
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7 space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+              Select Target Career Role:
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.keys(PRESET_CAREER_ROLES).map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => { setSelectedRole(role); setAnalysis(null); }}
+                  className={`p-2.5 rounded-xl text-xs font-bold text-left transition-all border ${
+                    selectedRole === role
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-300 shadow-xs'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-white'
+                  }`}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+              Select Your Acquired Skills:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {COMMON_STUDENT_SKILLS.map((skill) => {
+                const isSelected = mySkills.includes(skill);
+                return (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => toggleSkill(skill)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border ${
+                      isSelected
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {isSelected ? '✓ ' : '+ '}
+                    {skill}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <Button
+            onClick={handleAnalyze}
+            disabled={loading || mySkills.length === 0}
+            className="w-full text-xs font-bold py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md rounded-xl"
+          >
+            {loading ? '⏳ Analyzing Skill Gap Matrix…' : `🚀 Analyze Gap for ${selectedRole}`}
+          </Button>
+
+          {error && <p className="text-xs text-rose-600">⚠️ {error}</p>}
+        </div>
+
+        <div className="lg:col-span-5 bg-slate-50 p-5 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+          {analysis ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase">Analysis Results</span>
+                <span className="text-xs font-extrabold text-indigo-600">
+                  {selectedRole}
+                </span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs text-center">
+                <div className="text-xs text-slate-500">Career Readiness Score</div>
+                <div className="text-3xl font-extrabold text-slate-900 mt-1">
+                  {Math.round(analysis.readiness_score || 75)}%
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-600 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round(analysis.readiness_score || 75)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-bold text-slate-700 mb-1.5">Missing Competencies:</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(analysis.missing_skills || []).length > 0 ? (
+                    (analysis.missing_skills || []).map((s, i) => (
+                      <span key={i} className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
+                        ⚠️ {typeof s === 'string' ? s : s.skill_name || 'Skill'}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-emerald-600 font-bold">✓ All required skills met!</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-500">
+                AI Guidance: Add course modules for missing competencies to achieve 100% role readiness.
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-400">
+              <span className="text-3xl mb-2">🎯</span>
+              <p className="text-xs font-bold text-slate-700">No Simulation Computed</p>
+              <p className="text-[11px] mt-1 max-w-xs text-slate-500">
+                Choose a target role, select your acquired skills, and click Analyze to generate the gap breakdown.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
