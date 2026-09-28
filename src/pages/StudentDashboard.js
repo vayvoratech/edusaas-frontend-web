@@ -16,6 +16,7 @@ import { Card } from '../components/ui/Card';
 import { ProgressRing } from '../components/ui/ProgressRing';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
+import AppDialog from "../components/ui/AppDialog";
 
 import {
   getStudentDashboard,
@@ -101,6 +102,37 @@ export default function StudentDashboard() {
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [dashError, setDashError] = useState(null);
+
+  const [dialog, setDialog] = useState({
+  open: false,
+  type: "error",
+  title: "",
+  message: "",
+  confirmText: "OK",
+  cancelText: "Cancel",
+  showCancel: false,
+  destructive: false,
+  onConfirm: null,
+});
+
+const closeDialog = () => {
+  setDialog((prev) => ({ ...prev, open: false }));
+};
+
+const showDialog = (options) => {
+  setDialog({
+    open: true,
+    type: "error",
+    title: "Something went wrong",
+    message: "",
+    confirmText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+    destructive: false,
+    onConfirm: closeDialog,
+    ...options,
+  });
+};
 
   const dismissedKey = `edu_dismissed_announcements_${user?.id || 'student'}`;
   const getDismissedIds = () => {
@@ -322,10 +354,14 @@ const handleViewInterview = async (jobId) => {
       err.response?.data || err.message
     );
 
-    alert(
-      err.response?.data?.error ||
-        "Failed to load interview details."
-    );
+    showDialog({
+  type: "error",
+  title: "Interview Unavailable",
+  message:
+    err.response?.data?.error ||
+    "Failed to load interview details.",
+  confirmText: "OK",
+});
   } finally {
     setLoadingInterview(false);
   }
@@ -399,6 +435,20 @@ const availableJobs = recommendedJobs.filter(
 );
 
   return (
+
+    <>
+    <AppDialog
+  open={dialog.open}
+  type={dialog.type}
+  title={dialog.title}
+  message={dialog.message}
+  confirmText={dialog.confirmText}
+  cancelText={dialog.cancelText}
+  showCancel={dialog.showCancel}
+  destructive={dialog.destructive}
+  onConfirm={dialog.onConfirm}
+  onCancel={closeDialog}
+/>
     <div className="space-y-6">
 
       {/* ------------------------------------------------ */}
@@ -1368,7 +1418,7 @@ const availableJobs = recommendedJobs.filter(
             <p className="mt-1 text-sm text-slate-400">
               {selectedApplication.job.company}
             </p>
-          )} 
+          )}
         </div>
         <button
           type="button"
@@ -1696,4 +1746,5 @@ const availableJobs = recommendedJobs.filter(
 )}
 
 </div>
+</>
 )}

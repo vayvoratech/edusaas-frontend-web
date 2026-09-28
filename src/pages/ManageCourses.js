@@ -17,6 +17,7 @@ import {
   resolveAssetUrl,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import AppDialog from "../components/ui/AppDialog";
 
 function ReviewerAvatar({ name, avatarUrl, size = "w-8 h-8", textClass = "text-xs" }) {
   const [imgError, setImgError] = useState(false);
@@ -74,6 +75,36 @@ export default function ManageCourses() {
   const [sort, setSort] = useState('Last Updated');
   const [creating, setCreating] = useState(false); // True when create modal is open
   const [editing, setEditing] = useState(null); // Holds course data for editing/creating
+  const [dialog, setDialog] = useState({
+  open: false,
+  type: "error",
+  title: "",
+  message: "",
+  confirmText: "OK",
+  cancelText: "Cancel",
+  showCancel: false,
+  destructive: false,
+  onConfirm: null,
+});
+
+const closeDialog = () => {
+  setDialog((prev) => ({ ...prev, open: false }));
+};
+
+const showDialog = (options) => {
+  setDialog({
+    open: true,
+    type: "error",
+    title: "Something went wrong",
+    message: "",
+    confirmText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+    destructive: false,
+    onConfirm: closeDialog,
+    ...options,
+  });
+};
   const [step, setStep] = useState(1); // Controls the multi-step modal
   const [lessons, setLessons] = useState([]); // Holds lesson data for a course
   const [error, setError] = useState(null);
@@ -140,7 +171,7 @@ export default function ManageCourses() {
 
     try {
         let course;
-        
+
         const formData = new FormData();
         if (editing.title) formData.append('title', editing.title);
         if (editing.category) formData.append('category', editing.category);
@@ -201,15 +232,37 @@ export default function ManageCourses() {
   };
 
   // Handles deleting a course after confirmation
-  const onDelete = async (c) => {
-    if (!window.confirm(`Delete "${c.title}"?`)) return;
-    try {
-      await deleteCourse(c.id);
-      setCourses((prev) => prev.filter((x) => x.id !== c.id));
-    } catch (err) {
-      setError(err.response?.data?.error || err.message);
-    }
-  };
+  const confirmDeleteCourse = async (c) => {
+  try {
+    await deleteCourse(c.id);
+    setCourses((prev) => prev.filter((x) => x.id !== c.id));
+  } catch (err) {
+    showDialog({
+      type: "error",
+      title: "Delete Failed",
+      message:
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to delete the course.",
+    });
+  }
+};
+
+const onDelete = (c) => {
+  showDialog({
+    type: "confirm",
+    title: "Delete Course?",
+    message: `Are you sure you want to delete "${c.title}"? This action cannot be undone.`,
+    confirmText: "Delete",
+    cancelText: "Cancel",
+    showCancel: true,
+    destructive: true,
+    onConfirm: () => {
+      closeDialog();
+      confirmDeleteCourse(c);
+    },
+  });
+};
 
   // Sorts courses based on the selected sort option
   const sorted = [...courses].sort((a, b) => {
@@ -218,6 +271,21 @@ export default function ManageCourses() {
   });
 
   return (
+ <>
+    <AppDialog
+      open={dialog.open}
+      type={dialog.type}
+      title={dialog.title}
+      message={dialog.message}
+      confirmText={dialog.confirmText}
+      cancelText={dialog.cancelText}
+      showCancel={dialog.showCancel}
+      destructive={dialog.destructive}
+      onConfirm={dialog.onConfirm}
+      onCancel={closeDialog}
+    />
+
+
     <div className="space-y-6">
       {/* Page header and main action buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -522,7 +590,7 @@ export default function ManageCourses() {
                           className="w-full rounded-xl border border-slate-300 px-4 py-3 resize-none focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                       </div>
-                      
+
                       <div className="md:col-span-2 mt-4">
                         <label className="block text-sm font-medium text-slate-700 mb-2">
                           Course Thumbnail (Optional)
@@ -688,20 +756,40 @@ export default function ManageCourses() {
               <Button
               variant="outline"
               type="button"
-              onClick={async () => {
-                if (lesson.id) {
-                  if (!window.confirm(`Delete lesson "${lesson.title}"?`)) return;
-                  try {
-                    await deleteLesson(lesson.id);
-                  } catch (err) {
-                    alert("Failed to delete lesson: " + (err.response?.data?.error || err.message));
-                    return;
-                  }
-                }
-                const updated = [...lessons];
-                updated.splice(index, 1);
-                setLessons(updated);
-              }}
+             onClick={() => {
+  showDialog({
+    type: "confirm",
+    title: "Delete Lesson?",
+    message: `Are you sure you want to delete "${lesson.title || "this lesson"}"? This action cannot be undone.`,
+    confirmText: "Delete",
+    cancelText: "Cancel",
+    showCancel: true,
+    destructive: true,
+    onConfirm: async () => {
+      closeDialog();
+
+      if (lesson.id) {
+        try {
+          await deleteLesson(lesson.id);
+        } catch (err) {
+          showDialog({
+            type: "error",
+            title: "Delete Failed",
+            message:
+              err.response?.data?.error ||
+              err.message ||
+              "Failed to delete the lesson.",
+          });
+          return;
+        }
+      }
+
+      const updated = [...lessons];
+      updated.splice(index, 1);
+      setLessons(updated);
+    },
+  });
+}}
               >
 
               Delete
@@ -754,14 +842,22 @@ export default function ManageCourses() {
               <div className="mt-6 border-t pt-6">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-semibold text-slate-800">Mandatory Quiz ({lesson.quiz?.length || 0}/20 Questions)</h4>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     className="text-xs py-1"
                     onClick={() => {
                       const updated = [...lessons];
                       if (!updated[index].quiz) updated[index].quiz = [];
-                      if (updated[index].quiz.length >= 20) return alert("Maximum 20 questions allowed.");
+                     if (updated[index].quiz.length >= 20) {
+                       showDialog({
+                         type: "warning",
+                         title: "Question Limit Reached",
+                        message: "A lesson can have a maximum of 20 quiz questions.",
+                       confirmText: "OK",
+                       });
+                        return;
+                  }
                       updated[index].quiz.push({ question: "", options: ["", "", "", ""], correct_option: 0 });
                       setLessons(updated);
                     }}
@@ -769,7 +865,7 @@ export default function ManageCourses() {
                     + Add Question
                   </Button>
                 </div>
-                
+
                 {lesson.quiz && lesson.quiz.length < 5 && (
                   <p className="text-red-500 text-xs mb-3 font-medium">⚠️ Minimum 5 questions required.</p>
                 )}
@@ -787,7 +883,7 @@ export default function ManageCourses() {
                           }}
                         >Remove</button>
                       </div>
-                      
+
                       <input
                         className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
                         placeholder="Enter question text..."
@@ -798,13 +894,13 @@ export default function ManageCourses() {
                           setLessons(updated);
                         }}
                       />
-                      
+
                       <div className="grid grid-cols-2 gap-3">
                         {[0, 1, 2, 3].map((optIndex) => (
                           <div key={optIndex} className="flex items-center gap-2">
-                            <input 
-                              type="radio" 
-                              name={`correct_${index}_${qIndex}`} 
+                            <input
+                              type="radio"
+                              name={`correct_${index}_${qIndex}`}
                               checked={q.correct_option === optIndex}
                               onChange={() => {
                                 const updated = [...lessons];
@@ -1020,5 +1116,6 @@ export default function ManageCourses() {
         </div>
       )}
     </div>
+    </>
   );
 }

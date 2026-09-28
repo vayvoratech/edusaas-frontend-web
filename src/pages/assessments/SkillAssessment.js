@@ -4,6 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { getAssessmentOverview } from '../../services/api';
 import MiniProject from './MiniProject';
+import AppDialog from '../../components/ui/AppDialog';
 
 export default function SkillAssessment() {
   const navigate = useNavigate();
@@ -12,12 +13,42 @@ export default function SkillAssessment() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeView, setActiveView] = useState("overview");
+  const [dialog, setDialog] = useState({
+  open: false,
+  type: "warning",
+  title: "",
+  message: "",
+  confirmText: "Continue Coding Assessment",
+  cancelText: "Cancel",
+  showCancel: true,
+});
 
   useEffect(() => {
     const loadOverview = async () => {
       try {
         const data = await getAssessmentOverview();
-        setOverview(data);
+setOverview(data);
+
+const initialQuizCompleted =
+  data.initialAssessment.questionsAnswered >=
+    data.initialAssessment.totalQuestions &&
+  data.initialAssessment.totalQuestions > 0;
+
+const codingCompleted =
+  data.codingAssessment?.status === "Completed";
+
+if (initialQuizCompleted && !codingCompleted) {
+  setDialog({
+    open: true,
+    type: "warning",
+    title: "Complete Your Assessment",
+    message:
+      "Please complete the Coding Assessment to view your complete progress, readiness score, and skill-gap results.",
+    confirmText: "Continue Coding Assessment",
+    cancelText: "Later",
+    showCancel: true,
+  });
+}
       } catch (err) {
         setError(
           err.response?.data?.error ||
@@ -96,144 +127,108 @@ export default function SkillAssessment() {
 
 {/* Initial Assessment */}
 <Card>
-  <div className="flex flex-col gap-5">
-    {/* Header */}
-    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-      <div>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-            ✓
-          </div>
-
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-lg font-semibold text-slate-900">
-                Initial Assessment
-              </h3>
-
-              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                Skill Assessment
-              </span>
-            </div>
-          </div>
-               </div>
+  {/* Header */}
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex items-start gap-4">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+        ✓
       </div>
 
-      <p className="mt-2 max-w-2xl text-sm text-slate-500">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-xl font-semibold text-slate-900">
+            Initial Assessment
+          </h2>
+
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
+            Skill Assessment
+          </span>
+        </div>
+
+        <p className="mt-1 text-sm text-slate-500">
           Complete both stages to evaluate your current skills, readiness,
           and skill gaps.
         </p>
       </div>
+    </div>
 
-      {/* Action */}
-      <div className="shrink-0">
-        {overview.initialAssessment.status === "Completed" ? (
-          <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700">
-            ✓ Completed
-          </span>
-        ) : (
-          <Button
-            variant="primary"
-            onClick={() => navigate("/app/initial-assessment")}
-          >
-            {overview.codingAssessment?.status === "In Progress"
-              ? "Continue Coding Assessment"
-              : overview.initialAssessment.status === "In Progress"
-              ? "Continue Assessment"
-              : "Start Assessment"}
-          </Button>
-        )}
+    {/* CTA */}
+    <Button
+      variant="primary"
+      onClick={() =>
+        navigate("/app/initial-assessment", {
+          state: { phase: "coding" },
+        })
+      }
+    >
+      Continue Coding Assessment
+    </Button>
+  </div>
+
+  {/* Stages */}
+  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+    {/* Stage 1 */}
+    <div className="rounded-xl border border-green-200 bg-green-50/40 p-5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Stage 1
+        </span>
+
+        <span className="text-sm font-medium text-green-600">
+          Completed
+        </span>
+      </div>
+
+      <h3 className="mt-2 text-lg font-semibold text-slate-900">
+        Initial Quiz
+      </h3>
+
+      <p className="mt-1 text-sm text-slate-500">
+        Knowledge and skill assessment
+      </p>
+
+      <div className="mt-4 flex items-center justify-between rounded-lg bg-white px-4 py-3">
+        <span className="text-sm text-slate-500">
+          Questions
+        </span>
+
+        <span className="font-semibold text-slate-900">
+          50 / 50
+        </span>
       </div>
     </div>
 
-    {/* Assessment stages */}
-    <div className="grid gap-3 md:grid-cols-2">
-      {/* Initial Quiz */}
-      <div
-        className={`rounded-xl border p-4 ${
-          overview.initialAssessment.questionsAnswered >=
-            overview.initialAssessment.totalQuestions &&
-          overview.initialAssessment.totalQuestions > 0
-            ? "border-green-200 bg-green-50/50"
-            : "border-slate-200 bg-slate-50"
-        }`}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Stage 1
-            </p>
+    {/* Stage 2 */}
+    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Stage 2
+        </span>
 
-<h4 className="mt-1 text-sm font-semibold text-slate-900">
-  Initial Quiz
-</h4>
-
-<p className="mt-1 text-xs text-slate-500">
-  Knowledge and skill assessment
-</p>
-        </div>
-
-        <div className="mt-3 text-xs text-slate-500">
-          Questions:{" "}
-          <span className="font-semibold text-slate-700">
-            {overview.initialAssessment.questionsAnswered}/
-            {overview.initialAssessment.totalQuestions}
-          </span>
-        </div>
+        <span className="text-sm font-medium text-blue-600">
+          Ready
+        </span>
       </div>
 
-      {/* Coding Assessment */}
-      <div
-        className={`rounded-xl border p-4 ${
-          overview.codingAssessment?.status === "Completed"
-            ? "border-green-200 bg-green-50/50"
-            : overview.codingAssessment?.status === "In Progress"
-            ? "border-blue-200 bg-blue-50/50"
-            : "border-slate-200 bg-slate-50"
-        }`}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Stage 2
-            </p>
+      <h3 className="mt-2 text-lg font-semibold text-slate-900">
+        Coding Assessment
+      </h3>
 
-            <h4 className="mt-1 text-sm font-semibold text-slate-900">
-              Coding Assessment
-            </h4>
+      <p className="mt-1 text-sm text-slate-500">
+        Practical coding evaluation
+      </p>
 
-            <p className="mt-1 text-xs text-slate-500">
-              Practical coding evaluation
-            </p>
-          </div>
-
-          {overview.codingAssessment?.status === "Completed" ? (
-            <span className="text-sm font-medium text-green-600">
-              ✓ Completed
-            </span>
-          ) : overview.codingAssessment?.status === "In Progress" ? (
-            <span className="text-sm font-medium text-blue-600">
-              In Progress
-            </span>
-          ) : (
-            <span className="text-sm font-medium text-slate-500">
-              Not Started
-            </span>
-          )}
-        </div>
-
-        <div className="mt-3 text-xs text-slate-500">
-          {overview.codingAssessment?.status === "Completed"
-            ? "Coding assessment completed."
-            : overview.codingAssessment?.status === "In Progress"
-            ? "Continue your coding assessment."
-            : "Complete the Initial Quiz first."}
-        </div>
+      <div className="mt-4 rounded-lg bg-white px-4 py-3">
+        <span className="text-sm text-blue-600">
+          Your coding assessment is ready to continue.
+        </span>
       </div>
     </div>
+  </div>
+
 
     {/* Assessment metrics */}
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div className="rounded-lg bg-slate-50 px-3 py-2.5">
         <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
           Overall Status
@@ -267,7 +262,9 @@ export default function SkillAssessment() {
         </span>
 
         <p className="mt-1 text-sm font-semibold text-orange-600">
-          {overview.initialAssessment.readinessScore ?? "—"}
+         {overview.initialAssessment.readinessScore != null
+  ? overview.initialAssessment.readinessScore
+  : "Pending"}
         </p>
       </div>
 
@@ -281,10 +278,7 @@ export default function SkillAssessment() {
         </p>
       </div>
     </div>
-  </div>
-</Card>
-
-
+    </Card>
 
       {/* Learning Prerequisites */}
       <Card>
@@ -453,6 +447,35 @@ export default function SkillAssessment() {
           </div>
         </div>
       </Card>
+
+<AppDialog
+  open={dialog.open}
+  type={dialog.type}
+  title={dialog.title}
+  message={dialog.message}
+  confirmText={dialog.confirmText}
+  cancelText={dialog.cancelText}
+  showCancel={dialog.showCancel}
+  onCancel={() =>
+    setDialog((prev) => ({
+      ...prev,
+      open: false,
+    }))
+  }
+  onConfirm={() => {
+    setDialog((prev) => ({
+      ...prev,
+      open: false,
+    }));
+
+    navigate("/app/initial-assessment", {
+      state: {
+        phase: "coding",
+      },
+    });
+  }}
+/>
+
     </div>
   );
 }

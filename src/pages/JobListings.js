@@ -10,6 +10,7 @@ import {
 } from '../services/api';
 
 import { useAuth } from '../context/AuthContext';
+import AppDialog from "../components/ui/AppDialog";
 
 // salary range
 const SALARY_OPTIONS = [
@@ -32,6 +33,39 @@ export default function JobListings() {
   const [editing, setEditing] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [error, setError] = useState(null);
+
+
+const [dialog, setDialog] = useState({
+  open: false,
+  type: "error",
+  title: "",
+  message: "",
+  confirmText: "OK",
+  cancelText: "Cancel",
+  showCancel: false,
+  destructive: false,
+  onConfirm: null,
+});
+
+const closeDialog = () => {
+  setDialog((prev) => ({ ...prev, open: false }));
+};
+
+const showDialog = (options) => {
+  setDialog({
+    open: true,
+    type: "error",
+    title: "Something went wrong",
+    message: "",
+    confirmText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+    destructive: false,
+    onConfirm: closeDialog,
+    ...options,
+  });
+};
+
 
   //SORTING AND FILTERING
   const [search, setSearch] = useState("");
@@ -72,6 +106,7 @@ const normalizeDeadline = (value) => {
     ? null
     : date.toISOString();
 };
+
 
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,11 +173,35 @@ const normalizeDeadline = (value) => {
     setError(err.response?.data?.error || err.message);
   }
 };
-  const onDelete = async (j) => {
-    if (!window.confirm(`Delete "${j.title}"?`)) return;
-    try { await deleteJob(j.id); load(); }
-    catch (err) { setError(err.response?.data?.error || err.message); }
-  };
+
+const onDelete = (j) => {
+  showDialog({
+    type: "confirm",
+    title: "Delete Job?",
+    message: `Are you sure you want to delete "${j.title}"? This action cannot be undone.`,
+    confirmText: "Delete",
+    cancelText: "Cancel",
+    showCancel: true,
+    destructive: true,
+    onConfirm: async () => {
+      closeDialog();
+
+      try {
+        await deleteJob(j.id);
+        load();
+      } catch (err) {
+        showDialog({
+          type: "error",
+          title: "Delete Failed",
+          message:
+            err.response?.data?.error ||
+            err.message ||
+            "Failed to delete the job.",
+        });
+      }
+    },
+  });
+};
 
   const formatDate = (date) => {
   if (!date) return "Not specified";
@@ -273,6 +332,20 @@ const locationOptions = useMemo(() => {
 
 
 return (
+  <>
+<AppDialog
+  open={dialog.open}
+  type={dialog.type}
+  title={dialog.title}
+  message={dialog.message}
+  confirmText={dialog.confirmText}
+  cancelText={dialog.cancelText}
+  showCancel={dialog.showCancel}
+  destructive={dialog.destructive}
+  onConfirm={dialog.onConfirm}
+  onCancel={closeDialog}
+/>
+
   <div className="space-y-6">
     <div>
       {/* ================= PAGE HEADER ================= */}
@@ -1472,5 +1545,6 @@ return (
       </div>
     )}
   </div>
+  </>
 );
 }

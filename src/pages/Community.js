@@ -129,7 +129,7 @@ export default function Community() {
   const [commentDrafts, setCommentDrafts] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [selectedImages, setSelectedImages] = useState([]);
-  
+
   const [connectionsCount, setConnectionsCount] = useState(0);
   const [networkConnections, setNetworkConnections] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -178,7 +178,7 @@ export default function Community() {
     if (e.target.files) {
       const files = Array.from(e.target.files);
       if (selectedImages.length + files.length > 3) {
-        alert("You can only upload up to 3 images.");
+        showToast("You can only upload up to 3 images.", "error");
         return;
       }
       setSelectedImages((prev) => [...prev, ...files].slice(0, 3));
@@ -415,7 +415,7 @@ export default function Community() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const supportsModernScroll = window.CSS && CSS.supports('(animation-timeline: view()) and (animation-range: entry)');
-      
+
       if (!supportsModernScroll) {
         const observer = new IntersectionObserver(
           (entries) => {
@@ -547,7 +547,7 @@ export default function Community() {
       if (Object.keys(finalMetadata).length > 0) {
         formData.append('metadata', JSON.stringify(finalMetadata));
       }
-      
+
       selectedImages.forEach((file) => {
         formData.append('images', file);
       });
@@ -582,7 +582,7 @@ export default function Community() {
             transform: translateY(0) scale(1);
           }
         }
-        
+
         @keyframes float-mailbox {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
           50% { transform: translateY(-10px) rotate(3deg); }
@@ -601,18 +601,18 @@ export default function Community() {
             }
           }
         }
-        
+
         .member-card-enter {
           animation: post-entry 0.5s ease-out both;
         }
-        
+
         .glassmorphism-card {
           background: rgba(255, 255, 255, 0.7);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
         }
       `}</style>
-      
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-in slide-in-from-top-4 fade-in duration-300">
@@ -634,13 +634,13 @@ export default function Community() {
               <p className="text-sm text-slate-500">{confirmModal.message}</p>
             </div>
             <div className="px-6 py-4 bg-slate-50 flex justify-end gap-3 border-t border-slate-100">
-              <button 
+              <button
                 onClick={confirmModal.onCancel}
                 className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={confirmModal.onConfirm}
                 className="px-4 py-2 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow hover:shadow-lg transition-all"
               >
@@ -768,7 +768,7 @@ export default function Community() {
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-brand-blue-400/20 rounded-full blur-3xl"></div>
-        
+
         <div className="relative z-10 text-center px-4 w-full max-w-4xl">
           <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow-md mb-2 flex items-center justify-center gap-3">
             EduSaaS Community <span className="text-xs px-2 py-1 rounded-full bg-white/20 backdrop-blur-md text-white font-bold border border-white/30 shadow-xl">PRO</span>
@@ -780,7 +780,7 @@ export default function Community() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20">
-        
+
         {/* Search & Actions Panel */}
         <div className="bg-white/80 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-xl shadow-slate-200/40 p-4 sm:p-6 mb-8 flex flex-col md:flex-row gap-4 justify-between items-center">
           <div className="relative w-full md:w-96">
@@ -884,7 +884,7 @@ export default function Community() {
 
           {/* Middle Column (Main Feed or Network Tab) */}
           <div className="lg:col-span-6 space-y-6">
-            
+
             {activeTab !== 'Connections' && activeTab !== 'Announcements' && (
               <>
                 {/* Quick Post Prompt */}
@@ -915,8 +915,8 @@ export default function Community() {
                 ) : (
                   <div className="flex flex-col gap-3">
                     {userSearchResults.map((u, i) => (
-                      <Card 
-                        key={u.id} 
+                      <Card
+                        key={u.id}
                         className="member-card-enter p-4 flex items-center justify-between border border-slate-200 glassmorphism-card hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 transition-all duration-300 rounded-xl group w-full"
                         style={{ animationDelay: `${i * 60}ms` }}
                       >
@@ -931,14 +931,14 @@ export default function Community() {
                         </div>
                         <div className="shrink-0">
                           {sentRequests[u.id] ? (
-                            <button 
+                            <button
                               onClick={() => handleRemoveRequest(u.id, sentRequests[u.id])}
                               className="text-xs px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all shadow-sm font-bold active:scale-95 border border-slate-200 whitespace-nowrap"
                             >
                               Cancel
                             </button>
                           ) : (
-                            <button 
+                            <button
                               onClick={() => handleConnect(u.id)}
                               className="text-xs px-5 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-600 hover:to-purple-600 text-indigo-700 hover:text-white border border-indigo-100 rounded-lg transition-all shadow-sm font-bold active:scale-95 whitespace-nowrap"
                             >
@@ -950,7 +950,7 @@ export default function Community() {
                     ))}
                   </div>
                 )}
-                
+
                 <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2 mt-8 border-t border-slate-200 pt-6">Post Results</h3>
               </div>
             )}
@@ -965,7 +965,7 @@ export default function Community() {
                 <Card className="p-16 text-center border border-slate-200 rounded-[2rem] bg-gradient-to-b from-white to-slate-50 shadow-sm relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -z-10"></div>
                   <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl -z-10"></div>
-                  
+
                   <div className="text-6xl mb-6 animate-float drop-shadow-md">📭</div>
                   <h3 className="text-2xl font-extrabold text-slate-800 mb-3 tracking-tight">No posts found</h3>
                   <p className="text-base text-slate-500 mb-8 max-w-md mx-auto leading-relaxed">It's a bit quiet here. Try adjusting your filters or be the first to share an update with the community!</p>
@@ -979,7 +979,7 @@ export default function Community() {
               ) : (
                   filteredPosts.map((post) => (
                   <Card key={post.id} id={`post-${post.id}`} className="post-card-animated border border-slate-200 shadow-md hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 transition-all duration-300 rounded-2xl overflow-hidden bg-white group">
-                    
+
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-center gap-3">
@@ -1018,8 +1018,8 @@ export default function Community() {
                         <button
                           onClick={() => handleToggleBookmark(post.id)}
                           className={`text-lg p-2 rounded-full transition-all ${
-                            post.bookmarked 
-                              ? 'bg-indigo-50 shadow-sm border border-indigo-100 scale-105' 
+                            post.bookmarked
+                              ? 'bg-indigo-50 shadow-sm border border-indigo-100 scale-105'
                               : 'grayscale opacity-40 hover:grayscale-0 hover:opacity-100 hover:bg-slate-50 hover:scale-110 border border-transparent'
                           }`}
                           title={post.bookmarked ? "Remove Bookmark" : "Save Post"}
@@ -1050,7 +1050,7 @@ export default function Community() {
                               <span className="bg-amber-100 p-1.5 rounded-lg">📍</span> {post.jobDetails.location}
                             </div>
                             <div className="font-medium flex items-center gap-2">
-                              <span className="bg-amber-100 p-1.5 rounded-lg">💰</span> {post.jobDetails.salary} 
+                              <span className="bg-amber-100 p-1.5 rounded-lg">💰</span> {post.jobDetails.salary}
                               <span className="text-amber-700/60 ml-2 text-xs">Apply by {post.jobDetails.deadline}</span>
                             </div>
                           </div>
@@ -1179,8 +1179,8 @@ export default function Community() {
 
                 <div className="flex flex-col gap-3">
                   {pendingRequests.map((req, i) => (
-                    <div 
-                      key={req.id} 
+                    <div
+                      key={req.id}
                       className="p-4 bg-white border border-slate-200 rounded-xl flex items-center justify-between hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 transition-all duration-300 animate-in zoom-in-95 group w-full"
                       style={{ animationDelay: `${i * 100}ms` }}
                     >
@@ -1199,13 +1199,13 @@ export default function Community() {
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button 
+                        <button
                           onClick={() => handleAcceptRequest(req.id)}
                           className="text-xs px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-bold shadow-md shadow-indigo-500/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 active:scale-95 whitespace-nowrap"
                         >
                           Accept
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleRejectRequest(req.id)}
                           className="text-xs px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400 hover:to-rose-500 text-white rounded-lg font-bold shadow-md shadow-red-500/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 active:scale-95 whitespace-nowrap"
                         >
@@ -1241,8 +1241,8 @@ export default function Community() {
                   {networkConnections.map(conn => {
                     const friend = conn.user;
                     return (
-                      <div 
-                        key={conn.connectionId} 
+                      <div
+                        key={conn.connectionId}
                         className="p-4 bg-white border border-slate-200 rounded-xl flex items-center justify-between hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 transition-all duration-300 group animate-in zoom-in-95 w-full"
                       >
                         <div className="flex items-center gap-4 min-w-0">
@@ -1255,13 +1255,13 @@ export default function Community() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <button 
+                          <button
                             onClick={() => showToast("Messaging feature coming soon!", "success")}
                             className="text-xs px-4 py-2 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-800 rounded-lg font-bold transition-all shadow-sm active:scale-95 whitespace-nowrap"
                           >
                             Message
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleRemoveConnection(conn.connectionId)}
                             className="text-xs px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-bold transition-all border border-transparent hover:border-red-200 shadow-sm active:scale-95 whitespace-nowrap"
                           >
@@ -1465,7 +1465,7 @@ export default function Community() {
         {composerOpen && (
           <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
             <Card className="w-full max-w-2xl max-h-[88vh] shadow-2xl bg-white rounded-3xl flex flex-col border border-slate-200/80 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 my-auto">
-              
+
               <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200/80 bg-white shrink-0">
                 <h3 className="text-lg sm:text-xl font-extrabold text-slate-800">Create a New Post</h3>
                 <button
@@ -1487,7 +1487,7 @@ export default function Community() {
                     </div>
                     <div>
                       <h4 className="text-sm sm:text-base font-bold text-slate-900">{displayName || 'User'}</h4>
-                      
+
                       <div className="mt-1 flex flex-col gap-2">
                          <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 cursor-pointer px-3 py-1 rounded-full border border-slate-200 transition-colors w-fit shadow-sm">
                            <input
@@ -1539,7 +1539,7 @@ export default function Community() {
                       required
                       className="w-full text-lg sm:text-xl font-bold text-slate-800 placeholder-slate-300 bg-transparent border-none focus:ring-0 px-0 focus:outline-none"
                     />
-                    
+
                     <textarea
                       value={postBody}
                       onChange={(e) => setPostBody(e.target.value)}
@@ -1548,7 +1548,7 @@ export default function Community() {
                       required
                       className="w-full text-sm sm:text-base leading-relaxed text-slate-700 placeholder-slate-400 bg-transparent border-none focus:ring-0 px-0 resize-none min-h-[90px] focus:outline-none custom-scrollbar"
                     />
-                    
+
                     {/* Image Previews */}
                     {selectedImages.length > 0 && (
                       <div className="flex gap-3 overflow-x-auto py-1">
@@ -1725,7 +1725,7 @@ export default function Community() {
                       )}
                     </div>
                   )}
-                    
+
                   <div className="flex flex-col gap-3 pt-2 border-t border-slate-100">
                     <div className="flex items-center gap-3">
                       {/* Add Image Button */}
@@ -1742,7 +1742,7 @@ export default function Community() {
                         />
                       </label>
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-2.5">
                       {['Discussion', 'Job', 'Course', 'Project'].map((t) => (
                         <button
@@ -1775,8 +1775,8 @@ export default function Community() {
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={!postTitle.trim() || !postBody.trim() || (!isPublic && visibleRoles.length === 0) || ((postType === 'Job' || postType === 'Course') && notifyDomainRoles.length === 0)}
                     className={`rounded-xl px-8 py-2.5 text-sm font-bold shadow-lg transition-all ${(!postTitle.trim() || !postBody.trim() || (!isPublic && visibleRoles.length === 0) || ((postType === 'Job' || postType === 'Course') && notifyDomainRoles.length === 0)) ? 'opacity-50 cursor-not-allowed bg-slate-300 text-slate-500 shadow-none' : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white hover:shadow-indigo-500/30 hover:-translate-y-0.5'}`}
                   >

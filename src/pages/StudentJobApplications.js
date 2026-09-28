@@ -5,6 +5,8 @@ import {
   getMyInterview,
 } from "../services/api";
 
+import AppDialog from "../components/ui/AppDialog";
+
 export default function StudentJobApplications() {
   const [applications, setApplications] = useState([]);
   const [interviews, setInterviews] = useState({});
@@ -20,6 +22,37 @@ export default function StudentJobApplications() {
 
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [loadingInterview, setLoadingInterview] = useState(false);
+
+  const [dialog, setDialog] = useState({
+  open: false,
+  type: "error",
+  title: "",
+  message: "",
+  confirmText: "OK",
+  cancelText: "Cancel",
+  showCancel: false,
+  destructive: false,
+  onConfirm: null,
+});
+
+const closeDialog = () => {
+  setDialog((prev) => ({ ...prev, open: false }));
+};
+
+const showDialog = (options) => {
+  setDialog({
+    open: true,
+    type: "error",
+    title: "Something went wrong",
+    message: "",
+    confirmText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+    destructive: false,
+    onConfirm: closeDialog,
+    ...options,
+  });
+};
 
   /* ---------------------------------------------------------
      Load applications
@@ -340,10 +373,14 @@ const getInterviewLabel = (application) => {
         err.response?.data || err.message
       );
 
-      alert(
-        err.response?.data?.error ||
-          "Failed to open the application video."
-      );
+      showDialog({
+  type: "error",
+  title: "Video Unavailable",
+  message:
+    err.response?.data?.error ||
+    "Failed to open the application video.",
+  confirmText: "OK",
+});
     } finally {
       setLoadingVideo(false);
     }
@@ -383,10 +420,14 @@ const getInterviewLabel = (application) => {
         err.response?.data || err.message
       );
 
-      alert(
-        err.response?.data?.error ||
-          "Failed to load interview details."
-      );
+      showDialog({
+  type: "error",
+  title: "Interview Unavailable",
+  message:
+    err.response?.data?.error ||
+    "Failed to load interview details.",
+  confirmText: "OK",
+});
     } finally {
       setLoadingInterview(false);
     }
@@ -475,6 +516,7 @@ const getInterviewLabel = (application) => {
   }
 
   return (
+
     <div className="mt-4 flex items-center gap-2 text-xs">
       <Step
         completed
@@ -577,6 +619,19 @@ const getInterviewLabel = (application) => {
    Main UI
 --------------------------------------------------------- */
 return (
+<>
+  <AppDialog
+  open={dialog.open}
+  type={dialog.type}
+  title={dialog.title}
+  message={dialog.message}
+  confirmText={dialog.confirmText}
+  cancelText={dialog.cancelText}
+  showCancel={dialog.showCancel}
+  destructive={dialog.destructive}
+  onConfirm={dialog.onConfirm}
+  onCancel={closeDialog}
+/>
   <div className="min-h-full bg-slate-50 px-3 py-4 sm:px-5 sm:py-5">
     <div className="mx-auto max-w-7xl">
 
@@ -1122,9 +1177,6 @@ return (
         </div>
       )}
 
-      {/* -------------------------------------------------------
-          Interview Modal
-      ------------------------------------------------------- */}
 
       {/* Interview Details Modal */}
 {selectedInterview && (
@@ -1258,5 +1310,6 @@ return (
 )}
     </div>
   </div>
+  </>
 );
 }
