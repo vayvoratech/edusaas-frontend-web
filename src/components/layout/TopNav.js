@@ -525,7 +525,7 @@ export function TopNav({ onOpenNav = () => {} }) {
         </div>
       )}
 
-      <header className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 transition-colors duration-300">
+      <header className="bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-[0_1px_12px_rgba(15,23,42,0.04)] sticky top-0 z-50 transition-all duration-300">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
 
           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -533,7 +533,7 @@ export function TopNav({ onOpenNav = () => {} }) {
             <button
               type="button"
               onClick={onOpenNav}
-              className="md:hidden w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 grid place-items-center shrink-0 transition-colors"
+              className="md:hidden w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 grid place-items-center shrink-0 shadow-sm hover:shadow transition-all duration-200"
               aria-label={t('open_menu')}
               title={t('open_menu')}
             >
@@ -595,7 +595,7 @@ export function TopNav({ onOpenNav = () => {} }) {
                   }
                 }}
                 aria-label={t('search')}
-                className="w-72 pl-9 pr-3 py-2 text-sm rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 border border-transparent focus:border-brand-blue-500 focus:ring-2 focus:ring-brand-blue-100 dark:focus:ring-brand-blue-500/20 outline-none transition-all"
+                className="w-full sm:w-80 lg:w-96 pl-10 pr-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 border border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-950 focus:border-brand-blue-500 focus:ring-4 focus:ring-brand-blue-100/70 dark:focus:ring-brand-blue-500/20 outline-none shadow-sm focus:shadow-md transition-all duration-200"
               />
 
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -800,7 +800,7 @@ export function TopNav({ onOpenNav = () => {} }) {
                 onClick={
                   handleBellClick
                 }
-                className="relative w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 grid place-items-center transition-colors"
+                className="relative w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 grid place-items-center shadow-sm hover:shadow transition-all duration-200"
                 aria-label={t('notifications')}
                 title={t('notifications')}
               >
@@ -814,7 +814,7 @@ export function TopNav({ onOpenNav = () => {} }) {
               </button>
 
               {openNotif && (
-                <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in">
+                <div className="absolute right-0 mt-3 w-72 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-[0_18px_45px_rgba(15,23,42,0.14)] border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in">
 
                   <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between text-sm">
 
@@ -900,7 +900,7 @@ export function TopNav({ onOpenNav = () => {} }) {
                   );
                   setOpenNotif(false);
                 }}
-                className="flex items-center gap-2 pl-1 pr-2 sm:pr-3 py-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="flex items-center gap-2 pl-1.5 pr-2 sm:pr-3 py-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all duration-200"
                 aria-label={t('profile')}
               >
 
@@ -913,10 +913,10 @@ export function TopNav({ onOpenNav = () => {} }) {
                         true
                       )
                     }
-                    className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                    className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-sm"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-brand-blue-100 dark:bg-blue-500/20 text-brand-blue-700 dark:text-blue-400 grid place-items-center font-semibold text-xs">
+                  <div className="w-9 h-9 rounded-xl bg-brand-blue-100 dark:bg-blue-500/20 text-brand-blue-700 dark:text-blue-400 grid place-items-center font-semibold text-xs shadow-sm">
                     {initials(
                       displayName
                     )}
@@ -925,7 +925,7 @@ export function TopNav({ onOpenNav = () => {} }) {
 
                 <div className="text-left hidden sm:block">
 
-                  <div className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-tight">
+                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-tight">
                     {firstName}
                   </div>
 
@@ -937,7 +937,7 @@ export function TopNav({ onOpenNav = () => {} }) {
               </button>
 
               {openMenu && (
-                <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-1 animate-fade-in">
+                <div className="absolute right-0 mt-3 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-[0_18px_45px_rgba(15,23,42,0.14)] border border-slate-200 dark:border-slate-700 py-1.5 overflow-hidden animate-fade-in">
 
                   <button
                     type="button"
@@ -949,7 +949,7 @@ export function TopNav({ onOpenNav = () => {} }) {
                         '/app/profile'
                       );
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-150"
                   >
                     {t('my_profile')}
                   </button>
@@ -964,7 +964,7 @@ export function TopNav({ onOpenNav = () => {} }) {
                         '/app/settings'
                       );
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-150"
                   >
                     {t('settings')}
                   </button>
