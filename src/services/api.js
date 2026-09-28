@@ -203,12 +203,16 @@ export const pauseInitialQuizOnUnload = (sessionId) => {
   }).catch(() => { });
 };
 
+export const getInitialCodingAssessmentInfo = () =>
+  api
+    .get("/api/assessments/initial-coding/info")
+    .then((r) => r.data);
+
 // assessmnent report when student got terminated
 export const submitAssessmentReport = async (data) => {
   const res = await api.post("/api/assessment-reports", data);
   return res.data;
 };
-
 
 export const getAssessmentReportEvidence = async (reportId) => {
   const res = await api.get(
@@ -402,7 +406,7 @@ export const getApplicationVideoUploadUrl = (
       file_type: fileType,
       file_size: fileSize,
  })
-.then((r) => r.data);    
+.then((r) => r.data);
 
 export const applyJob = (
   jobId,

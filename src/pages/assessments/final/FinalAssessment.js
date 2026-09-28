@@ -26,6 +26,7 @@ const FinalAssessment = () => {
 const [showReportForm, setShowReportForm] = useState(false);
 const [reportReason, setReportReason] = useState("");
 const [reportEvidence, setReportEvidence] = useState("");
+
 const [reportEvidenceFile, setReportEvidenceFile] = useState(null);
 const [reportSubmitting, setReportSubmitting] = useState(false);
 const [reportSubmitted, setReportSubmitted] = useState(false);
@@ -635,7 +636,9 @@ const [reportError, setReportError] = useState("");
     setReportSubmitting(true);
     setReportError("");
 
+
    const formData = new FormData();
+
 
 formData.append("quiz_session_id", sessionId);
 formData.append("assessment_type", "FINAL");
@@ -759,11 +762,12 @@ await submitAssessmentReport(formData);
               onChange={(e) => setReportReason(e.target.value)}
               placeholder="Explain why you believe the assessment was terminated incorrectly..."
               rows={4}
-              className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#111318] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
-            />
+              className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#111318] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none">
+    </textarea>
 
-      {/* Accept evidence file */}
-            <label className="mt-4 block text-xs font-medium text-slate-300">
+{/* Accept evidence file */}
+
+<label className="mt-4 block text-xs font-medium text-slate-300">
   Supporting Evidence
 </label>
 

@@ -11,9 +11,8 @@ import {
 } from "../../../services/api";
 
 import ProctoringService from "../../../services/proctoringServices";
-import { useNavigate } from "react-router-dom";
-
-
+import { useLocation, useNavigate } from "react-router-dom";
+import { getInitialCodingAssessmentInfo } from "../../../services/api";
 
 // ----------------------------------------------------
 // 1. Fullscreen helper
@@ -45,6 +44,10 @@ const exitAssessmentFullscreen = async () => {
 
 const InitialAssessment = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isCodingStage = location.state?.phase === "coding";
+
   const proctoringRef = useRef(null);
 
   // Hide the normal application shell while the assessment is active.
@@ -158,6 +161,8 @@ const InitialAssessment = () => {
   const [startingProctoring, setStartingProctoring] = useState(false);
   const [proctoringWarning, setProctoringWarning] = useState(null);
 
+  const [codingInfo, setCodingInfo] = useState(null);
+
   // ----------------------------------------------------
   // Tab-switch blocking overlay — purely client-side and instant,
   // so it doesn't depend on a round trip through the AI proctoring
@@ -169,7 +174,7 @@ const InitialAssessment = () => {
   const tabSwitchCountRef = useRef(0);
 
   // ----------------------------------------------------
-  // Quiz session  
+  // Quiz session
   // ----------------------------------------------------
   const [sessionId, setSessionId] = useState(null);
 
@@ -183,6 +188,22 @@ const InitialAssessment = () => {
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+
+useEffect(() => {
+  if (page !== "instructions") return;
+
+  const loadCodingInfo = async () => {
+    try {
+      const response = await getInitialCodingAssessmentInfo();
+      setCodingInfo(response.data);
+    } catch (error) {
+      console.error("Failed to load coding assessment info:", error);
+    }
+  };
+
+  loadCodingInfo();
+}, [page]);
+
 
   useEffect(() => {
     assessmentActiveRef.current = assessmentActive;
@@ -248,16 +269,22 @@ const InitialAssessment = () => {
       const quiz = response.data;
 
       if (quiz.phase === "coding") {
-        console.log(
-          "Initial quiz completed. Entering/resuming coding assessment."
-        );
+  console.log(
+    "Initial quiz completed. Entering/resuming coding assessment."
+  );
 
-        setSessionId(quiz.session_id);
-        setAssessmentActive(false);
-        setPage("coding");
+  setSessionId(quiz.session_id);
 
-        return;
-      }
+  setQuizData(quiz);
+  console.log("SETTING CODING QUIZ DATA:", quiz);
+
+
+  setAssessmentActive(false);
+  console.log("CODING QUIZ DATA BEFORE PAGE:", quiz);
+  setPage("coding");
+
+  return;
+}
 
       if (quiz.phase === "completed") {
         console.log(
@@ -766,88 +793,134 @@ await submitAssessmentReport(formData);
 
     // Quiz is complete.
     // Move to the coding assessment using the same session ID.
+
     setPage("coding");
   }, []);
-  // Instructions Screen
+
+   // Instructions Screen
   if (page === "instructions") {
+    const isCodingAssessment = isCodingStage;
+
 
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
           <div className="text-center">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-              Initial Skill Assessment
+              {isCodingAssessment
+                ? "Coding Assessment"
+                : "Initial Skill Assessment"}
             </h1>
+
             <p className="mt-3 text-gray-500">
-              Complete this assessment to personalize your learning path.
+              {isCodingAssessment
+                ? "Complete the coding assessment to evaluate your practical problem-solving skills."
+                : "Complete this assessment to personalize your learning path."}
             </p>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-xl bg-blue-50 border border-blue-100 p-5">
-              <p className="text-sm text-gray-500">Assessment</p>
-              <p className="mt-1 font-semibold text-gray-900">
-                Adaptive Skill Assessment
-              </p>
-            </div>
-            <div className="rounded-xl bg-gray-50 border border-gray-200 p-5">
-              <p className="text-sm text-gray-500">Questions</p>
-              <p className="mt-1 font-semibold text-gray-900">10 per skill</p>
-            </div>
-            <div className="rounded-xl bg-gray-50 border border-gray-200 p-5">
-              <p className="text-sm text-gray-500">Format</p>
-              <p className="mt-1 font-semibold text-gray-900">
-                Multiple Choice
-              </p>
-            </div>
-          </div>
+         {/* Coding Assessment Overview */}
+<div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+  <div className="rounded-xl border border-blue-100 bg-blue-50 p-5">
+    <p className="text-sm text-slate-500">Assessment</p>
+    <p className="mt-1 text-lg font-semibold text-slate-900">
+      Coding Assessment
+    </p>
+  </div>
 
-          <div className="mt-8">
-            <h2 className="text-xl font-bold text-gray-900">
-              Before you begin
-            </h2>
-            <div className="mt-4 space-y-3 text-gray-600">
-              <div className="flex gap-3">
-                <span className="font-bold text-blue-600">1.</span>
-                <p>
-                  Answer each question by selecting one of the four available options.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <span className="font-bold text-blue-600">2.</span>
-                <p>
-                  The assessment is adaptive, so the next question may change based on your previous answer.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <span className="font-bold text-blue-600">3.</span>
-                <p>
-                  Your answers are submitted to the server one question at a time.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <span className="font-bold text-blue-600">4.</span>
-                <p>
-                  If you leave an assessment that is still in progress, the backend can resume the existing quiz session.
-                </p>
-              </div>
-            </div>
-          </div>
+  {/* Questions */}
+  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <p className="text-sm text-slate-500">Questions</p>
+  <p className="mt-1 text-lg font-semibold text-slate-900">
+  {codingInfo?.question_count
+    ? `${codingInfo.question_count} Coding Problems`
+    : "Coding Problems"}
+</p>
+  </div>
 
-          <div className="mt-10 text-center">
+  {/* Format */}
+  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <p className="text-sm text-slate-500">Format</p>
+   <p className="mt-1 text-lg font-semibold text-slate-900">
+  {codingInfo?.format || "Practical Coding"}
+</p>
+  </div>
+</div>
+
+{/* What to Expect */}
+<div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+  <h2 className="text-base font-semibold text-slate-900">
+    What to expect
+  </h2>
+
+  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+    <div className="flex gap-3">
+      <span className="text-green-600">✓</span>
+      <p className="text-sm leading-6 text-slate-600">
+        Solve coding problems using the provided coding environment.
+      </p>
+    </div>
+
+    <div className="flex gap-3">
+      <span className="text-green-600">✓</span>
+      <p className="text-sm leading-6 text-slate-600">
+        Read each problem and its requirements carefully.
+      </p>
+    </div>
+
+    <div className="flex gap-3">
+      <span className="text-green-600">✓</span>
+      <p className="text-sm leading-6 text-slate-600">
+        Manage your time across the available coding problems.
+      </p>
+    </div>
+
+    <div className="flex gap-3">
+      <span className="text-green-600">✓</span>
+      <p className="text-sm leading-6 text-slate-600">
+        Your solutions will be evaluated as part of the assessment.
+      </p>
+    </div>
+  </div>
+</div>
+
+{/* Before You Begin */}
+<div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
+  <div className="flex gap-3">
+    <span className="font-bold text-amber-600">!</span>
+
+    <div>
+      <h2 className="font-semibold text-amber-900">
+        Before you begin
+      </h2>
+
+      <p className="mt-1 text-sm leading-6 text-amber-800">
+        Make sure you are ready to complete the coding assessment. The assessment rules you accepted earlier will continue to apply.
+      </p>
+    </div>
+  </div>
+</div>
+
+         <div className="mt-8 flex justify-end">
             {error && (
-              <p className="mb-4 text-sm text-red-600">
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 {error}
-              </p>
+              </div>
             )}
 
             <button
               type="button"
               onClick={loadAssessment}
               disabled={loading}
-              className="w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white hover:bg-emerald-800 transition disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Loading Assessment..." : "Load Assessment"}
+              {loading
+  ? isCodingAssessment
+    ? "Starting Coding Assessment..."
+    : "Loading Assessment..."
+  : isCodingAssessment
+  ? "Start Coding Assessment →"
+  : "Start Assessment"}
             </button>
           </div>
         </div>
@@ -986,25 +1059,25 @@ await submitAssessmentReport(formData);
                   className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={reportSubmitting}
                 />
+{/* report evidence */}
 
-     {/* report evidence */}
-                <label className="mt-4 block text-sm font-medium text-gray-700">
-              Supporting Evidence
-               </label>
+<label className="mt-4 block text-sm font-medium text-gray-700">
+  Supporting Evidence
+</label>
 
-                <input
-              type="file"
-            accept=".png,.jpg,.jpeg,.pdf"
-             onChange={(e) =>
-             setReportEvidenceFile(e.target.files?.[0] || null)
-              }
-               className="mt-2 block w-full text-sm text-gray-700"
-                disabled={reportSubmitting}
-            />
+<input
+  type="file"
+  accept=".png,.jpg,.jpeg,.pdf"
+  onChange={(e) =>
+    setReportEvidenceFile(e.target.files?.[0] || null)
+  }
+  className="mt-2 block w-full text-sm text-gray-700"
+  disabled={reportSubmitting}
+/>
 
-            <p className="mt-1 text-xs text-gray-500">
-             Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
-                </p>
+<p className="mt-1 text-xs text-gray-500">
+  Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
+</p>
               </div>
 
               {reportError && (

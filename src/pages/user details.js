@@ -210,16 +210,19 @@ export default function UserDetails() {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold text-xs">
-                          {initials(u.name && u.name.trim().toLowerCase() !== 'user'
-                          ? u.name : u.username || u.name
-                          )}
-                        </div>
-                        <div className="font-semibold text-slate-800">
-                          {u.name  && u.name.trim().toLowerCase() !== 'user'
-                           ? u.name : u.username || u.name
-                          }
-                        </div>
-                      </div>
+{initials(
+  u.name && u.name.trim().toLowerCase() !== "user"
+    ? u.name
+    : u.username || u.name
+)}
+</div>
+
+<div className="font-semibold text-slate-800">
+  {u.name && u.name.trim().toLowerCase() !== "user"
+    ? u.name
+    : u.username || u.name}
+</div>
+</div>
                     </td>
                     <td className="px-5 py-3 text-slate-600">{u.email}</td>
                     <td className="px-5 py-3">

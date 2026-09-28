@@ -19,6 +19,7 @@ import {
 } from "../../../services/api";
 import ProctoringService from "../../../services/proctoringServices";
 import Editor from "@monaco-editor/react";
+import AppDialog from "../../../components/ui/AppDialog";
 
 // ============================================================
 // Constants
@@ -379,6 +380,37 @@ const InitialCodingAssessment = ({
     }
   };
 
+  const [dialog, setDialog] = useState({
+  open: false,
+  type: "error",
+  title: "",
+  message: "",
+  confirmText: "OK",
+  cancelText: "Cancel",
+  showCancel: false,
+  destructive: false,
+  onConfirm: null,
+});
+
+const closeDialog = () => {
+  setDialog((prev) => ({ ...prev, open: false }));
+};
+
+const showDialog = (options) => {
+  setDialog({
+    open: true,
+    type: "error",
+    title: "Something went wrong",
+    message: "",
+    confirmText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+    destructive: false,
+    onConfirm: closeDialog,
+    ...options,
+  });
+};
+
   // Instant client-side tab-switch detection overlay
   useEffect(() => {
     if (!assessmentActive) return;
@@ -702,7 +734,7 @@ const InitialCodingAssessment = ({
 
         setCurrentIndex(firstUnanswered >= 0 ? firstUnanswered : 0);
         setRemainingSeconds(Number(remainingTime));
-        
+
       } catch (err) {
         if (!mounted) return;
 
@@ -959,7 +991,7 @@ const InitialCodingAssessment = ({
       setResuming(false);
     }
   }, [sessionId, onError]);
-  
+
 
   const pauseCodingAssessment = useCallback(async () => {
     const sid = sessionIdRef.current || sessionId;
@@ -1189,13 +1221,31 @@ await submitAssessmentReport(formData);
   const handleResetTemplate = () => {
     if (!currentQuestionId || !currentAnswer) return;
 
-    if (
-      !window.confirm(
-        "Reset this question's editor back to the starter template? This cannot be undone."
-      )
-    ) {
-      return;
-    }
+   showDialog({
+  type: "confirm",
+  title: "Reset Code?",
+  message:
+    "Reset this question's editor back to the starter template? This cannot be undone.",
+  confirmText: "Reset",
+  cancelText: "Cancel",
+  showCancel: true,
+  destructive: true,
+  onConfirm: () => {
+    closeDialog();
+
+    const resetCode = templateFor(currentAnswer.language);
+
+    updateAnswer(currentQuestionId, {
+      code: resetCode,
+      runResult: null,
+    });
+
+    clearDraft(
+      sessionIdRef.current || sessionId,
+      currentQuestionId
+    );
+  },
+});
 
     const resetCode = templateFor(currentAnswer.language);
 
@@ -1551,24 +1601,25 @@ await submitAssessmentReport(formData);
               className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#111318] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
             />
 
+{/* report evidence */}
 
-                <label className="mt-4 block text-xs font-medium text-slate-300">
-                    Supporting Evidence
-                 </label>
+<label className="mt-4 block text-sm font-medium text-gray-700">
+  Supporting Evidence
+</label>
 
-                  <input
-                  type="file"
-                 accept=".png,.jpg,.jpeg,.pdf"
-                onChange={(e) =>
-                setReportEvidenceFile(e.target.files?.[0] || null)
-                  }
-               className="mt-1.5 block w-full text-sm text-slate-300"
-               />
+<input
+  type="file"
+  accept=".png,.jpg,.jpeg,.pdf"
+  onChange={(e) =>
+    setReportEvidenceFile(e.target.files?.[0] || null)
+  }
+  className="mt-2 block w-full text-sm text-gray-700"
+  disabled={reportSubmitting}
+/>
 
-             <p className="mt-1 text-xs text-slate-500">
-            Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
-            </p>
-
+<p className="mt-1 text-xs text-gray-500">
+  Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
+</p>
             {reportError && (
               <p className="mt-3 text-xs text-red-400">
                 {reportError}
@@ -2419,7 +2470,20 @@ await submitAssessmentReport(formData);
           </div>
         </div>
       )}
-    </div>
+
+          <AppDialog
+      open={dialog.open}
+      type={dialog.type}
+      title={dialog.title}
+      message={dialog.message}
+      confirmText={dialog.confirmText}
+      cancelText={dialog.cancelText}
+      showCancel={dialog.showCancel}
+      destructive={dialog.destructive}
+      onConfirm={dialog.onConfirm}
+      onCancel={closeDialog}
+    />
+  </div>
   </>
 );
 };

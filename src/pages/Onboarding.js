@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/react';
 import { Button } from '../components/ui/Button';
 import { getDomainRoles } from '../services/api';
+import AppDialog from "../components/ui/AppDialog";
 
 const roles = [
   { id: 'student', label: 'Student', emoji: '🎓', desc: 'Access AI-driven learning paths, earn badges.' },
@@ -48,6 +49,37 @@ export default function Onboarding() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  const [dialog, setDialog] = useState({
+  open: false,
+  type: "error",
+  title: "",
+  message: "",
+  confirmText: "OK",
+  cancelText: "Cancel",
+  showCancel: false,
+  destructive: false,
+  onConfirm: null,
+});
+
+const closeDialog = () => {
+  setDialog((prev) => ({ ...prev, open: false }));
+};
+
+const showDialog = (options) => {
+  setDialog({
+    open: true,
+    type: "error",
+    title: "Something went wrong",
+    message: "",
+    confirmText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+    destructive: false,
+    onConfirm: closeDialog,
+    ...options,
+  });
+};
 
   useEffect(() => {
     if (isLoaded && user?.unsafeMetadata?.role) {
@@ -151,7 +183,12 @@ export default function Onboarding() {
       navigate('/app/dashboard');
     } catch (err) {
       console.error("ONBOARDING ERROR:", err);
-      alert("Error during sync: " + err.message);
+     showDialog({
+  type: "error",
+  title: "Setup Failed",
+  message: "Error during sync: " + err.message,
+  confirmText: "OK",
+});
       setError("Something went wrong saving your setup: " + err.message);
     } finally {
       setSubmitting(false);
@@ -161,6 +198,20 @@ export default function Onboarding() {
   if (!isLoaded) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
   return (
+    <>
+        <AppDialog
+  open={dialog.open}
+  type={dialog.type}
+  title={dialog.title}
+  message={dialog.message}
+  confirmText={dialog.confirmText}
+  cancelText={dialog.cancelText}
+  showCancel={dialog.showCancel}
+  destructive={dialog.destructive}
+  onConfirm={dialog.onConfirm}
+  onCancel={closeDialog}
+/>
+
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-2xl">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">
@@ -215,5 +266,6 @@ export default function Onboarding() {
         </div>
       </div>
     </div>
+    </>
   );
 }

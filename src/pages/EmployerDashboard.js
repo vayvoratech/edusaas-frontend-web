@@ -20,6 +20,7 @@ import {
   getDomainRoles
 } from "../services/api";
 import { useAuth } from '../context/AuthContext';
+import AppDialog from "../components/ui/AppDialog";
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b'];
 
@@ -47,6 +48,37 @@ const formatDateTimeLocal = (value) => {
 
 export default function EmployerDashboard() {
   const { user } = useAuth();
+
+  const [dialog, setDialog] = useState({
+  open: false,
+  type: "error",
+  title: "",
+  message: "",
+  confirmText: "OK",
+  cancelText: "Cancel",
+  showCancel: false,
+  destructive: false,
+  onConfirm: null,
+});
+
+const closeDialog = () => {
+  setDialog((prev) => ({ ...prev, open: false }));
+};
+
+const showDialog = (options) => {
+  setDialog({
+    open: true,
+    type: "error",
+    title: "Something went wrong",
+    message: "",
+    confirmText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+    destructive: false,
+    onConfirm: closeDialog,
+    ...options,
+  });
+};
   const [data, setData] = useState(null);
   const [jobs, setJobs] = useState([]);
 
@@ -542,10 +574,13 @@ const handleApplicationStatus = async (candidate, status) => {
       err.response?.data || err.message
     );
 
-    alert(
-      err.response?.data?.error ||
-        "Failed to update candidate status."
-    );
+    showDialog({
+  type: "error",
+  title: "Update Failed",
+  message:
+    err.response?.data?.error ||
+    "Failed to update candidate status.",
+});
   } finally {
     setUpdatingApplicationId(null);
   }
@@ -575,11 +610,13 @@ const handleViewApplicationVideo = async (candidate) => {
     );
 
     setVideoCandidate(null);
-
-    alert(
-      err.response?.data?.error ||
-        "Failed to load the candidate video."
-    );
+showDialog({
+  type: "error",
+  title: "Video Unavailable",
+  message:
+    err.response?.data?.error ||
+    "Failed to load the candidate video.",
+});
   } finally {
     setLoadingVideo(false);
   }
@@ -593,15 +630,16 @@ const handleScheduleInterview = async (e) => {
     return;
   }
 
+  const isEditingInterview =
+    interviewCandidate.interview &&
+    interviewCandidate.interview.status !== "cancelled";
+
   try {
     setSchedulingInterview(true);
 
     let interview;
 
-    if (
-      interviewCandidate.interview &&
-      interviewCandidate.interview.status !== "cancelled"
-    ) {
+    if (isEditingInterview) {
       // Edit existing interview
       interview = await updateInterview(
         interviewCandidate.job_id,
@@ -639,24 +677,42 @@ const handleScheduleInterview = async (e) => {
       notes: "",
     });
 
+    showDialog({
+      type: "success",
+      title: isEditingInterview
+        ? "Interview Updated"
+        : "Interview Scheduled",
+      message: isEditingInterview
+        ? "The interview has been updated successfully."
+        : "The interview has been scheduled successfully. The candidate has been notified.",
+      confirmText: "OK",
+      showCancel: false,
+    });
+
   } catch (err) {
     console.error(
       "Interview save failed:",
       err.response?.data || err.message
     );
 
-    alert(
-  err.response?.data?.error ||
-  err.response?.data?.message ||
-  err.message ||
-  "Failed to cancel interview."
-);
+    showDialog({
+      type: "error",
+      title: isEditingInterview
+        ? "Interview Update Failed"
+        : "Interview Scheduling Failed",
+      message:
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to save the interview.",
+      confirmText: "OK",
+      showCancel: false,
+    });
 
   } finally {
     setSchedulingInterview(false);
   }
-}
-
+};
 //send Invitation mails
 const handleSendApplicantEmail = async (e) => {
   e.preventDefault();
@@ -674,7 +730,12 @@ const handleSendApplicantEmail = async (e) => {
       emailForm
     );
 
-    alert("Email sent successfully.");
+   showDialog({
+  type: "success",
+  title: "Email Sent",
+  message: "The email was sent successfully.",
+  confirmText: "OK",
+});
 
     setEmailCandidate(null);
     setEmailForm({
@@ -687,10 +748,13 @@ const handleSendApplicantEmail = async (e) => {
       err.response?.data || err.message
     );
 
-    alert(
-      err.response?.data?.error ||
-      "Failed to send email."
-    );
+   showDialog({
+  type: "error",
+  title: "Email Failed",
+  message:
+    err.response?.data?.error ||
+    "Failed to send email.",
+});
   } finally {
     setSendingEmail(false);
   }
@@ -731,10 +795,13 @@ const handleCancelInterview = async (candidate) => {
       err.response?.data || err.message
     );
 
-    alert(
-      err.response?.data?.error ||
-        "Failed to cancel interview."
-    );
+   showDialog({
+  type: "error",
+  title: "Cancellation Failed",
+  message:
+    err.response?.data?.error ||
+    "Failed to cancel interview.",
+});
   } finally {
     setSchedulingInterview(false);
   }
@@ -781,10 +848,13 @@ const handleBulkApplicationStatus = async (status) => {
       err.response?.data || err.message
     );
 
-    alert(
-      err.response?.data?.error ||
-        "Failed to update candidate status."
-    );
+    showDialog({
+  type: "error",
+  title: "Update Failed",
+  message:
+    err.response?.data?.error ||
+    "Failed to update candidate status.",
+});
   }
 };
 
@@ -926,6 +996,7 @@ const sortedDomainRoles = Array.from(
 );
 
   return (
+
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900">Welcome back, {user?.name?.split(' ')[0]}!</h2>
@@ -1152,7 +1223,6 @@ const sortedDomainRoles = Array.from(
     );
   }}
 />
-
 
                 <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
               </BarChart>
@@ -1570,7 +1640,7 @@ const sortedDomainRoles = Array.from(
   </button>
 )}
 
- {/* Candidate Status Actions */}
+{/* Candidate Status Actions */}
 <div className="flex flex-wrap gap-2">
 
   {/* Shortlist - show when NOT already shortlisted */}
@@ -1599,13 +1669,89 @@ const sortedDomainRoles = Array.from(
         updatingApplicationId === (c.application_id || c.id)
       }
       onClick={() => {
-        const confirmed = window.confirm(
-          `Are you sure you want to reject ${c.name}?`
-        );
+        showDialog({
+          type: "confirm",
+          title: "Reject Candidate?",
+          message: `Are you sure you want to reject ${c.name}?`,
+          confirmText: "Reject",
+          cancelText: "Cancel",
+          showCancel: true,
+          destructive: true,
+          onConfirm: () => {
+            closeDialog();
+            handleApplicationStatus(c, "rejected");
+          },
+        });
+      }}
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {updatingApplicationId === (c.application_id || c.id)
+        ? "Updating..."
+        : "Reject"}
+    </button>
+  )}
 
-        if (confirmed) {
-          handleApplicationStatus(c, "rejected");
-        }
+  {/* Move to Submitted */}
+  {c.application_status !== "submitted" && (
+    <button
+      type="button"
+      disabled={
+        updatingApplicationId === (c.application_id || c.id)
+      }
+      onClick={() =>
+        handleApplicationStatus(c, "submitted")
+      }
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {updatingApplicationId === (c.application_id || c.id)
+        ? "Updating..."
+        : "Move to Submitted"}
+    </button>
+  )}
+
+</div>
+{/* Candidate Status Actions */}
+<div className="flex flex-wrap gap-2">
+
+  {/* Shortlist - show when NOT already shortlisted */}
+  {c.application_status !== "shortlisted" && (
+    <button
+      type="button"
+      disabled={
+        updatingApplicationId === (c.application_id || c.id)
+      }
+      onClick={() =>
+        handleApplicationStatus(c, "shortlisted")
+      }
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {updatingApplicationId === (c.application_id || c.id)
+        ? "Updating..."
+        : "Shortlist"}
+    </button>
+  )}
+
+  {/* Reject - show when NOT already rejected */}
+  {c.application_status !== "rejected" && (
+    <button
+      type="button"
+      disabled={
+        updatingApplicationId === (c.application_id || c.id)
+      }
+      onClick={() => {
+        showDialog({
+          type: "confirm",
+          title: "Reject Candidate?",
+          message: `Are you sure you want to reject ${c.name}?`,
+          confirmText: "Reject",
+          cancelText: "Cancel",
+          showCancel: true,
+          destructive: true,
+          onConfirm: () => {
+            closeDialog();
+            handleApplicationStatus(c, "rejected");
+          },
+        });
       }}
       className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
     >
@@ -1636,6 +1782,8 @@ const sortedDomainRoles = Array.from(
 </div>
 
 </div>
+
+</div>
       </div>
 
 
@@ -1646,8 +1794,6 @@ const sortedDomainRoles = Array.from(
     Interview has been cancelled.
   </div>
 )}
-
-
 
               {/* Status Explanation */}
               {c.application_status ===
@@ -1682,11 +1828,6 @@ const sortedDomainRoles = Array.from(
               )}
 
             </div>
-
-
-
-
-
 
           {/* Expanded Match Details */}
           {expandedCandidateId === c.id && (
@@ -1836,8 +1977,6 @@ const sortedDomainRoles = Array.from(
           )}
 
         </div>
-
-      </div>
     ))}
 
   {/*pagination*/}
@@ -1883,13 +2022,11 @@ const sortedDomainRoles = Array.from(
       {/* Header */}
       <div className="flex items-center justify-between border-b px-5 py-4">
         <div>
-          <h2 className="text-base font-semibold text-slate-800">
-  <h2 className="text-base font-semibold text-slate-800">
+         <h2 className="text-base font-semibold text-slate-800">
   {interviewCandidate?.interview &&
   interviewCandidate.interview.status !== "cancelled"
     ? "Edit Interview"
     : "Schedule Interview"}
-</h2>
 </h2>
           <p className="mt-1 text-xs text-slate-500">
             {interviewCandidate.name}
@@ -2807,6 +2944,18 @@ const sortedDomainRoles = Array.from(
   </div>
 )}
 
-    </div>
-  );
+       <AppDialog
+      open={dialog.open}
+      type={dialog.type}
+      title={dialog.title}
+      message={dialog.message}
+      confirmText={dialog.confirmText}
+      cancelText={dialog.cancelText}
+      showCancel={dialog.showCancel}
+      destructive={dialog.destructive}
+      onConfirm={dialog.onConfirm}
+      onCancel={closeDialog}
+    />
+  </div>
+);
 }

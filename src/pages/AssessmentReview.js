@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+ï»¿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -53,8 +53,6 @@ export default function AssessmentReviews() {
 
   const [adminNotes, setAdminNotes] = useState('');
   const [savingDecision, setSavingDecision] = useState(false);
-
-
 
   const handleViewEvidence = async (reportId) => {
   try {
@@ -315,7 +313,10 @@ export default function AssessmentReviews() {
                           {report.student_email ||
                             report.user_email ||
                             report.student?.email ||
-                            '—'}
+
+                            
+                            'ï¿½'}
+
                         </div>
                       </td>
 
@@ -384,7 +385,7 @@ export default function AssessmentReviews() {
                   disabled={savingDecision}
                   className="rounded-lg px-3 py-1 text-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
-                  ×
+
                 </button>
               </div>
             </div>
@@ -407,7 +408,10 @@ export default function AssessmentReviews() {
                     {selectedReport.student_email ||
                       selectedReport.user_email ||
                       selectedReport.student?.email ||
-                      '—'}
+
+                      'ï¿½'}
+
+                    
                   </div>
                 </div>
 
@@ -425,7 +429,10 @@ export default function AssessmentReviews() {
                   </div>
 
                   <div className="mt-1 text-sm text-slate-500">
-                    Session ID: {selectedReport.quiz_session_id || '—'}
+
+                    Session ID: {selectedReport.quiz_session_id || 'ï¿½'}
+
+
                   </div>
                 </div>
               </div>
