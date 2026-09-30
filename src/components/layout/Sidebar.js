@@ -99,10 +99,6 @@ const navByRole = {
       icon: Settings,
     },
     {
-      to: '/app/my-subscription',
-      labelKey: 'My-subscriptions',
-      icon: CreditCard,
-    },
   ],
 
   educator: [
