@@ -98,7 +98,7 @@ const navByRole = {
       labelKey: 'settings',
       icon: Settings,
     },
-    {
+    
   ],
 
   educator: [
