@@ -738,6 +738,19 @@ const showDialog = (options) => {
       } catch (err) {
         if (!mounted) return;
 
+        const errorCode = err.response?.data?.code;
+
+        if (errorCode === "ASSESSMENT_TERMINATED") {
+          setAssessmentActive(false);
+          assessmentActiveRef.current = false;
+          setSessionStatus("terminated");
+          setError(
+            err.response?.data?.error ||
+              "This assessment has been terminated. Please report the issue to Admin before restarting."
+          );
+          return;
+        }
+
         const message = getErrorMessage(
           err,
           "Unable to start the coding assessment."

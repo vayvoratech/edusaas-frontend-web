@@ -147,17 +147,46 @@ class ProctoringService {
   }
 
   // START
-  async start(sessionId) {
-    if (this.running) {
-      console.warn("Proctoring is already running.");
-      return;
-    }
+ async start(sessionId) {
+  // Resume an existing proctoring session.
+// This covers both:
+// 1. AIML PAUSE_EXAM -> running was set to false
+// 2. Fullscreen pause -> WebSocket/session may still be marked running
+if (
+  this.websocket &&
+  this.websocket.readyState === WebSocket.OPEN &&
+  this.connected &&
+  this.started &&
+  !this.terminated
+) {
+  console.log("Resuming existing proctoring session.");
 
-    if (!sessionId) {
-      throw new Error("Assessment session ID is required.");
-    }
+  this.bindVideoElement();
 
-    try {
+  this.running = true;
+
+  this.enableBrowserMonitoring();
+  this.startFrameSending();
+
+  this.onStarted({
+    type: "PROCTORING_STARTED",
+    message: "AI proctoring resumed.",
+    resumed: true,
+  });
+
+  return;
+}
+
+if (this.running) {
+  console.warn("Proctoring is already running.");
+  return;
+}
+
+  if (!sessionId) {
+    throw new Error("Assessment session ID is required.");
+  }
+
+  try {
       this.terminated = false;
       this.started = false;
 
@@ -505,6 +534,17 @@ class ProctoringService {
     }
 
     if (action === "PAUSE_EXAM") {
+
+      console.log("PROCTORING PAUSED - CURRENT STATE:", {
+    running: this.running,
+    started: this.started,
+    connected: this.connected,
+    websocketState: this.websocket?.readyState,
+  });
+  // Pause locally, but KEEP the WebSocket and AI session alive.
+  // This preserves the AIML violation count for the next violation.
+  this.running = false;
+  this.stopFrameSending();
       this.onPause(data);
       return;
     }

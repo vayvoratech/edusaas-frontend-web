@@ -214,6 +214,12 @@ export const submitAssessmentReport = async (data) => {
   return res.data;
 };
 
+
+export const getMyAssessmentReports = async () => {
+  const res = await api.get("/api/assessment-reports");
+  return res.data;
+};
+
 export const getAssessmentReportEvidence = async (reportId) => {
   const res = await api.get(
     `/api/admin/assessment-reports/${reportId}/evidence`,

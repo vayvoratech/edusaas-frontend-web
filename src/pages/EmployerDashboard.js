@@ -1691,75 +1691,11 @@ const sortedDomainRoles = Array.from(
     </button>
   )}
 
-  {/* Move to Submitted */}
-  {c.application_status !== "submitted" && (
-    <button
-      type="button"
-      disabled={
-        updatingApplicationId === (c.application_id || c.id)
-      }
-      onClick={() =>
-        handleApplicationStatus(c, "submitted")
-      }
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {updatingApplicationId === (c.application_id || c.id)
-        ? "Updating..."
-        : "Move to Submitted"}
-    </button>
-  )}
 
 </div>
 {/* Candidate Status Actions */}
 <div className="flex flex-wrap gap-2">
 
-  {/* Shortlist - show when NOT already shortlisted */}
-  {c.application_status !== "shortlisted" && (
-    <button
-      type="button"
-      disabled={
-        updatingApplicationId === (c.application_id || c.id)
-      }
-      onClick={() =>
-        handleApplicationStatus(c, "shortlisted")
-      }
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {updatingApplicationId === (c.application_id || c.id)
-        ? "Updating..."
-        : "Shortlist"}
-    </button>
-  )}
-
-  {/* Reject - show when NOT already rejected */}
-  {c.application_status !== "rejected" && (
-    <button
-      type="button"
-      disabled={
-        updatingApplicationId === (c.application_id || c.id)
-      }
-      onClick={() => {
-        showDialog({
-          type: "confirm",
-          title: "Reject Candidate?",
-          message: `Are you sure you want to reject ${c.name}?`,
-          confirmText: "Reject",
-          cancelText: "Cancel",
-          showCancel: true,
-          destructive: true,
-          onConfirm: () => {
-            closeDialog();
-            handleApplicationStatus(c, "rejected");
-          },
-        });
-      }}
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {updatingApplicationId === (c.application_id || c.id)
-        ? "Updating..."
-        : "Reject"}
-    </button>
-  )}
 
   {/* Move to Submitted - show when NOT already submitted */}
   {c.application_status !== "submitted" && (

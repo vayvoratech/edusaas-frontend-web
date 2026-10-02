@@ -6,7 +6,8 @@ import {
   heartbeatFinalQuiz,
   pauseFinalQuiz,
   pauseFinalQuizOnUnload,
-  submitAssessmentReport
+  submitAssessmentReport,
+  getMyAssessmentReports
 } from "../../../services/api";
 import ProctoringService from "../../../services/proctoringServices";
 import FinalQuiz from "./FinalQuiz";
@@ -25,6 +26,7 @@ const FinalAssessment = () => {
   //report assessmnet termination
 const [showReportForm, setShowReportForm] = useState(false);
 const [reportReason, setReportReason] = useState("");
+const [terminationReport, setTerminationReport] = useState(null);
 const [reportEvidence, setReportEvidence] = useState("");
 
 const [reportEvidenceFile, setReportEvidenceFile] = useState(null);
@@ -49,6 +51,7 @@ const [reportError, setReportError] = useState("");
   const proctoringRef = useRef(null);
   const tabSwitchCountRef = useRef(0);
   const intentionalFullscreenExitRef = useRef(false)
+
 
   // KEEP SESSION REF SYNCHRONIZED
   useEffect(() => {
@@ -139,15 +142,45 @@ const [reportError, setReportError] = useState("");
         const timer = data?.timer || {};
         setRemainingSeconds(Number(timer?.remaining_seconds || 0));
         setAssessmentState("ready");
-      } catch (error) {
-        console.error("Failed to start final assessment:", error);
-        setProctoringError(
-          error?.response?.data?.error ||
-          error?.message ||
-          "Unable to start the final assessment."
-        );
-        setAssessmentState("error");
-      }
+  } catch (error) {
+  console.error("Failed to start final assessment:", error);
+
+  if (
+    error?.response?.status === 409 &&
+    error?.response?.data?.code === "ASSESSMENT_TERMINATED"
+  ) {
+    try {
+      const reports = await getMyAssessmentReports();
+
+      const reportList = Array.isArray(reports)
+        ? reports
+        : reports?.reports || [];
+
+      const terminatedReport = reportList.find(
+        (report) =>
+          String(report.assessment_stage).toUpperCase() === "FINAL_QUIZ"
+      );
+
+      setTerminationReport(terminatedReport || null);
+      setAssessmentState("terminated");
+      setShowReportForm(false);
+
+      return;
+    } catch (reportError) {
+      console.error(
+        "Failed to load assessment termination report:",
+        reportError
+      );
+    }
+  }
+
+  setProctoringError(
+    error?.response?.data?.error ||
+      error?.message ||
+      "Unable to start the final assessment."
+  );
+  setAssessmentState("error");
+}
     };
 
     loadAssessment();
@@ -317,23 +350,24 @@ const [reportError, setReportError] = useState("");
             },
 
             onTerminate: () => {
-              console.warn(
-                "Final assessment terminated by proctoring."
-              );
+  console.warn(
+    "Final assessment terminated by proctoring."
+  );
 
-              assessmentActiveRef.current = false;
+  assessmentActiveRef.current = false;
 
-              clearAssessmentTimers();
+  clearAssessmentTimers();
 
-              proctoringRef.current?.cleanup();
-              proctoringRef.current = null;
+  proctoringRef.current?.cleanup();
+  proctoringRef.current = null;
 
-              exitFullscreen();
+  exitFullscreen();
 
-              setAssessmentState(
-                "terminated"
-              );
-            },
+  setAssessmentState("terminated");
+
+  // Open the termination report immediately
+  setShowReportForm(true);
+},
 
             onDisconnected: () => {
               console.warn(
@@ -642,6 +676,7 @@ const [reportError, setReportError] = useState("");
 
 formData.append("quiz_session_id", sessionId);
 formData.append("assessment_type", "FINAL");
+formData.append("assessment_stage", "FINAL_QUIZ");
 formData.append("reason", reportReason.trim());
 
 if (reportEvidence.trim()) {
@@ -725,29 +760,74 @@ await submitAssessmentReport(formData);
         </h2>
 
         <p className="mt-2.5 text-sm leading-6 text-slate-400">
-          The assessment was terminated by the proctoring system.
+  Your assessment was terminated by the proctoring system.
+  Please report this issue to the Admin through Help & Support
+  so it can be reviewed.
         </p>
 
         {!reportSubmitted && !showReportForm && (
-          <div className="mt-6 flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => setShowReportForm(true)}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Report to Admin
-            </button>
+          
+  <div className="mt-6 flex flex-col gap-3">
 
-            <button
-              type="button"
-              onClick={ () => navigate("/student/dashboard")}
-              className="w-full rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800"
-            >
-              Go to Dashboard
-            </button>
-          </div>
-        )}
+    {terminationReport && (
+  <div className="mb-4 rounded-lg bg-[#20242d] p-4 text-left">
+    <p className="text-sm text-gray-400">Report Status</p>
 
+    <p className="mt-1 font-medium text-white">
+      {terminationReport.status}
+    </p>
+
+    {String(terminationReport.status).toUpperCase() === "PENDING" && (
+      <p className="mt-2 text-sm text-gray-400">
+        Your report is waiting for Admin approval. You can restart the
+        assessment after it is approved.
+      </p>
+    )}
+
+    {String(terminationReport.status).toUpperCase() === "APPROVED" && (
+      <div>
+        <p className="mt-2 text-sm text-green-400">
+          Your report has been approved. You can restart the assessment.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        >
+          Restart Final Assessment
+        </button>
+      </div>
+    )}
+
+    {String(terminationReport.status).toUpperCase() === "REJECTED" && (
+      <p className="mt-2 text-sm text-red-400">
+        Your report was rejected. Please contact Admin through Help & Support.
+      </p>
+    )}
+  </div>
+)}
+   <button
+  type="button"
+  onClick={() =>
+    navigate(
+      `/app/help-support?category=assessment_termination&sessionId=${sessionId}`
+    )
+  }
+  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+>
+  Go to Help & Support
+</button>
+
+    <button
+      type="button"
+      onClick={() => navigate("/app/dashboard")}
+      className="w-full rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800"
+    >
+      Go to Dashboard
+    </button>
+  </div>
+)}
         {showReportForm && !reportSubmitted && (
           <form
             onSubmit={handleSubmitAssessmentReport}

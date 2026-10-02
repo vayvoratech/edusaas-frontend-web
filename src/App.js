@@ -57,6 +57,9 @@ import AssessmentReview from './pages/AssessmentReview';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import MySubscription from './pages/MySubscription';
 
+//student needs contact support
+import HelpSupport from './pages/HelpSupport';
+
 function RoleDashboard() {
   const { role } = useAuth();
 
@@ -140,6 +143,7 @@ export default function App() {
               <Route path="recommendations" element={<RecommendationsPage />} />
               <Route path="my-insights" element={<StudentInsights />} />
               <Route path="engagement-trends" element={<EngagementTrends />} />
+              <Route path="help-support" element={<HelpSupport />} />
               <Route path="assessments" element={<SkillAssessment />} />
               <Route path="initial-assessment" element={<InitialAssessment />} />
               <Route path="final-assessment" element={<FinalAssessment />} />

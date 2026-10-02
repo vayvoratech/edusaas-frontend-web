@@ -31,6 +31,8 @@ import {
   getApplicationVideoUrl,
   getAnnouncements,
   markAnnouncementNotificationsRead,
+   getAssessmentOverview,
+  getMyAssessmentReports
 } from '../services/api';
 
 
@@ -90,6 +92,9 @@ export default function StudentDashboard() {
   // State for dashboard data, tasks, achievements,
   // recommendations, and assignments, notifications, Interviews
   const [dash, setDash] = useState(null);
+  const [assessmentOverview, setAssessmentOverview] = useState(null);
+const [terminationReport, setTerminationReport] = useState(null);
+const [assessmentStatusLoading, setAssessmentStatusLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [recs, setRecs] = useState([]);
@@ -331,12 +336,71 @@ const showDialog = (options) => {
 
   useEffect(() => {
     loadDashboardData();
+
     const handleTokenReady = () => {
       loadDashboardData();
     };
     window.addEventListener("edu_token_ready", handleTokenReady);
     return () => window.removeEventListener("edu_token_ready", handleTokenReady);
   }, [loadDashboardData]);
+
+  useEffect(() => {
+  let cancelled = false;
+
+  const loadAssessmentStatus = async () => {
+    try {
+      const [overview, reports] = await Promise.all([
+        getAssessmentOverview(),
+        getMyAssessmentReports(),
+      ]);
+
+      if (cancelled) return;
+
+      setAssessmentOverview(overview);
+
+      const sessionId =
+        overview?.initialAssessment?.sessionId;
+
+      const initialReports = Array.isArray(reports)
+  ? reports
+      .filter(
+        (report) =>
+          report.assessment_stage === "INITIAL_QUIZ"
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.created_at) -
+          new Date(a.created_at)
+      )
+  : [];
+
+ const currentReport =
+  initialReports.find(
+    (report) =>
+      Number(report.quiz_session_id) ===
+        Number(sessionId) &&
+      report.assessment_stage === "INITIAL_QUIZ"
+  ) || null;
+
+      setTerminationReport(currentReport);
+    } catch (err) {
+      console.error(
+        "Failed to load assessment status:",
+        err
+      );
+    } finally {
+      if (!cancelled) {
+        setAssessmentStatusLoading(false);
+      }
+    }
+  };
+
+  loadAssessmentStatus();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
 
 const handleViewInterview = async (jobId) => {
@@ -371,7 +435,7 @@ const handleViewInterview = async (jobId) => {
   // ----------------------------------------------------
   // Loading dashboard data
   // ----------------------------------------------------
-  if (!dash) {
+  if (!dash || assessmentStatusLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-3">
         <div className="text-gray-500 font-medium">
@@ -390,6 +454,152 @@ const handleViewInterview = async (jobId) => {
   // ----------------------------------------------------
   // Fresh student - assessment not completed
   // ----------------------------------------------------
+
+if (
+  assessmentOverview?.initialAssessment?.status === "Terminated" &&
+  terminationReport?.status !== "Approved"
+) {
+  return (
+    <div className="min-h-screen bg-gray-100 px-3 py-4">
+      <div className="mx-auto max-w-3xl">
+        <div className="rounded-xl bg-white px-6 py-8 text-center shadow-sm">
+
+          {/* Icon */}
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+            <span className="text-2xl font-medium text-red-500">
+              !
+            </span>
+          </div>
+
+          {/* Heading */}
+          <h1 className="mt-4 text-2xl font-semibold text-gray-900">
+            Assessment Terminated
+          </h1>
+
+          <p className="mx-auto mt-2 max-w-xl text-sm text-gray-500">
+            Your Initial Assessment was terminated because a proctoring
+            violation was detected.
+          </p>
+
+          {/* Report Status */}
+          <div className="mx-auto mt-5 max-w-xl rounded-lg border border-yellow-200 bg-yellow-50 px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-yellow-800">
+              Report Status
+            </p>
+
+            <p className="mt-1 text-lg font-semibold text-yellow-700">
+              {terminationReport?.status || "Not Submitted"}
+            </p>
+
+            <p className="mt-2 text-sm text-yellow-700">
+              You cannot restart the assessment until your report is approved
+              by Admin.
+            </p>
+          </div>
+
+          {/* Admin Response */}
+          {terminationReport?.admin_notes && (
+            <div className="mx-auto mt-4 max-w-xl rounded-lg border border-blue-200 bg-blue-50 px-5 py-4 text-left">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-800">
+                Admin Response
+              </p>
+
+              <p className="mt-1 text-sm text-blue-700">
+                {terminationReport.admin_notes.trim()
+                  ? terminationReport.admin_notes
+                  : "No additional response was provided by Admin."}
+              </p>
+            </div>
+          )}
+
+          {/* Contact Admin */}
+          <div className="mt-5">
+            <Link
+              to={`/app/help-support?category=assessment_termination&sessionId=${assessmentOverview?.initialAssessment?.sessionId}&assessmentType=INITIAL&assessmentStage=INITIAL_QUIZ&open=report`}
+            >
+              <Button variant="primary">
+                Contact Admin
+              </Button>
+            </Link>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+if (
+  assessmentOverview?.initialAssessment?.status ===
+    "Terminated" &&
+  terminationReport?.status === "Approved"
+) {
+  return (
+    <div className="min-h-screen bg-gray-100 p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg p-10 text-center">
+
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+            <span className="text-3xl text-green-600">
+              ✓
+            </span>
+          </div>
+
+          <h1 className="text-3xl font-bold text-gray-900">
+            Assessment Restart Approved
+          </h1>
+
+          <p className="mt-4 text-gray-500">
+            Admin has approved your assessment termination report.
+          </p>
+{terminationReport?.admin_notes &&
+  terminationReport.admin_notes.trim() &&
+  terminationReport.admin_notes.trim().toLowerCase() !== "null" && (
+  <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5 text-left">
+    <p className="text-sm font-semibold text-blue-800">
+      Admin Response
+    </p>
+
+    <p className="mt-1 text-sm text-blue-700">
+      {terminationReport.admin_notes.trim()}
+    </p>
+  </div>
+)}
+
+
+          <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-5">
+            <p className="text-sm font-semibold text-green-800">
+              Your assessment can now be restarted.
+            </p>
+
+            <p className="mt-2 text-sm text-green-700">
+              Click the button below to start a new assessment session.
+            </p>
+          </div>
+
+          <Button
+  variant="primary"
+  className="mt-6"
+  onClick={() =>
+    navigate("/app/initial-assessment", {
+      state: {
+        phase: "quiz",
+        restartApproved: true,
+      },
+    })
+  }
+>
+  Restart Assessment →
+</Button>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
   if (!dash.assessmentCompleted) {
     return (
       <div className="min-h-screen bg-gray-100 p-8">
