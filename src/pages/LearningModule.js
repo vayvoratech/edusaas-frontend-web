@@ -14,6 +14,8 @@ import {
   resolveAssetUrl,
 } from '../services/api';
 
+import AppDialog from "../components/ui/AppDialog";
+
 function ReviewerAvatar({ name, avatarUrl, size = "w-8 h-8", textClass = "text-xs" }) {
   const [imgError, setImgError] = useState(false);
 
@@ -102,6 +104,37 @@ export default function LearningModule() {
   const [savingRating, setSavingRating] = useState(false);
   const [ratingMessage, setRatingMessage] = useState(null);
 
+    const [dialog, setDialog] = useState({
+    open: false,
+    type: "error",
+    title: "",
+    message: "",
+    confirmText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+    destructive: false,
+    onConfirm: null,
+  });
+
+  const closeDialog = () => {
+    setDialog((prev) => ({ ...prev, open: false }));
+  };
+
+  const showDialog = (options) => {
+    setDialog({
+      open: true,
+      type: "error",
+      title: "Something went wrong",
+      message: "",
+      confirmText: "OK",
+      cancelText: "Cancel",
+      showCancel: false,
+      destructive: false,
+      onConfirm: closeDialog,
+      ...options,
+    });
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -156,7 +189,13 @@ export default function LearningModule() {
 
     // If trying to complete, they MUST take the quiz.
     if (!activeLesson?.quizzes || activeLesson.quizzes.length === 0) {
-      alert("This lesson does not have a quiz attached. Please contact your instructor.");
+      showDialog({
+  type: "warning",
+  title: "Quiz Required",
+  message:
+    "This lesson does not have a quiz attached. Please contact your instructor.",
+  confirmText: "OK",
+});
       return;
     }
 
@@ -168,22 +207,22 @@ export default function LearningModule() {
   const submitQuiz = async () => {
     const quizData = activeLesson?.quizzes?.[0];
     if (!quizData || !quizData.questions) return;
-    
+
     try {
       const result = await apiSubmitQuiz(activeLesson.id, quizAnswers);
       setQuizResult({ score: result.score, passed: result.passed });
 
       if (result.passed) {
         // Optimistically update local progress so UI reflects it immediately
-        setProgress((prev) => ({ 
-          ...prev, 
+        setProgress((prev) => ({
+          ...prev,
           [activeLesson.id]: {
             ...prev[activeLesson.id],
             completion_flag: true,
             quiz_score: result.score
-          } 
+          }
         }));
-        
+
         // Auto-unlock next lesson (find next lesson index)
         const curIdx = lessons.findIndex(l => l.id === activeLesson.id);
         if (curIdx >= 0 && curIdx < lessons.length - 1) {
@@ -198,7 +237,12 @@ export default function LearningModule() {
   const onSubmitRating = async (e) => {
     if (e) e.preventDefault();
     if (!ratingData.rating || ratingData.rating < 1 || ratingData.rating > 5) {
-      alert("Please select a rating between 1 and 5 stars");
+     showDialog({
+  type: "warning",
+  title: "Rating Required",
+  message: "Please select a rating between 1 and 5 stars.",
+  confirmText: "OK",
+});
       return;
     }
     setSavingRating(true);
@@ -217,7 +261,15 @@ export default function LearningModule() {
         setRatingMessage(null);
       }, 1500);
     } catch (err) {
-      alert(err.response?.data?.error || err.message || "Failed to submit rating");
+      showDialog({
+  type: "error",
+  title: "Rating Submission Failed",
+  message:
+    err.response?.data?.error ||
+    err.message ||
+    "Failed to submit rating.",
+  confirmText: "OK",
+});
     } finally {
       setSavingRating(false);
     }
@@ -228,6 +280,20 @@ export default function LearningModule() {
   }
 
   return (
+    <>
+    <AppDialog
+  open={dialog.open}
+  type={dialog.type}
+  title={dialog.title}
+  message={dialog.message}
+  confirmText={dialog.confirmText}
+  cancelText={dialog.cancelText}
+  showCancel={dialog.showCancel}
+  destructive={dialog.destructive}
+  onConfirm={dialog.onConfirm}
+  onCancel={closeDialog}
+/>
+
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
         <div>
@@ -304,12 +370,12 @@ export default function LearningModule() {
             <>
               <div className="rounded-xl overflow-hidden bg-slate-900 aspect-video grid place-items-center text-white relative shadow-lg">
                 {activeLesson.video_url ? (
-                  <iframe 
+                  <iframe
                     className="w-full h-full"
-                    src={getEmbedUrl(activeLesson.video_url)} 
+                    src={getEmbedUrl(activeLesson.video_url)}
                     title={activeLesson.title}
-                    frameBorder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   ></iframe>
                 ) : (
@@ -341,7 +407,7 @@ export default function LearningModule() {
             {lessons.map((l, i) => {
               const done = progress[l.id]?.completion_flag;
               const active = l.id === activeLessonId;
-              
+
               // Lesson is locked if it's not the first lesson, and the previous lesson is NOT complete
               const isLocked = i > 0 && !progress[lessons[i - 1].id]?.completion_flag;
 
@@ -497,7 +563,7 @@ export default function LearningModule() {
               <h2 className="text-xl font-bold">Mandatory Quiz: {activeLesson.title}</h2>
               <p className="text-sm text-slate-500">Score 80% or higher to unlock the next lesson.</p>
             </div>
-            
+
             <div className="p-6 flex-1 overflow-y-auto space-y-6">
               {quizResult ? (
                 <div className={`p-8 rounded-2xl text-center border-2 ${quizResult.passed ? 'bg-brand-green-50 border-brand-green-200' : 'bg-red-50 border-red-200'}`}>
@@ -506,8 +572,8 @@ export default function LearningModule() {
                     You scored {quizResult.score}%
                   </h3>
                   <p className="text-slate-600">
-                    {quizResult.passed 
-                      ? "Congratulations! You've passed the quiz and unlocked the next lesson." 
+                    {quizResult.passed
+                      ? "Congratulations! You've passed the quiz and unlocked the next lesson."
                       : "You need an 80% to pass. Please review the material and try again."}
                   </p>
                 </div>
@@ -518,9 +584,9 @@ export default function LearningModule() {
                     <div className="space-y-2">
                       {q.options.map((opt, optIdx) => (
                         <label key={optIdx} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${quizAnswers[i] === optIdx ? 'bg-brand-blue-50 border-brand-blue-500' : 'hover:bg-slate-50 border-slate-200'}`}>
-                          <input 
-                            type="radio" 
-                            name={`q_${i}`} 
+                          <input
+                            type="radio"
+                            name={`q_${i}`}
                             checked={quizAnswers[i] === optIdx}
                             onChange={() => setQuizAnswers(prev => ({ ...prev, [i]: optIdx }))}
                             className="w-4 h-4 text-brand-blue-600 border-slate-300 focus:ring-brand-blue-500"
@@ -539,7 +605,7 @@ export default function LearningModule() {
                 {quizResult?.passed ? 'Continue' : 'Cancel'}
               </Button>
               {!quizResult && (
-                <Button 
+                <Button
                   onClick={submitQuiz}
                   disabled={Object.keys(quizAnswers).length !== activeLesson.quizzes[0].questions.length}
                 >
@@ -659,5 +725,6 @@ export default function LearningModule() {
         </div>
       )}
     </div>
+    </>
   );
 }

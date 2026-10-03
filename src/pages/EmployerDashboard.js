@@ -1,9 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar,
-  XAxis, YAxis, Tooltip, CartesianGrid, Legend,
-} from 'recharts';
-import { Card } from '../components/ui/Card';
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 import {
   getEmployerDashboard,
   getJobs,
@@ -17,11 +25,12 @@ import {
   updateInterview,
   cancelInterview,
   sendApplicantEmail,
-  getDomainRoles
+  getDomainRoles,
 } from "../services/api";
-import { useAuth } from '../context/AuthContext';
 
-const COLORS = ['#2563eb', '#10b981', '#f59e0b'];
+import { useAuth } from "../context/AuthContext";
+import AppDialog from "../components/ui/AppDialog";
+
 
 const formatDateTimeLocal = (value) => {
   if (!value) return "";
@@ -45,285 +54,406 @@ const formatDateTimeLocal = (value) => {
 };
 
 
+const formatDate = (value) => {
+  if (!value) return "Not available";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not available";
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+
+const formatDateTime = (value) => {
+  if (!value) return "Not scheduled";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not scheduled";
+  }
+
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+
+const getInitials = (name = "") => {
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join("") || "C"
+  );
+};
+
+
+const getMatchCategory = (score) => {
+  const value = Number(score || 0);
+
+  if (value >= 80) return "Strong";
+  if (value >= 60) return "Good";
+  return "Possible";
+};
+
+
+const getStatusLabel = (status) => {
+  if (!status) return "Submitted";
+
+  return (
+    status.charAt(0).toUpperCase() +
+    status.slice(1)
+  );
+};
+
+
+const getStatusClasses = (status) => {
+  switch (status) {
+    case "shortlisted":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+    case "rejected":
+      return "bg-rose-50 text-rose-700 border-rose-200";
+
+    case "selected":
+      return "bg-amber-50 text-amber-700 border-amber-200";
+
+    default:
+      return "bg-orange-50 text-orange-700 border-orange-200";
+  }
+};
+
+
 export default function EmployerDashboard() {
   const { user } = useAuth();
+
+  const [dialog, setDialog] = useState({
+    open: false,
+    type: "error",
+    title: "",
+    message: "",
+    confirmText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+    destructive: false,
+    onConfirm: null,
+  });
+
+  const closeDialog = () => {
+    setDialog((prev) => ({
+      ...prev,
+      open: false,
+    }));
+  };
+
+  const showDialog = (options) => {
+    setDialog({
+      open: true,
+      type: "error",
+      title: "Something went wrong",
+      message: "",
+      confirmText: "OK",
+      cancelText: "Cancel",
+      showCancel: false,
+      destructive: false,
+      onConfirm: closeDialog,
+      ...options,
+    });
+  };
+
+
   const [data, setData] = useState(null);
   const [jobs, setJobs] = useState([]);
 
   const [candidates, setCandidates] = useState([]);
+  const [candidateLoading, setCandidateLoading] = useState(false);
+  const [candidateError, setCandidateError] = useState("");
+
   const [expandedCandidateId, setExpandedCandidateId] = useState(null);
+
   const [videoCandidate, setVideoCandidate] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [loadingVideo, setLoadingVideo] = useState(false);
 
   const [profileCandidate, setProfileCandidate] = useState(null);
-const [candidateProfile, setCandidateProfile] = useState(null);
-const [loadingProfile, setLoadingProfile] = useState(false);
+  const [candidateProfile, setCandidateProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   const [selectedMatchType, setSelectedMatchType] = useState(null);
-  const [updatingApplicationId, setUpdatingApplicationId] = useState(null);
-  const [applicationStatusFilter, setApplicationStatusFilter] = useState("all");
-  const [candidateSort, setCandidateSort] =useState("match");
-  const [matchScoreFilter, setMatchScoreFilter] = useState("all");
-  const [selectedCandidateIds, setSelectedCandidateIds] = useState([]);
-  const [interviewCandidate, setInterviewCandidate] = useState(null);
+
+  const [updatingApplicationId, setUpdatingApplicationId] =
+    useState(null);
+
+  const [applicationStatusFilter, setApplicationStatusFilter] =
+    useState("all");
+
+  const [candidateSort, setCandidateSort] =
+    useState("match");
+
+  const [matchScoreFilter, setMatchScoreFilter] =
+    useState("all");
+
+  const [selectedCandidateIds, setSelectedCandidateIds] =
+    useState([]);
+
+  const [interviewCandidate, setInterviewCandidate] =
+    useState(null);
+
   const [interviewForm, setInterviewForm] = useState({
-  scheduled_at: "",
-  duration: 30,
-  interview_type: "online",
-  meeting_link: "",
-  notes: "",
-});
-const [schedulingInterview, setSchedulingInterview] = useState(false);
-const [showCancelModal, setShowCancelModal] = useState(false);
-const [cancelCandidate, setCancelCandidate] = useState(null);
-const [emailCandidate, setEmailCandidate] = useState(null);
-const [emailForm, setEmailForm] = useState({
-  subject: "",
-  message: "",
-});
-const [sendingEmail, setSendingEmail] = useState(false);
-const [domainRoleFilter, setDomainRoleFilter] = useState("all");
-const [domainRoles, setDomainRoles] = useState([]);
-const [currentPage, setCurrentPage] = useState(1);
-const [itemsPerPage] = useState(10);
-const [pipelinePage, setPipelinePage] = useState(1);
-const [pipelineItemsPerPage] = useState(10);
+    scheduled_at: "",
+    duration: 30,
+    interview_type: "online",
+    meeting_link: "",
+    notes: "",
+  });
+
+  const [schedulingInterview, setSchedulingInterview] =
+    useState(false);
+
+  const [showCancelModal, setShowCancelModal] =
+    useState(false);
+
+  const [cancelCandidate, setCancelCandidate] =
+    useState(null);
+
+  const [emailCandidate, setEmailCandidate] =
+    useState(null);
+
+  const [emailForm, setEmailForm] = useState({
+    subject: "",
+    message: "",
+  });
+
+  const [sendingEmail, setSendingEmail] =
+    useState(false);
+
+  const [domainRoleFilter, setDomainRoleFilter] =
+    useState("all");
+
+  const [domainRoles, setDomainRoles] =
+    useState([]);
+
+  const [currentPage, setCurrentPage] =
+    useState(1);
+
+  const [itemsPerPage] =
+    useState(10);
+
+  const [pipelinePage, setPipelinePage] =
+    useState(1);
+
+  const [pipelineItemsPerPage] =
+    useState(10);
 
 
+  /* =========================================================
+     LOAD DASHBOARD
+  ========================================================= */
 
-useEffect(() => {
-  getEmployerDashboard()
-    .then(setData)
-    .catch((err) =>
-      console.error("Dashboard error:", err)
-    );
+  useEffect(() => {
+    let cancelled = false;
 
-  if (!user?.id) return;
+    const loadDashboard = async () => {
+      try {
+        const dashboard = await getEmployerDashboard();
 
-  getJobs({ employer_id: user.id })
-    .then(async (jobs) => {
-      setJobs(jobs);
+        if (!cancelled) {
+          setData(dashboard);
+        }
+      } catch (error) {
+        console.error("Failed to load employer dashboard:", error);
+      }
+    };
 
-      if (!jobs.length) {
-        setCandidates([]);
+    loadDashboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
+  /* =========================================================
+     LOAD JOBS + CANDIDATES
+  ========================================================= */
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCandidates = async () => {
+      if (!user?.id) {
         return;
       }
 
+      setCandidateLoading(true);
+      setCandidateError("");
+
       try {
-        const responses = await Promise.all(
-          jobs.map(async (job) => {
-            try {
-              // Get eligible candidates for this job
-              const response =
-                await getEligibleStudents(job.id);
+        const jobsResponse = await getJobs({
+          employer_id: user.id,
+        });
 
-              // Get applications for this job
-              // If this fails, candidates still appear.
-              let applications = [];
+        const employerJobs = Array.isArray(jobsResponse)
+          ? jobsResponse
+          : jobsResponse?.results || [];
 
-              try {
-                applications =
-                  await getJobApplications(job.id);
-                  console.log(
-  "APPLICATIONS FOR JOB:",
-  job.id,
-  applications
-);
+        if (cancelled) return;
 
-console.log("JOB ID REQUESTED:", job.id);
-console.log("APPLICATIONS RETURNED:", applications);
-              } catch (error) {
-                console.warn(
-                  "Applications could not be loaded for job:",
-                  job.id,
-                  error.response?.data || error.message
-                );
-              }
+        setJobs(employerJobs);
 
-              // Map applications by student ID
-              const applicationByStudent = new Map(
-                applications.map((application) => [
-                  `${application.student_id}-${job.id}`,
-                  application,
-                ])
-              );
+        if (!employerJobs.length) {
+          setCandidates([]);
+          setCandidateLoading(false);
+          return;
+        }
 
-              return {
-                job,
+        const candidateRecords = [];
 
-                candidates: (
-                  response.eligible_students || []
-                ).map((candidate) => {
-                  const application =
-                    applicationByStudent.get(`${candidate.id}-${job.id}`);
-                    console.log("CANDIDATE APPLICATION:", candidate.name, {
-  candidate_id: candidate.id,
-  application_id: application?.id,
-  application_status: application?.status,
-});
- 
-console.log(
-  "FULL NANI APPLICATION:",
-  JSON.stringify(application, null, 2)
-);
+        for (const job of employerJobs) {
+          if (cancelled) return;
 
+          let eligibleStudents = [];
+          let applications = [];
 
+          try {
+            const eligibleResponse =
+              await getEligibleStudents(job.id);
 
-console.log(
-  "APPLICATION CHECK:",
-  candidate.name,
-  "CURRENT JOB:",
-  job.id,
-  "APPLICATION ID:",
-  application?.id,
-  "APPLICATION JOB:",
-  application?.job_id,
-  "VIDEO:",
-  application?.application_data?.video
-);
-            return {
-  ...candidate,
-
-  // Existing candidate data
-  job_id: job.id,
-  job_title: job.title,
-
-  // Application data
-  application_id: application?.id || null,
-  application_status: application?.status || null,
-  application_data: application?.application_data || null,
-
-  // Video availability
-  has_video: Boolean(application?.application_data?.video),
-};
-                  
-                }),
-              };
-            } catch (error) {
-              console.warn(
-                "Eligible candidates could not be loaded for job:",
-                job.id,
-                error.response?.data || error.message
-              );
-
-              // One failed job should not remove
-              // candidates from other jobs.
-              return {
-                job,
-                candidates: [],
-              };
-            }
-          })
-        );
-
-// Load existing interviews for shortlisted candidates
-const responsesWithInterviews = await Promise.all(
-  responses.map(async ({ job, candidates }) => {
-    const candidatesWithInterviews = await Promise.all(
-      candidates.map(async (candidate) => {
-
-        if (!candidate.application_id) {
-          return candidate;
-           }
-
-        try {
-          const interview = await getInterview(
-            candidate.job_id,
-            candidate.application_id
-          );
-
-          return {
-            ...candidate,
-            interview,
-          };
-        } catch (error) {
-          // 404 simply means no interview exists yet
-          if (error.response?.status !== 404) {
-            console.warn(
-              "Could not load interview:",
-              candidate.application_id,
-              error.response?.data || error.message
+            eligibleStudents = Array.isArray(eligibleResponse)
+              ? eligibleResponse
+              : eligibleResponse?.results || [];
+          } catch (error) {
+            console.error(
+              `Failed to load eligible students for job ${job.id}:`,
+              error
             );
           }
 
-          return candidate;
+          try {
+            const applicationsResponse =
+              await getJobApplications(job.id);
+
+            applications = Array.isArray(applicationsResponse)
+              ? applicationsResponse
+              : applicationsResponse?.results || [];
+          } catch (error) {
+            console.error(
+              `Failed to load applications for job ${job.id}:`,
+              error
+            );
+          }
+
+          const applicationMap = new Map();
+
+          applications.forEach((application) => {
+            const studentId =
+              application.student_id ??
+              application.student?.id ??
+              application.user_id ??
+              application.user?.id;
+
+            if (studentId != null) {
+              applicationMap.set(
+                `${studentId}-${job.id}`,
+                application
+              );
+            }
+          });
+
+          eligibleStudents.forEach((student) => {
+            const studentId =
+              student.id ??
+              student.student_id ??
+              student.user_id;
+
+            if (studentId == null) return;
+
+            const application =
+              applicationMap.get(
+                `${studentId}-${job.id}`
+              );
+
+            candidateRecords.push({
+              ...student,
+              id: studentId,
+              job_id: job.id,
+              job_title:
+                job.title ||
+                job.job_title ||
+                "Untitled Position",
+              application_id:
+                application?.id ||
+                application?.application_id ||
+                null,
+              application_status:
+                application?.status ||
+                application?.application_status ||
+                "submitted",
+              application_data:
+                application || null,
+              has_video: Boolean(
+                application?.video
+              ),
+            });
+          });
         }
-      })
-    );
 
-    return {
-      job,
-      candidates: candidatesWithInterviews,
-    };
-  })
-);
+        /*
+          Deduplicate candidates.
 
+          Preference:
+          1. Candidate with video
+          2. Candidate with application
+          3. Higher skill match
+        */
 
-        // Combine candidates from all jobs
-        const allCandidates = responsesWithInterviews.flatMap(
-          ({ candidates }) => candidates
-        );
+        const candidateMap = new Map();
 
-        // Keep each student only once.
-        // If the student matches multiple jobs,
-        // keep their highest match.
-       const candidateMap = new Map();
+        candidateRecords.forEach((candidate) => {
+          const existing =
+            candidateMap.get(candidate.id);
 
-for (const candidate of allCandidates) {
-  const existing = candidateMap.get(candidate.id);
+          if (!existing) {
+            candidateMap.set(
+              candidate.id,
+              candidate
+            );
+            return;
+          }
 
-  if (!existing) {
-    candidateMap.set(candidate.id, candidate);
-    continue;
-  }
+          const existingPriority =
+            (existing.has_video ? 3 : 0) +
+            (existing.application_id ? 2 : 0) +
+            Number(existing.skill_match || 0) / 100;
 
-  const candidateHasVideo = Boolean(
-    candidate.application_data?.video
-  );
+          const currentPriority =
+            (candidate.has_video ? 3 : 0) +
+            (candidate.application_id ? 2 : 0) +
+            Number(candidate.skill_match || 0) / 100;
 
-  const existingHasVideo = Boolean(
-    existing.application_data?.video
-  );
+          if (currentPriority > existingPriority) {
+            candidateMap.set(
+              candidate.id,
+              candidate
+            );
+          }
+        });
 
-  // Prefer a candidate record that has a video.
-  if (candidateHasVideo && !existingHasVideo) {
-    candidateMap.set(candidate.id, candidate);
-    continue;
-  }
-
-  if (!candidateHasVideo && existingHasVideo) {
-    continue;
-  }
-
-  // Prefer the record that has an application.
-  if (
-    candidate.application_id &&
-    !existing.application_id
-  ) {
-    candidateMap.set(candidate.id, candidate);
-    continue;
-  }
-
-  if (
-    !candidate.application_id &&
-    existing.application_id
-  ) {
-    continue;
-  }
-
-  // If both have applications (or both don't),
-  // keep the higher skill match.
-  if (
-    Number(candidate.skill_match || 0) >
-    Number(existing.skill_match || 0)
-  ) {
-    candidateMap.set(candidate.id, candidate);
-  }
-}
-
-        // Sort candidates by highest skill match
-        const uniqueCandidates = Array.from(
+        let initialCandidates = Array.from(
           candidateMap.values()
         ).sort(
           (a, b) =>
@@ -331,1989 +461,3986 @@ for (const candidate of allCandidates) {
             Number(a.skill_match || 0)
         );
 
-console.table(
-  uniqueCandidates.map((c) => ({
-    name: c.name,
-    candidate_id: c.id,
-    job_id: c.job_id,
-    application_id: c.application_id,
-    application_status: c.application_status,
-    has_video: c.has_video,
-    has_video_data: Boolean(c.application_data?.video),
-  }))
-);
+        if (!cancelled) {
+          setCandidates(initialCandidates);
+        }
 
-        setCandidates(uniqueCandidates);
-      } catch (err) {
-        console.error(
-          "Candidate matching error:",
-          err
+        /*
+          Load existing interviews.
+        */
+
+        const candidatesWithInterviews =
+          await Promise.all(
+            initialCandidates.map(async (candidate) => {
+              if (!candidate.application_id) {
+                return candidate;
+              }
+
+              try {
+                const interview =
+                  await getInterview(
+                    candidate.job_id,
+                    candidate.application_id
+                  );
+
+                return {
+                  ...candidate,
+                  interview:
+                    interview || null,
+                };
+              } catch (error) {
+                if (
+                  error?.response?.status === 404 ||
+                  error?.status === 404
+                ) {
+                  return candidate;
+                }
+
+                return candidate;
+              }
+            })
+          );
+
+        if (cancelled) return;
+
+        const finalMap = new Map();
+
+        candidatesWithInterviews.forEach(
+          (candidate) => {
+            const existing =
+              finalMap.get(candidate.id);
+
+            if (!existing) {
+              finalMap.set(
+                candidate.id,
+                candidate
+              );
+              return;
+            }
+
+            const existingPriority =
+              (existing.has_video ? 3 : 0) +
+              (existing.application_id ? 2 : 0) +
+              Number(existing.skill_match || 0) / 100;
+
+            const currentPriority =
+              (candidate.has_video ? 3 : 0) +
+              (candidate.application_id ? 2 : 0) +
+              Number(candidate.skill_match || 0) / 100;
+
+            if (currentPriority > existingPriority) {
+              finalMap.set(
+                candidate.id,
+                candidate
+              );
+            }
+          }
         );
 
-        setCandidates([]);
+        const finalCandidates =
+          Array.from(finalMap.values()).sort(
+            (a, b) =>
+              Number(b.skill_match || 0) -
+              Number(a.skill_match || 0)
+          );
+
+        setCandidates(finalCandidates);
+      } catch (error) {
+        console.error(
+          "Failed to load employer candidates:",
+          error
+        );
+
+        if (!cancelled) {
+          setCandidateError(
+            "Unable to load candidates right now."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setCandidateLoading(false);
+        }
       }
-    })
-    .catch((err) => {
-      console.error("Jobs error:", err);
+    };
 
-      setJobs([]);
-      setCandidates([]);
-    });
+    loadCandidates();
 
-  // Load all available domain roles
-getDomainRoles()
-    .then((data) => {
-      console.log("ALL DOMAIN ROLES FROM API:", data);
-console.table(
-  Array.isArray(data)
-    ? data.map((role) => ({
-        domain_role_id: role.domain_role_id,
-        domain_id: role.domain_id,
-        domain_name: role.domain_name,
-      }))
-    : []
-);
-
-console.log(
-  "UNIQUE ROLE NAMES:",
-  [...new Set(
-    (Array.isArray(data) ? data : [])
-      .map((role) => role.domain_name?.trim())
-      .filter(Boolean)
-  )]
-);
-      setDomainRoles(
-        Array.isArray(data) ? data : []
-      );
-    })
-    .catch((err) => {
-      console.error(
-        "Domain roles error:",
-        err
-      );
-      setDomainRoles([]);
-    });
-  }, [user?.id]
-);
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
 
-const handleViewProfile = async (candidate) => {
-  if (!candidate?.id) return;
+  /* =========================================================
+     DOMAIN ROLES
+  ========================================================= */
 
-  setProfileCandidate(candidate);
-  setCandidateProfile(null);
-  setLoadingProfile(true);
+  useEffect(() => {
+    let cancelled = false;
 
-  try {
-    const profile = await getUserProfile(candidate.id);
-    setCandidateProfile(profile);
-  } catch (err) {
-    console.error(
-      "Failed to load candidate profile:",
-      err.response?.data || err.message
-    );
+    const loadRoles = async () => {
+      try {
+        const response = await getDomainRoles();
 
+        if (cancelled) return;
+
+        const roles = Array.isArray(response)
+          ? response
+          : response?.results || [];
+
+        setDomainRoles(roles);
+      } catch (error) {
+        console.error(
+          "Failed to load domain roles:",
+          error
+        );
+
+        if (!cancelled) {
+          setDomainRoles([]);
+        }
+      }
+    };
+
+    loadRoles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
+  /* =========================================================
+     PROFILE
+  ========================================================= */
+
+  const handleViewProfile = async (candidate) => {
+    setProfileCandidate(candidate);
     setCandidateProfile(null);
-  } finally {
-    setLoadingProfile(false);
-  }
-};
+    setLoadingProfile(true);
+
+    try {
+      const profile =
+        await getUserProfile(candidate.id);
+
+      setCandidateProfile(profile);
+    } catch (error) {
+      console.error(
+        "Failed to load candidate profile:",
+        error
+      );
+
+      setCandidateProfile(null);
+
+      showDialog({
+        type: "error",
+        title: "Unable to Load Profile",
+        message:
+          "The candidate profile could not be loaded right now.",
+      });
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
 
 
-const handleApplicationStatus = async (candidate, status) => {
-  try {
+  /* =========================================================
+     APPLICATION STATUS
+  ========================================================= */
+
+  const handleApplicationStatus = async (
+    candidate,
+    status
+  ) => {
     const targetId =
-      candidate.application_id || candidate.id;
+      candidate.application_id ||
+      candidate.id;
 
     setUpdatingApplicationId(targetId);
 
-    const updated = await updateApplicationStatus(
-      candidate.job_id,
-      targetId,
-      status
-    );
+    try {
+      const response =
+        await updateApplicationStatus(
+          candidate.job_id,
+          targetId,
+          status
+        );
 
-    setCandidates((current) =>
-      current.map((item) =>
-        item.id === candidate.id &&
-        item.job_id === candidate.job_id
-          ? {
-              ...item,
-              application_id: updated.id,
-              application_status: updated.status,
-            }
-          : item
-      )
-    );
-  } catch (err) {
-    console.error(
-      "Application status update failed:",
-      err.response?.data || err.message
-    );
+      const returnedId =
+        response?.id ||
+        candidate.application_id ||
+        targetId;
 
-    alert(
-      err.response?.data?.error ||
-        "Failed to update candidate status."
-    );
-  } finally {
-    setUpdatingApplicationId(null);
-  }
-};
+      const returnedStatus =
+        response?.status ||
+        status;
 
-// shows the candidates videos
-const handleViewApplicationVideo = async (candidate) => {
-  if (!candidate?.application_id) {
-    return;
-  }
+      setCandidates((prev) =>
+        prev.map((item) => {
+          if (item.id !== candidate.id) {
+            return item;
+          }
 
-  try {
-    setLoadingVideo(true);
-    setVideoCandidate(candidate);
-    setVideoUrl("");
-
-    const result = await getApplicationVideoUrl(
-      candidate.job_id,
-      candidate.application_id
-    );
-
-    setVideoUrl(result.url);
-  } catch (err) {
-    console.error(
-      "Failed to load application video:",
-      err.response?.data || err.message
-    );
-
-    setVideoCandidate(null);
-
-    alert(
-      err.response?.data?.error ||
-        "Failed to load the candidate video."
-    );
-  } finally {
-    setLoadingVideo(false);
-  }
-};
-
-//Interview
-const handleScheduleInterview = async (e) => {
-  e.preventDefault();
-
-  if (!interviewCandidate?.application_id) {
-    return;
-  }
-
-  try {
-    setSchedulingInterview(true);
-
-    let interview;
-
-    if (
-      interviewCandidate.interview &&
-      interviewCandidate.interview.status !== "cancelled"
-    ) {
-      // Edit existing interview
-      interview = await updateInterview(
-        interviewCandidate.job_id,
-        interviewCandidate.application_id,
-        interviewForm
+          return {
+            ...item,
+            application_id:
+              item.application_id ||
+              returnedId,
+            application_status:
+              returnedStatus,
+            application_data:
+              item.application_data
+                ? {
+                    ...item.application_data,
+                    status: returnedStatus,
+                  }
+                : item.application_data,
+          };
+        })
       );
-    } else {
-      // Create new interview
-      interview = await scheduleInterview(
-        interviewCandidate.job_id,
-        interviewCandidate.application_id,
-        interviewForm
+    } catch (error) {
+      console.error(
+        "Failed to update application status:",
+        error
       );
+
+      showDialog({
+        type: "error",
+        title: "Status Update Failed",
+        message:
+          "We could not update the application status. Please try again.",
+      });
+    } finally {
+      setUpdatingApplicationId(null);
+    }
+  };
+
+
+  /* =========================================================
+     VIDEO
+  ========================================================= */
+
+  const handleViewApplicationVideo = async (
+    candidate
+  ) => {
+    if (!candidate.application_id) {
+      return;
     }
 
-    setCandidates((current) =>
-      current.map((item) =>
-        item.id === interviewCandidate.id &&
-        item.job_id === interviewCandidate.job_id
-          ? {
-              ...item,
-              interview,
-            }
-          : item
-      )
-    );
+    setVideoCandidate(candidate);
+    setVideoUrl("");
+    setLoadingVideo(true);
 
-    setInterviewCandidate(null);
+    try {
+      const response =
+        await getApplicationVideoUrl(
+          candidate.job_id,
+          candidate.application_id
+        );
 
-    setInterviewForm({
-      scheduled_at: "",
-      duration: 30,
-      interview_type: "online",
-      meeting_link: "",
-      notes: "",
-    });
-
-  } catch (err) {
-    console.error(
-      "Interview save failed:",
-      err.response?.data || err.message
-    );
-
-    alert(
-  err.response?.data?.error ||
-  err.response?.data?.message ||
-  err.message ||
-  "Failed to cancel interview."
-);
-
-  } finally {
-    setSchedulingInterview(false);
-  }
-}
-
-//send Invitation mails
-const handleSendApplicantEmail = async (e) => {
-  e.preventDefault();
-
-  if (!emailCandidate?.application_id) {
-    return;
-  }
-
-  try {
-    setSendingEmail(true);
-
-    await sendApplicantEmail(
-      emailCandidate.job_id,
-      emailCandidate.application_id,
-      emailForm
-    );
-
-    alert("Email sent successfully.");
-
-    setEmailCandidate(null);
-    setEmailForm({
-      subject: "",
-      message: "",
-    });
-  } catch (err) {
-    console.error(
-      "Email sending failed:",
-      err.response?.data || err.message
-    );
-
-    alert(
-      err.response?.data?.error ||
-      "Failed to send email."
-    );
-  } finally {
-    setSendingEmail(false);
-  }
-};
-
-// cancel the interview
-
-const handleCancelInterview = async (candidate) => {
-  if (!candidate?.application_id || !candidate?.interview) {
-    return;
-  }
-
-  try {
-    setSchedulingInterview(true);
-
-    const cancelledInterview = await cancelInterview(
-      candidate.job_id,
-      candidate.application_id
-    );
-
-    setCandidates((current) =>
-      current.map((item) =>
-        item.id === candidate.id &&
-        item.job_id === candidate.job_id
-          ? {
-              ...item,
-              interview: cancelledInterview,
-            }
-          : item
-      )
-    );
-
-    setShowCancelModal(false);
-    setCancelCandidate(null);
-  } catch (err) {
-    console.error(
-      "Interview cancellation failed:",
-      err.response?.data || err.message
-    );
-
-    alert(
-      err.response?.data?.error ||
-        "Failed to cancel interview."
-    );
-  } finally {
-    setSchedulingInterview(false);
-  }
-};
-
-const handleBulkApplicationStatus = async (status) => {
-  const selectedCandidates = candidates.filter((candidate) =>
-    selectedCandidateIds.includes(candidate.id)
-  );
-
-  if (!selectedCandidates.length) {
-    return;
-  }
-
-  try {
-    for (const candidate of selectedCandidates) {
-      const targetId =
-        candidate.application_id || candidate.id;
-
-      const updated = await updateApplicationStatus(
-        candidate.job_id,
-        targetId,
-        status
+      setVideoUrl(
+        response?.url ||
+        response?.video_url ||
+        ""
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load application video:",
+        error
       );
 
-      setCandidates((current) =>
-        current.map((item) =>
-          item.id === candidate.id &&
-          item.job_id === candidate.job_id
+      setVideoCandidate(null);
+      setVideoUrl("");
+
+      showDialog({
+        type: "error",
+        title: "Video Unavailable",
+        message:
+          "The candidate video could not be loaded right now.",
+      });
+    } finally {
+      setLoadingVideo(false);
+    }
+  };
+
+
+  /* =========================================================
+     INTERVIEW
+  ========================================================= */
+
+  const handleScheduleInterview = async (event) => {
+    event.preventDefault();
+
+    if (
+      !interviewCandidate?.application_id
+    ) {
+      return;
+    }
+
+    setSchedulingInterview(true);
+
+    try {
+      const existingInterview =
+        interviewCandidate.interview;
+
+      const isEditing =
+        existingInterview &&
+        existingInterview.status !==
+          "cancelled";
+
+      let response;
+
+      if (isEditing) {
+        response = await updateInterview(
+          interviewCandidate.job_id,
+          interviewCandidate.application_id,
+          interviewForm
+        );
+      } else {
+        response = await scheduleInterview(
+          interviewCandidate.job_id,
+          interviewCandidate.application_id,
+          interviewForm
+        );
+      }
+
+      setCandidates((prev) =>
+        prev.map((candidate) =>
+          candidate.id ===
+          interviewCandidate.id
+            ? {
+                ...candidate,
+                interview:
+                  response || {
+                    ...interviewForm,
+                    status: "scheduled",
+                  },
+              }
+            : candidate
+        )
+      );
+
+      setInterviewCandidate(null);
+
+      setInterviewForm({
+        scheduled_at: "",
+        duration: 30,
+        interview_type: "online",
+        meeting_link: "",
+        notes: "",
+      });
+
+      showDialog({
+        type: "success",
+        title: isEditing
+          ? "Interview Updated"
+          : "Interview Scheduled",
+        message: isEditing
+          ? `The interview for ${interviewCandidate.name} has been updated successfully.`
+          : `The interview for ${interviewCandidate.name} has been scheduled successfully.`,
+        confirmText: "Done",
+      });
+    } catch (error) {
+      console.error(
+        "Failed to schedule interview:",
+        error
+      );
+
+      showDialog({
+        type: "error",
+        title: "Interview Scheduling Failed",
+        message:
+          "We could not save the interview details. Please check the information and try again.",
+      });
+    } finally {
+      setSchedulingInterview(false);
+    }
+  };
+
+
+  const handleSendApplicantEmail = async (
+    event
+  ) => {
+    event.preventDefault();
+
+    if (!emailCandidate?.application_id) {
+      return;
+    }
+
+    setSendingEmail(true);
+
+    try {
+      await sendApplicantEmail(
+        emailCandidate.job_id,
+        emailCandidate.application_id,
+        emailForm
+      );
+
+      setEmailCandidate(null);
+
+      setEmailForm({
+        subject: "",
+        message: "",
+      });
+
+      showDialog({
+        type: "success",
+        title: "Email Sent",
+        message: `Your email has been sent to ${emailCandidate.name}.`,
+        confirmText: "Done",
+      });
+    } catch (error) {
+      console.error(
+        "Failed to send applicant email:",
+        error
+      );
+
+      showDialog({
+        type: "error",
+        title: "Email Failed",
+        message:
+          "We could not send the email. Please try again.",
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+
+  const handleCancelInterview = async (
+    candidate
+  ) => {
+    if (
+      !candidate?.application_id ||
+      !candidate?.interview
+    ) {
+      return;
+    }
+
+    setSchedulingInterview(true);
+
+    try {
+      const response =
+        await cancelInterview(
+          candidate.job_id,
+          candidate.application_id
+        );
+
+      setCandidates((prev) =>
+        prev.map((item) =>
+          item.id === candidate.id
             ? {
                 ...item,
-                application_id: updated.id,
-                application_status: updated.status,
+                interview:
+                  response || {
+                    ...item.interview,
+                    status: "cancelled",
+                  },
               }
             : item
         )
       );
+
+      setShowCancelModal(false);
+      setCancelCandidate(null);
+      setInterviewCandidate(null);
+
+      showDialog({
+        type: "success",
+        title: "Interview Cancelled",
+        message: `The interview for ${candidate.name} has been cancelled.`,
+        confirmText: "Done",
+      });
+    } catch (error) {
+      console.error(
+        "Failed to cancel interview:",
+        error
+      );
+
+      showDialog({
+        type: "error",
+        title: "Cancellation Failed",
+        message:
+          "We could not cancel the interview. Please try again.",
+      });
+    } finally {
+      setSchedulingInterview(false);
+    }
+  };
+
+
+  /* =========================================================
+     BULK APPLICATION STATUS
+  ========================================================= */
+
+  const handleBulkApplicationStatus = async (
+    status
+  ) => {
+    if (!selectedCandidateIds.length) {
+      return;
     }
 
-    setSelectedCandidateIds([]);
-  } catch (err) {
-    console.error(
-      "Bulk application status update failed:",
-      err.response?.data || err.message
-    );
+    try {
+      await Promise.all(
+        selectedCandidateIds.map(
+          async (candidateId) => {
+            const candidate =
+              candidates.find(
+                (item) =>
+                  item.id === candidateId
+              );
 
-    alert(
-      err.response?.data?.error ||
-        "Failed to update candidate status."
-    );
-  }
-};
+            if (!candidate) return;
 
-const matchData = [
-  {
-    name: "Strong",
-    value: candidates.filter(
-      (c) => Number(c.skill_match || 0) >= 80
-    ).length,
-  },
-  {
-    name: "Good",
-    value: candidates.filter(
-      (c) =>
-        Number(c.skill_match || 0) >= 60 &&
-        Number(c.skill_match || 0) < 80
-    ).length,
-  },
-  {
-    name: "Possible",
-    value: candidates.filter(
-      (c) => Number(c.skill_match || 0) < 60
-    ).length,
-  },
-];
+            const targetId =
+              candidate.application_id ||
+              candidate.id;
+
+            await updateApplicationStatus(
+              candidate.job_id,
+              targetId,
+              status
+            );
+          }
+        )
+      );
+
+      setCandidates((prev) =>
+        prev.map((candidate) =>
+          selectedCandidateIds.includes(
+            candidate.id
+          )
+            ? {
+                ...candidate,
+                application_status:
+                  status,
+                application_data:
+                  candidate.application_data
+                    ? {
+                        ...candidate.application_data,
+                        status,
+                      }
+                    : candidate.application_data,
+              }
+            : candidate
+        )
+      );
+
+      setSelectedCandidateIds([]);
+
+      showDialog({
+        type: "success",
+        title: "Applications Updated",
+        message: `${selectedCandidateIds.length} candidate${
+          selectedCandidateIds.length === 1
+            ? ""
+            : "s"
+        } moved to ${getStatusLabel(status)}.`,
+        confirmText: "Done",
+      });
+    } catch (error) {
+      console.error(
+        "Failed bulk application update:",
+        error
+      );
+
+      showDialog({
+        type: "error",
+        title: "Bulk Update Failed",
+        message:
+          "Some applications could not be updated. Please try again.",
+      });
+    }
+  };
 
 
-// filter candidates
+  /* =========================================================
+     ANALYTICS
+  ========================================================= */
 
-const filteredCandidates = candidates
-  .filter((candidate) => {
+  const matchData = [
+    {
+      name: "Strong",
+      value: candidates.filter(
+        (candidate) =>
+          Number(candidate.skill_match || 0) >= 80
+      ).length,
+    },
+    {
+      name: "Good",
+      value: candidates.filter(
+        (candidate) =>
+          Number(candidate.skill_match || 0) >= 60 &&
+          Number(candidate.skill_match || 0) < 80
+      ).length,
+    },
+    {
+      name: "Possible",
+      value: candidates.filter(
+        (candidate) =>
+          Number(candidate.skill_match || 0) < 60
+      ).length,
+    },
+  ];
 
-    // Recommended Candidates should only show
-      // Domain Role Filter
-          if (
-  domainRoleFilter !== "all" &&
-  String(candidate.domain_role_id) !== String(domainRoleFilter)
-) {
-  return false;
-}
 
-console.table(
-  domainRoles.map((r) => ({
-    domain_role_id: r.domain_role_id,
-    domain_id: r.domain_id,
-    domain_name: r.domain_name,
-    role_name: r.role_name,
-    name: r.name
-  }))
-);
+  const matchColors = [
+    "#f97316",
+    "#fb7185",
+    "#f59e0b",
+  ];
 
-  // Application Status Filter
+
+  /* =========================================================
+     FILTERED CANDIDATES
+  ========================================================= */
+
+  const filteredCandidates = useMemo(() => {
+    let result = [...candidates];
+
+    if (domainRoleFilter !== "all") {
+      result = result.filter(
+        (candidate) =>
+          String(candidate.domain_role_id) ===
+          String(domainRoleFilter)
+      );
+    }
+
     if (applicationStatusFilter !== "all") {
-      if (
-        candidate.application_status?.toLowerCase() !==
-        applicationStatusFilter.toLowerCase()
-      ) {
-        return false;
-      }
+      result = result.filter(
+        (candidate) =>
+          String(
+            candidate.application_status ||
+              "submitted"
+          ).toLowerCase() ===
+          applicationStatusFilter.toLowerCase()
+      );
     }
 
+    if (matchScoreFilter !== "all") {
+      result = result.filter((candidate) => {
+        const score = Number(
+          candidate.skill_match || 0
+        );
 
-       // Match Score Filter
-    const score = Number(candidate.skill_match || 0);
+        if (matchScoreFilter === "80+") {
+          return score >= 80;
+        }
 
-    if (matchScoreFilter === "80+") {
-      return score >= 80;
+        if (matchScoreFilter === "60+") {
+          return score >= 60;
+        }
+
+        if (matchScoreFilter === "below60") {
+          return score < 60;
+        }
+
+        return true;
+      });
     }
 
-    if (matchScoreFilter === "60+") {
-      return score >= 60;
-    }
-
-    if (matchScoreFilter === "below60") {
-      return score < 60;
-    }
-
-    return true;
-  })
-  .sort((a, b) => {
     if (candidateSort === "match") {
-      return (
-        Number(b.skill_match || 0) -
-        Number(a.skill_match || 0)
+      result.sort(
+        (a, b) =>
+          Number(b.skill_match || 0) -
+          Number(a.skill_match || 0)
       );
     }
 
     if (candidateSort === "name") {
-      return (a.name || "").localeCompare(b.name || "");
-    }
-
-    if (candidateSort === "status") {
-      return (
-        (a.application_status || "submitted").localeCompare(
-          b.application_status || "submitted"
+      result.sort((a, b) =>
+        String(a.name || "").localeCompare(
+          String(b.name || "")
         )
       );
     }
 
-    return 0;
-  });
+    if (candidateSort === "status") {
+      result.sort((a, b) =>
+        String(
+          a.application_status || "submitted"
+        ).localeCompare(
+          String(
+            b.application_status || "submitted"
+          )
+        )
+      );
+    }
+
+    return result;
+  }, [
+    candidates,
+    domainRoleFilter,
+    applicationStatusFilter,
+    matchScoreFilter,
+    candidateSort,
+  ]);
 
 
   const totalPages = Math.ceil(
-  filteredCandidates.length / itemsPerPage
-);
+    filteredCandidates.length /
+      itemsPerPage
+  );
 
-const paginatedCandidates = filteredCandidates.slice(
-  (currentPage - 1) * itemsPerPage,
-  currentPage * itemsPerPage
-);
 
-const pipelineCandidates = candidates.filter(
-  (c) =>
-    c.application_status === "shortlisted" ||
-    (c.interview && c.interview.status !== "cancelled")
-);
+  const paginatedCandidates =
+    filteredCandidates.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
 
-const pipelineTotalPages = Math.ceil(
-  pipelineCandidates.length / pipelineItemsPerPage
-);
 
-const paginatedPipelineCandidates = pipelineCandidates.slice(
-  (pipelinePage - 1) * pipelineItemsPerPage,
-  pipelinePage * pipelineItemsPerPage
-);
+  const pipelineCandidates =
+    candidates.filter(
+      (candidate) =>
+        candidate.application_status ===
+          "shortlisted" ||
+        (candidate.interview &&
+          candidate.interview.status !==
+            "cancelled")
+    );
 
-const sortedDomainRoles = Array.from(
-  new Map(
-    domainRoles.map((role) => [
-      role.domain_role_id,
-      role,
-    ])
-  ).values()
-).sort((a, b) =>
-  (a.domain_name || "").localeCompare(
-    b.domain_name || ""
-  )
-);
+
+  const pipelineTotalPages = Math.ceil(
+    pipelineCandidates.length /
+      pipelineItemsPerPage
+  );
+
+
+  const paginatedPipelineCandidates =
+    pipelineCandidates.slice(
+      (pipelinePage - 1) *
+        pipelineItemsPerPage,
+      pipelinePage *
+        pipelineItemsPerPage
+    );
+
+
+  const sortedDomainRoles = Array.from(
+    new Map(
+      domainRoles.map((role) => [
+        role.domain_role_id,
+        role,
+      ])
+    ).values()
+  ).sort((a, b) =>
+    String(
+      a.domain_name || ""
+    ).localeCompare(
+      String(b.domain_name || "")
+    )
+  );
+
+
+  /* =========================================================
+     COUNTS
+  ========================================================= */
+
+  const shortlistedCount =
+    candidates.filter(
+      (candidate) =>
+        candidate.application_status ===
+        "shortlisted"
+    ).length;
+
+  const submittedCount =
+    candidates.filter(
+      (candidate) =>
+        !candidate.application_status ||
+        candidate.application_status ===
+          "submitted"
+    ).length;
+
+  const rejectedCount =
+    candidates.filter(
+      (candidate) =>
+        candidate.application_status ===
+        "rejected"
+    ).length;
+
+  const scheduledInterviewCount =
+    candidates.filter(
+      (candidate) =>
+        candidate.interview &&
+        candidate.interview.status !==
+          "cancelled"
+    ).length;
+
+
+  const averageMatch =
+    candidates.length
+      ? Math.round(
+          candidates.reduce(
+            (total, candidate) =>
+              total +
+              Number(
+                candidate.skill_match || 0
+              ),
+            0
+          ) / candidates.length
+        )
+      : 0;
+
+
+  /* =========================================================
+     SELECTION
+  ========================================================= */
+
+  const allCurrentPageSelected =
+    paginatedCandidates.length > 0 &&
+    paginatedCandidates.every(
+      (candidate) =>
+        selectedCandidateIds.includes(
+          candidate.id
+        )
+    );
+
+
+  const toggleCandidateSelection = (
+    candidateId
+  ) => {
+    setSelectedCandidateIds((prev) =>
+      prev.includes(candidateId)
+        ? prev.filter(
+            (id) => id !== candidateId
+          )
+        : [...prev, candidateId]
+    );
+  };
+
+
+  const toggleSelectAllCurrentPage = () => {
+    const currentIds =
+      paginatedCandidates.map(
+        (candidate) => candidate.id
+      );
+
+    if (allCurrentPageSelected) {
+      setSelectedCandidateIds((prev) =>
+        prev.filter(
+          (id) => !currentIds.includes(id)
+        )
+      );
+    } else {
+      setSelectedCandidateIds((prev) =>
+        Array.from(
+          new Set([
+            ...prev,
+            ...currentIds,
+          ])
+        )
+      );
+    }
+  };
+
+
+  /* =========================================================
+     RESET PAGINATION ON FILTER CHANGE
+  ========================================================= */
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    applicationStatusFilter,
+    matchScoreFilter,
+    domainRoleFilter,
+    candidateSort,
+  ]);
+
+
+  useEffect(() => {
+    setPipelinePage(1);
+  }, [candidates.length]);
+
+
+  /* =========================================================
+     INTERVIEW FORM OPEN
+  ========================================================= */
+
+  const openInterviewForm = (candidate) => {
+    setInterviewCandidate(candidate);
+
+    if (
+      candidate.interview &&
+      candidate.interview.status !==
+        "cancelled"
+    ) {
+      setInterviewForm({
+        scheduled_at:
+          formatDateTimeLocal(
+            candidate.interview.scheduled_at
+          ),
+        duration:
+          candidate.interview.duration ||
+          30,
+        interview_type:
+          candidate.interview.interview_type ||
+          "online",
+        meeting_link:
+          candidate.interview.meeting_link ||
+          "",
+        notes:
+          candidate.interview.notes ||
+          "",
+      });
+    } else {
+      setInterviewForm({
+        scheduled_at: "",
+        duration: 30,
+        interview_type: "online",
+        meeting_link: "",
+        notes: "",
+      });
+    }
+  };
+
+
+  /* =========================================================
+     UI
+  ========================================================= */
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Welcome back, {user?.name?.split(' ')[0]}!</h2>
-        <p className="text-sm text-slate-500">Find the best candidates for your roles.</p>
-      </div>
+    <div className="min-h-screen bg-[#f7f3ef] text-slate-900 pb-12">
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="!p-4">
-          <div className="text-xs text-slate-500">Job Openings</div>
-          <div className="text-3xl font-bold text-brand-blue-700 mt-1">{data?.jobOpenings ?? 0}</div>
-          <div className="text-[11px] text-slate-500 mt-1">Active Listings</div>
-        </Card>
+      {/* =====================================================
+          HERO / TALENT OPERATIONS HEADER
+      ===================================================== */}
 
+      <section className="relative overflow-hidden rounded-[30px] mx-1 mt-1 shadow-[0_25px_70px_rgba(95,35,20,0.24)]">
 
-        <Card className="!p-4">
-          <div className="text-xs text-slate-500">New Applicants</div>
-          <div className="text-3xl font-bold text-brand-orange-600 mt-1">{data?.newApplicants ?? 0}</div>
-          <div className="text-[11px] text-slate-500 mt-1">Candidates</div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-xs text-slate-500">Top Matches</div>
-          <div className="text-3xl font-bold text-brand-green-600 mt-1">{data?.topMatches ?? 0}</div>
-          <div className="text-[11px] text-slate-500 mt-1">Best Fits</div>
-        </Card>
-      </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-[#24130f] via-[#7c2d12] to-[#be123c]" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card title="Recent Job Listings">
-          <ul className="space-y-3">
-            {jobs.slice(0, 4).map((j) => (
-              <li key={j.id} className="flex items-start gap-2 text-sm">
-                <span className="text-brand-blue-500">📋</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-slate-800 truncate">{j.title}</div>
-                  <div className="text-[11px] text-slate-500">Posted {new Date(j.created_at).toLocaleDateString()}</div>
-                </div>
-              </li>
-            ))}
-            {jobs.length === 0 && <li className="text-slate-400 text-center py-3">No listings yet.</li>}
-          </ul>
-        </Card>
+        <div className="absolute -right-24 -top-32 h-80 w-80 rounded-full bg-[#fb923c]/25 blur-3xl" />
 
-<Card title="Candidate Matches">
-  <div className="h-48">
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie
-          data={matchData}
-          dataKey="value"
-          nameKey="name"
-          outerRadius={65}
-          innerRadius={40}
-          onClick={(entry) => {
-            setSelectedMatchType(entry.name);
-          }}
-          style={{ cursor: "pointer" }}
-        >
-          {matchData.map((entry, i) => (
-            <Cell
-              key={entry.name}
-              fill={COLORS[i]}
-            />
-          ))}
-        </Pie>
+        <div className="absolute right-20 top-20 h-56 w-56 rounded-full bg-[#facc15]/20 blur-3xl" />
 
-        <Tooltip />
-        <Legend
-          wrapperStyle={{ fontSize: 11 }}
-        />
-      </PieChart>
-    </ResponsiveContainer>
-  </div>
+        <div className="absolute -left-20 bottom-[-120px] h-72 w-72 rounded-full bg-[#fb7185]/20 blur-3xl" />
 
-  {/* Selected category */}
-  {selectedMatchType && (
-    <div className="mt-3 pt-3 border-t border-slate-100">
-
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-xs font-semibold text-slate-700">
-          {selectedMatchType} Candidates
-        </span>
-
-        <button
-          type="button"
-          onClick={() => setSelectedMatchType(null)}
-          className="text-xs text-slate-400 hover:text-slate-600"
-        >
-          Clear
-        </button>
-      </div>
-
-      {candidates.filter((candidate) =>
-        candidate.fit_category?.startsWith(selectedMatchType)
-      ).length > 0 ? (
-        <div className="space-y-2">
-
-          {candidates
-            .filter((candidate) =>
-              candidate.fit_category?.startsWith(selectedMatchType)
-            )
-            .slice(0, 5)
-            .map((candidate) => (
-              <div
-                key={candidate.id}
-                className="flex items-center justify-between p-2 rounded-md bg-slate-50"
-              >
-                <div>
-                  <div className="text-xs font-medium text-slate-700">
-                    {candidate.name}
-                  </div>
-
-                  <div className="text-[11px] text-slate-500">
-                    {candidate.domain_role || "Candidate"}
-                  </div>
-                </div>
-
-                <div className="text-xs font-semibold text-slate-700">
-                  {candidate.skill_match ?? 0}%
-                </div>
-              </div>
-            ))}
-
-        </div>
-      ) : (
-        <div className="text-xs text-slate-400 text-center py-2">
-          No {selectedMatchType.toLowerCase()} candidates found.
-        </div>
-      )}
-
-    </div>
-  )}
-</Card>
-        <Card title="Skills Insights">
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data?.skillsInsights || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                     <XAxis
-  dataKey="skill"
-  interval={0}
-  height={55}
-  tickMargin={8}
-  tick={({ x, y, payload }) => {
-    const words = payload.value.split(" ");
-
-    return (
-      <text
-        x={x}
-        y={y + 10}
-        textAnchor="middle"
-        fontSize={10}
-        fill="#64748b"
-      >
-        {words.length > 1 ? (
-          <>
-            <tspan x={x} dy="0">
-              {words[0]}
-            </tspan>
-            <tspan x={x} dy="12">
-              {words.slice(1).join(" ")}
-            </tspan>
-          </>
-        ) : (
-          <tspan x={x} dy="0">
-            {payload.value}
-          </tspan>
-        )}
-      </text>
-    );
-  }}
-/>
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip
-  content={({ active, payload }) => {
-    if (!active || !payload || !payload.length) {
-      return null;
-    }
-
-    const skill = payload[0].payload;
-
-    return (
-      <div className="bg-white border border-slate-200 rounded-lg shadow-md p-3 text-xs">
-        <div className="font-semibold text-slate-800 mb-2">
-          {skill.skill}
-        </div>
-
-        <div className="space-y-1 text-slate-600">
-          <div>
-            Average Level:{" "}
-            <span className="font-medium text-slate-800">
-              {skill.averageLevel ?? 0}
-            </span>
-          </div>
-
-          <div>
-            Required Level:{" "}
-            <span className="font-medium text-slate-800">
-              {skill.requiredLevel ?? 0}
-            </span>
-          </div>
-
-          <div>
-            Candidates Assessed:{" "}
-            <span className="font-medium text-slate-800">
-              {skill.assessedCandidates ?? 0}
-            </span>
-          </div>
-
-          <div>
-            Qualified Candidates:{" "}
-            <span className="font-medium text-green-700">
-              {skill.qualifiedCandidates ?? 0}
-            </span>
-          </div>
-
-          <div>
-            Average Match:{" "}
-            <span className="font-medium text-brand-blue-600">
-              {skill.value ?? 0}%
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }}
-/>
-
-
-                <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-
-      <div className="space-y-6">
- <Card
-  title="Recommended Candidates"
-  className="w-full"
->
-  {/* Candidate Filters + Sorting */}
-  <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-
-    {/* Status Filters */}
-    <div className="flex flex-wrap items-center gap-2">
-
-      {[
-        {
-          value: "all",
-          label: "All",
-          count: candidates.length,
-        },
-        {
-          value: "submitted",
-          label: "Submitted",
-          count: candidates.filter(
-            (c) => c.application_status === "submitted"
-          ).length,
-        },
-        {
-          value: "shortlisted",
-          label: "Shortlisted",
-          count: candidates.filter(
-            (c) => c.application_status === "shortlisted"
-          ).length,
-        },
-        {
-          value: "rejected",
-          label: "Rejected",
-          count: candidates.filter(
-            (c) => c.application_status === "rejected"
-          ).length,
-        },
-      ].map((filter) => (
-        <button
-          key={filter.value}
-          type="button"
-          onClick={() =>
-            setApplicationStatusFilter(filter.value)
-          }
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition ${
-            applicationStatusFilter === filter.value
-              ? "bg-brand-blue-600 text-white border-brand-blue-600"
-              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-          }`}
-        >
-          <span>{filter.label}</span>
-
-          <span
-            className={`min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] ${
-              applicationStatusFilter === filter.value
-                ? "bg-white/20 text-white"
-                : "bg-slate-100 text-slate-600"
-            }`}
+        <div className="absolute inset-0 opacity-20">
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 1000 500"
+            preserveAspectRatio="none"
           >
-            {filter.count}
-          </span>
-        </button>
-      ))}
+            <path
+              d="M-50 420 C180 250 260 480 460 300 C650 130 720 350 1050 100"
+              fill="none"
+              stroke="white"
+              strokeWidth="1"
+            />
 
-    </div>
-
-    {/* Sort */}
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-slate-500">
-        Sort:
-      </span>
-
-      <select
-        value={candidateSort}
-        onChange={(e) =>
-          setCandidateSort(e.target.value)
-        }
-        className="text-xs border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-600 outline-none focus:ring-1 focus:ring-brand-blue-500"
-      >
-        <option value="match">
-          Best Match
-        </option>
-
-        <option value="name">
-          Candidate Name
-        </option>
-
-        <option value="status">
-          Application Status
-        </option>
-      </select>
-    </div>
-
-  </div>
-
-{/* Domain Role Filter */}
-<div className="flex items-center gap-2 mb-4">
-  <span className="text-xs text-slate-500">
-    Domain Role:
-  </span>
-
-  <select
-    value={domainRoleFilter}
-    onChange={(e) =>
-      setDomainRoleFilter(e.target.value)
-    }
-    className="text-xs border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-600 outline-none focus:ring-1 focus:ring-brand-blue-500"
-  >
-    <option value="all">All Roles</option>
-
-    {sortedDomainRoles.map((role) => (
-      <option key={role.domain_role_id} value={role.domain_role_id}>
-        {role.domain_name}
-      </option>
-    ))}
-  </select>
-</div>
-
-
-
-  {/* Match Score Filter */}
-  <div className="flex flex-wrap items-center gap-4 mb-4">
-    <span className="text-xs text-slate-500">
-      Match:
-    </span>
-
-    {[
-      { value: "all", label: "All" },
-      { value: "80+", label: "80%+" },
-      { value: "60+", label: "60%+" },
-      { value: "below60", label: "Below 60%" },
-    ].map((filter) => (
-      <button
-        key={filter.value}
-        type="button"
-        onClick={() =>
-          setMatchScoreFilter(filter.value)
-        }
-        className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition ${
-          matchScoreFilter === filter.value
-            ? "bg-brand-blue-600 text-white border-brand-blue-600"
-            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-        }`}
-      >
-        {filter.label}
-      </button>
-    ))}
-  </div>
-
-  {/* Candidate List */}
-  <div className="space-y-3">
-
-    {/* Empty State */}
-    {filteredCandidates.length === 0 && (
-      <div className="text-center text-sm text-slate-400 py-8">
-        {applicationStatusFilter === "all"
-          ? "No eligible candidates available."
-          : `No ${applicationStatusFilter} candidates found.`}
-      </div>
-    )}
-
-{/* Bulk Candidate Actions */}
-<div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-
-  <label className="flex items-center gap-2 text-xs text-slate-600">
-    <input
-      type="checkbox"
-      checked={
-        paginatedCandidates.length > 0 &&
-        paginatedCandidates.every((candidate) =>
-          selectedCandidateIds.includes(candidate.id)
-        )
-      }
-      onChange={(e) => {
-        if (e.target.checked) {
-          setSelectedCandidateIds(
-            paginatedCandidates.map(
-              (candidate) => candidate.id
-            )
-          );
-        } else {
-          setSelectedCandidateIds([]);
-        }
-      }}
-      className="w-4 h-4 rounded border-slate-300 text-brand-blue-600 focus:ring-brand-blue-500"
-    />
-
-    Select All
-  </label>
-
-  {selectedCandidateIds.length > 0 && (
-    <div className="flex items-center gap-2">
-
-      <span className="text-xs text-slate-500">
-        {selectedCandidateIds.length} selected
-      </span>
-
-      <button
-        type="button"
-        onClick={() =>
-          handleBulkApplicationStatus("shortlisted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100"
-      >
-        Shortlist Selected
-      </button>
-
-      <button
-        type="button"
-        onClick={() =>
-          handleBulkApplicationStatus("rejected")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100"
-      >
-        Reject Selected
-      </button>
-
-    </div>
-  )}
-
-</div>
-
-
-    {/* Candidates */}
-    {paginatedCandidates.map((c) => (
-      <div
-        key={`${c.id}-${c.job_id || "candidate"}`}
-        className="p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
-      >
-
-{/* Candidate Header */}
-<div className="flex items-center gap-3">
-
-  {/* Select Candidate */}
-  <input
-    type="checkbox"
-    checked={selectedCandidateIds.includes(c.id)}
-    onChange={(e) => {
-      if (e.target.checked) {
-        setSelectedCandidateIds((current) => [
-          ...current,
-          c.id,
-        ]);
-      } else {
-        setSelectedCandidateIds((current) =>
-          current.filter((id) => id !== c.id)
-        );
-      }
-    }}
-    className="w-4 h-4 rounded border-slate-300 text-brand-blue-600 focus:ring-brand-blue-500"
-  />
-
-  {/* Avatar */}
-  <div className="w-10 h-10 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold text-sm">
-    {(c.name || "?")[0].toUpperCase()}
-  </div>
-
-  {/* Candidate Name */}
-  <div>
-    <div className="font-semibold text-sm text-slate-800">
-      {c.name || "Unknown Candidate"}
-    </div>
-
-    <div className="text-xs text-slate-500">
-      {c.job_title || "Candidate"}
-    </div>
-  </div>
-
-</div>
-
-        {/* Skills */}
-        <div className="mt-3 text-xs space-y-1">
-
-          {c.matched_skills?.length > 0 && (
-            <div>
-              <span className="font-medium text-green-700">
-                Matched:
-              </span>{" "}
-              <span className="text-slate-600">
-                {c.matched_skills.join(", ")}
-              </span>
-            </div>
-          )}
-
-          {c.partial_skills?.length > 0 && (
-            <div>
-              <span className="font-medium text-orange-600">
-                Developing:
-              </span>{" "}
-              <span className="text-slate-600">
-                {c.partial_skills
-                  .map(
-                    (s) =>
-                      `${s.skill} (${s.student_level}/${s.required_level})`
-                  )
-                  .join(", ")}
-              </span>
-            </div>
-          )}
-
-          {c.missing_skills?.length > 0 && (
-            <div>
-              <span className="font-medium text-slate-500">
-                Missing:
-              </span>{" "}
-              <span className="text-slate-600">
-                {c.missing_skills.join(", ")}
-              </span>
-            </div>
-          )}
-
+            <path
+              d="M-50 470 C180 300 300 510 490 350 C690 180 760 380 1050 150"
+              fill="none"
+              stroke="white"
+              strokeWidth="1"
+            />
+          </svg>
         </div>
 
-        {/* Candidate Actions */}
-        <div className="mt-3 pt-3 border-t border-slate-100">
+        <div className="relative px-6 py-8 md:px-10 md:py-10">
 
-          {/* Action Row */}
-          <div className="flex justify-between items-center gap-3">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
 
-            <button
-              type="button"
-              onClick={() =>
-                setExpandedCandidateId(
-                  expandedCandidateId === c.id
-                    ? null
-                    : c.id
-                )
-              }
-              className="text-xs font-medium text-slate-600 hover:text-brand-blue-600"
-            >
-              {expandedCandidateId === c.id
-                ? "Hide Match Details ↑"
-                : "Why recommended? ↓"}
-            </button>
+            <div className="max-w-3xl">
 
-            <button
-  type="button"
-  onClick={() => handleViewProfile(c)}
-  className="text-xs font-medium text-brand-blue-600 hover:text-brand-blue-700 hover:underline"
->
-  Review Candidate
-</button>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-orange-100 backdrop-blur-md shadow-lg">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-300 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-orange-300" />
+                </span>
 
-          </div>
+                Talent Operations Center
+              </div>
 
-          {/* Application Decision */}
+              <h1 className="mt-5 text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.02]">
+                Build your next
+                <span className="block text-orange-200">
+                  great team.
+                </span>
+              </h1>
 
-            <div className="mt-3 pt-3 border-t border-slate-100">
-
-              <div className="flex items-center justify-between gap-3">
-
-                {c.application_id && (
-  <div className="text-xs text-slate-600">
-
-    Application Status:{" "}
-
-    <span
-      className={`font-semibold ${
-        c.application_status === "shortlisted"
-          ? "text-green-700"
-          : c.application_status === "rejected"
-          ? "text-red-600"
-          : "text-slate-700"
-      }`}
-    >
-      {c.application_status
-        ? c.application_status.charAt(0).toUpperCase() +
-          c.application_status.slice(1)
-        : "Submitted"}
-    </span>
-
-  </div>
-)}
-
-  {/* Application Actions */}
-
-<div className="flex gap-2">
-
-{c.application_id && c.application_data?.video && (
-  <button
-    type="button"
-    onClick={() => handleViewApplicationVideo(c)}
-    disabled={loadingVideo}
-    className="px-3 py-1.5 text-xs font-medium rounded-md bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50"
-  >
-    🎥 View Video
-  </button>
-)}
-
-  {/* Submitted */}
- {/* Submitted */}
-{(!c.application_status ||
-  c.application_status === "submitted") && (
-  <>
-    <button
-      type="button"
-      disabled={
-        updatingApplicationId === (c.application_id || c.id)
-      }
-      onClick={() =>
-        handleApplicationStatus(c, "shortlisted")
-      }
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
-    >
-      {updatingApplicationId === (c.application_id || c.id)
-        ? "Updating..."
-        : "Shortlist"}
-    </button>
-
-    <button
-      type="button"
-      disabled={
-        updatingApplicationId === (c.application_id || c.id)
-      }
-      onClick={() => {
-        const confirmed = window.confirm(
-          `Are you sure you want to reject ${c.name}?`
-        );
-
-        if (confirmed) {
-          handleApplicationStatus(c, "rejected");
-        }
-      }}
-      className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
-    >
-      {updatingApplicationId === (c.application_id || c.id) &&
-      c.application_status === "submitted"
-        ? "Updating..."
-        : "Reject"}
-    </button>
-  </>
-)}
-
-  {/* Shortlisted */}
-  {c.application_status === "shortlisted" && (
-    <>
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "submitted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-      >
-        {updatingApplicationId === c.application_id
-          ? "Updating..."
-          : "Move to Submitted"}
-      </button>
-
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "rejected")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
-      >
-        Reject
-      </button>
-    </>
-  )}
-
-  {/* Rejected */}
-  {c.application_status === "rejected" && (
-    <>
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "shortlisted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
-      >
-        Shortlist
-      </button>
-
-      <button
-        type="button"
-        disabled={
-          updatingApplicationId === c.application_id
-        }
-        onClick={() =>
-          handleApplicationStatus(c, "submitted")
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-      >
-        Move to Submitted
-      </button>
-    </>
-  )}
-
-</div>
-      </div>
-
-
-  {/* //cancel trigger */}
-
-{c.interview?.status === "cancelled" && (
-  <div className="mt-2 text-[11px] text-red-500">
-    Interview has been cancelled.
-  </div>
-)}
-
-  {/* Send Email */}
-<button
-  type="button"
-  disabled={!c.application_id}
-  onClick={() => {
-    setEmailCandidate(c);
-    setEmailForm({
-      subject: "",
-      message: "",
-    });
-  }}
-  className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
->
-  Send Email
-</button>
-              {/* Status Explanation */}
-              {c.application_status ===
-                "shortlisted" && (
-                <div className="mt-2 text-[11px] text-green-600">
-                  Candidate is shortlisted for
-                  further review.
-                </div>
-              )}
-
-              {c.application_status ===
-                "rejected" && (
-                <div className="mt-2 text-[11px] text-red-500">
-                  Candidate was rejected for this
-                  application.
-                </div>
-              )}
-
-              {c.application_status ===
-                 "selected" && (
-                <div className="mt-2 text-[11px] text-green-600">
-                 ✓ Candidate has been selected for this position.
-                </div>
-                   )}
-
-              {c.application_status ===
-                "submitted" && (
-                <div className="mt-2 text-[11px] text-orange-600">
-                  Application is awaiting employer
-                  review.
-                </div>
-              )}
+              <p className="mt-5 max-w-2xl text-sm md:text-base leading-7 text-orange-50/80">
+                Welcome back,{" "}
+                <span className="font-bold text-white">
+                  {user?.name?.split(" ")[0] ||
+                    "there"}
+                </span>
+                . Discover candidates, review talent
+                matches, manage interviews, and move
+                your hiring pipeline forward.
+              </p>
 
             </div>
 
 
+            <div className="relative w-full lg:w-[310px]">
 
+              <div className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.22)] transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.14]">
 
-
-
-          {/* Expanded Match Details */}
-          {expandedCandidateId === c.id && (
-            <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100 w-full">
-
-              <div className="text-xs font-semibold text-slate-700 mb-3">
-                Why this candidate is recommended
-              </div>
-
-              {/* Overall Match */}
-              <div className="mb-3">
-
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-600">
-                    Overall Skill Match
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-100/70">
+                    Hiring pulse
                   </span>
 
-                  <span className="font-semibold text-slate-800">
-                    {c.skill_match ?? 0}% —{" "}
-                    {c.fit_category ||
-                      "Candidate"}
+                  <span className="rounded-full bg-emerald-400/20 px-2.5 py-1 text-[10px] font-bold text-emerald-200 border border-emerald-300/20">
+                    ACTIVE
                   </span>
                 </div>
 
-                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div className="mt-5 flex items-end gap-3">
+
+                  <div className="text-5xl font-black text-white">
+                    {averageMatch}%
+                  </div>
+
+                  <div className="pb-1 text-xs text-orange-100/70">
+                    average candidate
+                    <br />
+                    match score
+                  </div>
+
+                </div>
+
+                <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
                   <div
-                    className="h-full bg-brand-blue-500 rounded-full"
+                    className="h-full rounded-full bg-gradient-to-r from-orange-300 via-amber-300 to-rose-300 transition-all duration-700"
                     style={{
                       width: `${Math.min(
-                        Number(c.skill_match || 0),
+                        averageMatch,
                         100
                       )}%`,
                     }}
                   />
                 </div>
 
-              </div>
-
-              {/* Skill Summary */}
-              <div className="grid grid-cols-3 gap-2 mb-3">
-
-                <div className="rounded-md bg-green-50 border border-green-100 p-2">
-                  <div className="text-[10px] text-green-600">
-                    Matched
-                  </div>
-
-                  <div className="text-sm font-semibold text-green-700">
-                    {c.matched_skills?.length || 0}
-                  </div>
-                </div>
-
-                <div className="rounded-md bg-orange-50 border border-orange-100 p-2">
-                  <div className="text-[10px] text-orange-600">
-                    Developing
-                  </div>
-
-                  <div className="text-sm font-semibold text-orange-700">
-                    {c.partial_skills?.length || 0}
-                  </div>
-                </div>
-
-                <div className="rounded-md bg-slate-50 border border-slate-200 p-2">
-                  <div className="text-[10px] text-slate-500">
-                    Missing
-                  </div>
-
-                  <div className="text-sm font-semibold text-slate-700">
-                    {c.missing_skills?.length || 0}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Matched Skills */}
-              <div className="mb-2">
-
-                <div className="text-xs font-medium text-green-700">
-                  Matched Skills
-                </div>
-
-                <div className="text-xs text-slate-600 mt-1">
-                  {c.matched_skills?.length
-                    ? c.matched_skills.join(", ")
-                    : "No fully matched skills"}
-                </div>
-
-              </div>
-
-              {/* Developing Skills */}
-              <div className="mb-2">
-
-                <div className="text-xs font-medium text-orange-600">
-                   Developing Skills
-                </div>
-
-                <div className="text-xs text-slate-600 mt-1">
-                  {c.partial_skills?.length
-                    ? c.partial_skills
-                        .map(
-                          (s) =>
-                            `${s.skill} (${s.student_level}/${s.required_level})`
-                        )
-                        .join(", ")
-                    : "No developing skills"}
-                </div>
-
-              </div>
-
-              {/* Missing Skills */}
-              <div className="mb-3">
-
-                <div className="text-xs font-medium text-slate-600">
-                  Missing Skills
-                </div>
-
-                <div className="text-xs text-slate-600 mt-1">
-                  {c.missing_skills?.length
-                    ? c.missing_skills.join(", ")
-                    : "No missing skills"}
-                </div>
-
-              </div>
-
-              {/* Recommendation */}
-              <div className="pt-2 border-t border-slate-200">
-
-                <div className="text-xs text-slate-600">
-
-                  <span className="font-medium text-slate-800">
-                    Recommendation:
-                  </span>{" "}
-
-                  {Number(c.skill_match || 0) >=
-                  80
-                    ? "Strong skill alignment with the job requirements."
-                    : Number(
-                        c.skill_match || 0
-                      ) >= 60
-                    ? "Good skill alignment, but some skills may need further review."
-                    : "Partial skill alignment. Review the candidate's skill gaps before proceeding."}
-
-                </div>
-
-              </div>
-
-            </div>
-          )}
-
-        </div>
-
-      </div>
-    ))}
-
-  {/*pagination*/}
-    {totalPages > 1 && (
-  <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-100">
-    <span className="text-xs text-slate-500">
-      Page {currentPage} of {totalPages}
-    </span>
-
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        disabled={currentPage === 1}
-        onClick={() =>
-          setCurrentPage((page) => page - 1)
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Previous
-      </button>
-
-      <button
-        type="button"
-        disabled={currentPage === totalPages}
-        onClick={() =>
-          setCurrentPage((page) => page + 1)
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Next
-      </button>
-    </div>
-  </div>
-)}
-  </div>
-</Card>
-
-
-{interviewCandidate && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-    <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
-
-      {/* Header */}
-      <div className="flex items-center justify-between border-b px-5 py-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-800">
-  <h2 className="text-base font-semibold text-slate-800">
-  {interviewCandidate?.interview &&
-  interviewCandidate.interview.status !== "cancelled"
-    ? "Edit Interview"
-    : "Schedule Interview"}
-</h2>
-</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            {interviewCandidate.name}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setInterviewCandidate(null)}
-          className="text-slate-400 hover:text-slate-600"
-        >
-
-        </button>
-      </div>
-
-      {/* Form */}
-      <form
-        onSubmit={handleScheduleInterview}
-        className="space-y-4 p-5"
-      >
-
-        {/* Date & Time */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">
-            Interview Date & Time
-          </label>
-
-          <input
-            type="datetime-local"
-            required
-            value={interviewForm.scheduled_at}
-            min={new Date().toISOString().slice(0, 16)}
-            onChange={(e) =>
-              setInterviewForm((current) => ({
-                ...current,
-                scheduled_at: e.target.value,
-              }))
-            }
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Duration */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">
-            Duration
-          </label>
-
-          <select
-            value={interviewForm.duration}
-            onChange={(e) =>
-              setInterviewForm((current) => ({
-                ...current,
-                duration: Number(e.target.value),
-              }))
-            }
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          >
-            <option value={15}>15 minutes</option>
-            <option value={30}>30 minutes</option>
-            <option value={45}>45 minutes</option>
-            <option value={60}>1 hour</option>
-            <option value={90}>90 minutes</option>
-          </select>
-        </div>
-
-        {/* Interview Type */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">
-            Interview Type
-          </label>
-
-          <select
-            value={interviewForm.interview_type}
-            onChange={(e) =>
-              setInterviewForm((current) => ({
-                ...current,
-                interview_type: e.target.value,
-                meeting_link:
-                  e.target.value === "online"
-                    ? current.meeting_link
-                    : "",
-              }))
-            }
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          >
-            <option value="online">Online</option>
-            <option value="in-person">In-person</option>
-          </select>
-        </div>
-
-        {/* Meeting Link */}
-        {interviewForm.interview_type === "online" && (
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">
-              Meeting Link
-            </label>
-
-            <input
-              type="url"
-              required
-              placeholder="https://meet.google.com/..."
-              value={interviewForm.meeting_link}
-              onChange={(e) =>
-                setInterviewForm((current) => ({
-                  ...current,
-                  meeting_link: e.target.value,
-                }))
-              }
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-            />
-          </div>
-        )}
-
-        {/* Notes */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">
-            Notes
-          </label>
-
-          <textarea
-            rows={3}
-            placeholder="Optional interview notes..."
-            value={interviewForm.notes}
-            onChange={(e) =>
-              setInterviewForm((current) => ({
-                ...current,
-                notes: e.target.value,
-              }))
-            }
-            className="w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-2 border-t pt-4">
-
-          <button
-            type="button"
-            onClick={() => setInterviewCandidate(null)}
-            disabled={schedulingInterview}
-            className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="submit"
-            disabled={schedulingInterview}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {schedulingInterview
-  ? "Saving..."
-  : interviewCandidate?.interview
-    ? "Reschedule Interview"
-    : "Schedule Interview"}
-          </button>
-
-        </div>
-
-      </form>
-    </div>
-  </div>
-)}
-
-{showCancelModal && cancelCandidate && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-    <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
-
-      <div className="border-b px-5 py-4">
-        <h2 className="text-base font-semibold text-slate-800">
-          Cancel Interview
-        </h2>
-
-        <p className="mt-1 text-xs text-slate-500">
-          Are you sure you want to cancel this interview?
-        </p>
-      </div>
-
-      <div className="p-5">
-
-        <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-          <div>
-            <span className="font-medium">
-              Candidate:
-            </span>{" "}
-            {cancelCandidate.name}
-          </div>
-
-          {cancelCandidate.interview?.scheduled_at && (
-            <div className="mt-1">
-              <span className="font-medium">
-                Scheduled:
-              </span>{" "}
-              {new Date(
-                cancelCandidate.interview.scheduled_at
-              ).toLocaleString()}
-            </div>
-          )}
-
-          <div className="mt-1">
-            <span className="font-medium">
-              Duration:
-            </span>{" "}
-            {cancelCandidate.interview?.duration || 30} minutes
-          </div>
-
-          <div className="mt-1">
-            <span className="font-medium">
-              Type:
-            </span>{" "}
-            {cancelCandidate.interview?.interview_type ===
-            "in-person"
-              ? "In-person"
-              : "Online"}
-          </div>
-        </div>
-
-        <div className="mt-5 flex justify-end gap-2">
-
-          <button
-            type="button"
-            disabled={schedulingInterview}
-            onClick={() => {
-              setShowCancelModal(false);
-              setCancelCandidate(null);
-            }}
-            className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-          >
-            Keep Interview
-          </button>
-
-          <button
-            type="button"
-            disabled={schedulingInterview}
-            onClick={() =>
-              handleCancelInterview(cancelCandidate)
-            }
-            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-          >
-            {schedulingInterview
-              ? "Cancelling..."
-              : "Cancel Interview"}
-          </button>
-
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-<Card title="Hiring Pipeline" className="w-full">
-  <div className="space-y-3">
-
-    {paginatedPipelineCandidates.map((c) => {
-        const interviewScheduled =
-          c.interview &&
-          c.interview.status !== "cancelled";
-
-        return (
-          <div
-            key={`pipeline-${c.id}`}
-            className="p-4 rounded-xl border border-slate-200 bg-white"
-          >
-
-            {/* Candidate Header */}
-            <div className="flex items-center justify-between gap-4">
-
-              <div className="flex items-center gap-3">
-
-                <div className="w-10 h-10 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold text-sm">
-                  {(c.name || "?")[0].toUpperCase()}
-                </div>
-
-                <div>
-                  <div className="text-sm font-semibold text-slate-800">
-                    {c.name || "Unknown Candidate"}
-                  </div>
-
-                  <div className="text-xs text-slate-500">
-                    {c.job_title || "Candidate"}
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-
-
-            {/* Pipeline */}
-            <div className="mt-5 overflow-x-auto">
-
-              <div className="min-w-[650px] flex items-center">
-
-                {/* Shortlisted */}
-                <div className="flex items-center flex-1">
-
-                  <div className="flex flex-col items-center min-w-[90px]">
-
-                    <div className="w-7 h-7 rounded-full bg-green-100 text-green-700 grid place-items-center text-xs font-bold">
-                      ✓
+                <div className="mt-4 grid grid-cols-2 gap-3">
+
+                  <div className="rounded-2xl bg-black/10 p-3">
+                    <div className="text-xl font-bold text-white">
+                      {candidates.length}
                     </div>
-
-                    <span className="mt-2 text-[11px] font-medium text-green-700">
-                      Shortlisted
-                    </span>
-
+                    <div className="text-[10px] uppercase tracking-wider text-orange-100/60">
+                      Talent Pool
+                    </div>
                   </div>
 
-                  <div className="h-px bg-green-300 flex-1" />
+                  <div className="rounded-2xl bg-black/10 p-3">
+                    <div className="text-xl font-bold text-white">
+                      {scheduledInterviewCount}
+                    </div>
+                    <div className="text-[10px] uppercase tracking-wider text-orange-100/60">
+                      Interviews
+                    </div>
+                  </div>
 
                 </div>
 
+              </div>
 
-                {/* Interview Scheduled */}
-                <div className="flex items-center flex-1">
+            </div>
 
-                  <div className="flex flex-col items-center min-w-[120px]">
+          </div>
+
+
+          {/* KPI STRIP */}
+
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+
+            {[
+              {
+                label: "Open Positions",
+                value:
+                  data?.jobOpenings ?? jobs.length,
+                detail: "Active listings",
+                icon: "â—ˆ",
+              },
+              {
+                label: "New Applicants",
+                value:
+                  data?.newApplicants ??
+                  submittedCount,
+                detail: "Awaiting review",
+                icon: "âœ¦",
+              },
+              {
+                label: "Top Matches",
+                value:
+                  data?.topMatches ??
+                  matchData[0].value,
+                detail: "80%+ compatibility",
+                icon: "â—†",
+              },
+              {
+                label: "Shortlisted",
+                value: shortlistedCount,
+                detail: "Moving forward",
+                icon: "âœ“",
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="group rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md shadow-[0_15px_35px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-1.5 hover:bg-white/[0.16] hover:shadow-[0_22px_45px_rgba(0,0,0,0.2)]"
+              >
+
+                <div className="flex items-start justify-between">
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.15em] font-semibold text-orange-100/60">
+                      {item.label}
+                    </p>
+
+                    <div className="mt-2 text-3xl font-black text-white">
+                      {item.value}
+                    </div>
+                  </div>
+
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-orange-200 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                    {item.icon}
+                  </div>
+
+                </div>
+
+                <p className="mt-2 text-[11px] text-orange-100/55">
+                  {item.detail}
+                </p>
+
+              </div>
+            ))}
+
+          </div>
+
+        </div>
+      </section>
+
+
+      {/* =====================================================
+          QUICK OVERVIEW
+      ===================================================== */}
+
+      <section className="mt-6 grid grid-cols-1 xl:grid-cols-12 gap-5">
+
+        {/* Hiring Pulse */}
+
+        <div className="xl:col-span-5 rounded-[26px] border border-orange-100 bg-white shadow-[0_15px_45px_rgba(90,40,20,0.10)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(90,40,20,0.15)]">
+
+          <div className="flex items-center justify-between border-b border-orange-100 px-6 py-5">
+
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-orange-500">
+                Candidate intelligence
+              </p>
+
+              <h2 className="mt-1 text-xl font-black text-slate-900">
+                Hiring Pulse
+              </h2>
+            </div>
+
+            <div className="rounded-xl bg-orange-50 px-3 py-2 text-xs font-bold text-orange-600">
+              {candidates.length} profiles
+            </div>
+
+          </div>
+
+
+          <div className="p-6">
+
+            <div className="h-[245px]">
+
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
+                <PieChart>
+
+                  <Pie
+                    data={matchData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={62}
+                    outerRadius={90}
+                    paddingAngle={5}
+                    dataKey="value"
+                    onClick={(entry) =>
+                      setSelectedMatchType(
+                        entry.name
+                      )
+                    }
+                  >
+                    {matchData.map(
+                      (entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            matchColors[index]
+                          }
+                          className="cursor-pointer outline-none transition-opacity"
+                        />
+                      )
+                    )}
+                  </Pie>
+
+                  <Tooltip />
+
+                  <Legend
+                    verticalAlign="bottom"
+                    iconType="circle"
+                  />
+
+                </PieChart>
+              </ResponsiveContainer>
+
+            </div>
+
+
+            <div className="mt-5 grid grid-cols-3 gap-2">
+
+              {matchData.map(
+                (item, index) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() =>
+                      setSelectedMatchType(
+                        item.name
+                      )
+                    }
+                    className="group rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 text-left transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:bg-orange-50 hover:shadow-md"
+                  >
 
                     <div
-                      className={`w-7 h-7 rounded-full grid place-items-center text-xs font-bold ${
-                        interviewScheduled
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-slate-100 text-slate-400"
-                      }`}
-                    >
-                      {interviewScheduled ? "✓" : "2"}
+                      className="h-2 w-2 rounded-full mb-2 transition-transform duration-300 group-hover:scale-125"
+                      style={{
+                        background:
+                          matchColors[index],
+                      }}
+                    />
+
+                    <div className="text-lg font-black text-slate-900">
+                      {item.value}
                     </div>
 
-                    <span
-                      className={`mt-2 text-[11px] font-medium ${
-                        interviewScheduled
-                          ? "text-blue-700"
-                          : "text-slate-400"
-                      }`}
-                    >
-                      Interview Scheduled
-                    </span>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      {item.name}
+                    </div>
 
+                  </button>
+                )
+              )}
+
+            </div>
+
+
+            {selectedMatchType && (
+              <div className="mt-5 rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 to-rose-50 p-4">
+
+                <div className="flex items-center justify-between">
+
+                  <div>
+                    <p className="text-xs font-bold text-orange-700">
+                      {selectedMatchType} Matches
+                    </p>
+
+                    <p className="text-[11px] text-slate-500">
+                      Candidates in this match group
+                    </p>
                   </div>
 
-                  <div
-                    className={`h-px flex-1 ${
-                      interviewScheduled
-                        ? "bg-blue-300"
-                        : "bg-slate-200"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedMatchType(null)
+                    }
+                    className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 transition-all hover:bg-white hover:text-slate-900 hover:shadow-sm"
+                  >
+                    Clear
+                  </button>
+
+                </div>
+
+
+                <div className="mt-3 space-y-2">
+
+                  {candidates
+                    .filter(
+                      (candidate) =>
+                        getMatchCategory(
+                          candidate.skill_match
+                        ) ===
+                        selectedMatchType
+                    )
+                    .slice(0, 5)
+                    .map((candidate) => (
+                      <button
+                        key={candidate.id}
+                        type="button"
+                        onClick={() =>
+                          handleViewProfile(
+                            candidate
+                          )
+                        }
+                        className="w-full flex items-center justify-between rounded-xl bg-white px-3 py-3 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                      >
+
+                        <div className="flex items-center gap-3 min-w-0">
+
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 text-xs font-black text-white">
+                            {getInitials(
+                              candidate.name
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="truncate text-xs font-bold text-slate-900">
+                              {candidate.name}
+                            </div>
+
+                            <div className="truncate text-[10px] text-slate-500">
+                              {candidate.domain_role ||
+                                "Candidate"}
+                            </div>
+                          </div>
+
+                        </div>
+
+                        <span className="ml-3 shrink-0 text-sm font-black text-orange-600">
+                          {Math.round(
+                            Number(
+                              candidate.skill_match ||
+                                0
+                            )
+                          )}
+                          %
+                        </span>
+
+                      </button>
+                    ))}
+
+                </div>
+
+              </div>
+            )}
+
+          </div>
+        </div>
+
+
+        {/* Recent Roles */}
+
+        <div className="xl:col-span-4 rounded-[26px] border border-orange-100 bg-white shadow-[0_15px_45px_rgba(90,40,20,0.10)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(90,40,20,0.15)]">
+
+          <div className="border-b border-orange-100 px-6 py-5">
+
+            <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-rose-500">
+              Recruitment activity
+            </p>
+
+            <h2 className="mt-1 text-xl font-black text-slate-900">
+              Recent Roles
+            </h2>
+
+          </div>
+
+          <div className="p-5">
+
+            {jobs.length ? (
+              <div className="space-y-3">
+
+                {jobs.slice(0, 5).map(
+                  (job, index) => (
+                    <div
+                      key={
+                        job.id ||
+                        `${job.title}-${index}`
+                      }
+                      className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:bg-orange-50 hover:shadow-[0_12px_30px_rgba(194,65,12,0.12)]"
+                    >
+
+                      <div className="absolute right-0 top-0 h-16 w-16 translate-x-6 -translate-y-6 rounded-full bg-orange-200/30 transition-transform duration-500 group-hover:scale-150" />
+
+                      <div className="relative flex items-center gap-3">
+
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f97316] to-[#fb7185] text-lg text-white shadow-md transition-all duration-300 group-hover:scale-105 group-hover:rotate-2">
+                          â—ˆ
+                        </div>
+
+                        <div className="min-w-0">
+
+                          <div className="truncate text-sm font-bold text-slate-900">
+                            {job.title ||
+                              job.job_title ||
+                              "Untitled Position"}
+                          </div>
+
+                          <div className="mt-1 text-[10px] text-slate-500">
+                            Posted{" "}
+                            {formatDate(
+                              job.created_at ||
+                                job.createdAt
+                            )}
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+                  )
+                )}
+
+              </div>
+            ) : (
+              <div className="flex min-h-[250px] items-center justify-center rounded-2xl border border-dashed border-orange-200 bg-orange-50/40 text-center">
+
+                <div>
+                  <div className="text-3xl">
+                    â—ˆ
+                  </div>
+
+                  <p className="mt-2 text-sm font-bold text-slate-700">
+                    No listings yet
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    Your active roles will appear here.
+                  </p>
+                </div>
+
+              </div>
+            )}
+
+          </div>
+        </div>
+
+
+        {/* Skills Intelligence */}
+
+        <div className="xl:col-span-3 rounded-[26px] border border-slate-900 bg-[#19120f] shadow-[0_18px_50px_rgba(30,15,10,0.22)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_26px_65px_rgba(30,15,10,0.28)]">
+
+          <div className="px-5 py-5">
+
+            <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-orange-300">
+              Market signal
+            </p>
+
+            <h2 className="mt-1 text-xl font-black text-white">
+              Skills Intelligence
+            </h2>
+
+            <p className="mt-1 text-[11px] text-orange-100/50">
+              Candidate skill availability
+            </p>
+
+          </div>
+
+          <div className="h-[330px] px-2 pb-4">
+
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
+
+              <BarChart
+                data={data?.skillsInsights || []}
+                margin={{
+                  top: 10,
+                  right: 10,
+                  left: -20,
+                  bottom: 45,
+                }}
+              >
+
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.08)"
+                />
+
+                <XAxis
+                  dataKey="skill"
+                  tick={{
+                    fill: "#fed7aa",
+                    fontSize: 9,
+                  }}
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                />
+
+                <YAxis
+                  tick={{
+                    fill: "#fed7aa",
+                    fontSize: 9,
+                  }}
+                />
+
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "14px",
+                    border: "1px solid #fed7aa",
+                    background: "#fffaf5",
+                    color: "#1f2937",
+                  }}
+                  formatter={(value, name) => [
+                    value,
+                    name,
+                  ]}
+                />
+
+                <Legend
+                  wrapperStyle={{
+                    color: "#fed7aa",
+                    fontSize: "10px",
+                  }}
+                />
+
+                <Bar
+                  dataKey="value"
+                  name="Skill Level"
+                  fill="#fb7185"
+                  radius={[
+                    7,
+                    7,
+                    0,
+                    0,
+                  ]}
+                />
+
+              </BarChart>
+
+            </ResponsiveContainer>
+
+          </div>
+        </div>
+
+      </section>
+
+
+      {/* =====================================================
+          TALENT SHORTLIST
+      ===================================================== */}
+
+      <section className="mt-6 overflow-hidden rounded-[28px] border border-orange-100 bg-white shadow-[0_18px_55px_rgba(90,40,20,0.10)]">
+
+        {/* Section Header */}
+
+        <div className="relative overflow-hidden border-b border-orange-100 bg-gradient-to-r from-[#fff7ed] via-[#fff1f2] to-[#fffbeb] px-5 py-6 md:px-7">
+
+          <div className="absolute right-0 top-0 h-32 w-32 translate-x-10 -translate-y-10 rounded-full bg-orange-200/30 blur-2xl" />
+
+          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+
+            <div>
+
+              <div className="flex items-center gap-2">
+
+                <span className="h-2.5 w-2.5 rounded-full bg-orange-500 shadow-[0_0_0_5px_rgba(249,115,22,0.12)]" />
+
+                <span className="text-[10px] uppercase tracking-[0.2em] font-black text-orange-600">
+                  Talent discovery
+                </span>
+
+              </div>
+
+              <h2 className="mt-2 text-2xl md:text-3xl font-black tracking-tight text-slate-900">
+                Recommended Candidates
+              </h2>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Review compatibility, experience,
+                applications and next actions.
+              </p>
+
+            </div>
+
+
+            {/* Status filters */}
+
+            <div className="flex flex-wrap gap-2">
+
+              {[
+                {
+                  key: "all",
+                  label: "All",
+                  count:
+                    candidates.length,
+                },
+                {
+                  key: "submitted",
+                  label: "Submitted",
+                  count:
+                    submittedCount,
+                },
+                {
+                  key: "shortlisted",
+                  label: "Shortlisted",
+                  count:
+                    shortlistedCount,
+                },
+                {
+                  key: "rejected",
+                  label: "Rejected",
+                  count:
+                    rejectedCount,
+                },
+              ].map((filter) => (
+                <button
+                  key={filter.key}
+                  type="button"
+                  onClick={() =>
+                    setApplicationStatusFilter(
+                      filter.key
+                    )
+                  }
+                  className={`rounded-xl border px-3.5 py-2 text-xs font-bold transition-all duration-300 ${
+                    applicationStatusFilter ===
+                    filter.key
+                      ? "border-orange-500 bg-orange-500 text-white shadow-[0_8px_20px_rgba(249,115,22,0.25)]"
+                      : "border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 hover:shadow-md"
+                  }`}
+                >
+                  {filter.label}
+                  <span
+                    className={`ml-1.5 ${
+                      applicationStatusFilter ===
+                      filter.key
+                        ? "text-orange-100"
+                        : "text-slate-400"
                     }`}
+                  >
+                    {filter.count}
+                  </span>
+                </button>
+              ))}
+
+            </div>
+
+          </div>
+
+
+          {/* Filters */}
+
+          <div className="relative mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+
+            <div className="relative">
+
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                â†•
+              </span>
+
+              <select
+                value={candidateSort}
+                onChange={(event) =>
+                  setCandidateSort(
+                    event.target.value
+                  )
+                }
+                className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-4 text-xs font-semibold text-slate-700 outline-none transition-all duration-300 hover:border-orange-300 hover:shadow-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+              >
+                <option value="match">
+                  Best Match
+                </option>
+
+                <option value="name">
+                  Candidate Name
+                </option>
+
+                <option value="status">
+                  Application Status
+                </option>
+              </select>
+
+            </div>
+
+
+            <div className="relative">
+
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                â—‡
+              </span>
+
+              <select
+                value={domainRoleFilter}
+                onChange={(event) =>
+                  setDomainRoleFilter(
+                    event.target.value
+                  )
+                }
+                className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-4 text-xs font-semibold text-slate-700 outline-none transition-all duration-300 hover:border-orange-300 hover:shadow-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+              >
+                <option value="all">
+                  All Roles
+                </option>
+
+                {sortedDomainRoles.map(
+                  (role) => (
+                    <option
+                      key={
+                        role.domain_role_id
+                      }
+                      value={
+                        role.domain_role_id
+                      }
+                    >
+                      {role.domain_name}
+                    </option>
+                  )
+                )}
+              </select>
+
+            </div>
+
+
+            <div className="flex gap-2">
+
+              {[
+                ["all", "All"],
+                ["80+", "80%+"],
+                ["60+", "60%+"],
+                ["below60", "<60%"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() =>
+                    setMatchScoreFilter(
+                      value
+                    )
+                  }
+                  className={`flex-1 rounded-xl border px-2 py-2 text-[11px] font-bold transition-all duration-300 ${
+                    matchScoreFilter === value
+                      ? "border-rose-500 bg-rose-500 text-white shadow-[0_7px_18px_rgba(244,63,94,0.22)]"
+                      : "border-slate-200 bg-white text-slate-500 hover:-translate-y-0.5 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {/* Bulk Action Bar */}
+
+        <div className="flex flex-col gap-3 border-b border-slate-100 bg-[#fffdfb] px-5 py-4 md:flex-row md:items-center md:justify-between md:px-7">
+
+          <label className="flex cursor-pointer items-center gap-3 text-xs font-semibold text-slate-600">
+
+            <input
+              type="checkbox"
+              checked={
+                allCurrentPageSelected
+              }
+              onChange={
+                toggleSelectAllCurrentPage
+              }
+              className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+            />
+
+            Select candidates on this page
+
+          </label>
+
+
+          <div className="flex flex-wrap gap-2">
+
+            <button
+              type="button"
+              disabled={
+                !selectedCandidateIds.length
+              }
+              onClick={() =>
+                handleBulkApplicationStatus(
+                  "shortlisted"
+                )
+              }
+              className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              âœ“ Shortlist Selected
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                !selectedCandidateIds.length
+              }
+              onClick={() =>
+                handleBulkApplicationStatus(
+                  "rejected"
+                )
+              }
+              className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-rose-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Ã— Reject Selected
+            </button>
+
+          </div>
+
+        </div>
+
+
+        {/* Candidate List */}
+
+        <div className="p-5 md:p-7">
+
+          {candidateLoading && (
+            <div className="space-y-4">
+
+              {[1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="animate-pulse rounded-3xl border border-slate-100 bg-slate-50 p-5"
+                >
+                  <div className="h-5 w-48 rounded bg-slate-200" />
+                  <div className="mt-3 h-3 w-72 rounded bg-slate-200" />
+                  <div className="mt-5 h-2 w-full rounded bg-slate-200" />
+                </div>
+              ))}
+
+            </div>
+          )}
+
+
+          {!candidateLoading &&
+            candidateError && (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-700">
+                {candidateError}
+              </div>
+            )}
+
+
+          {!candidateLoading &&
+            !candidateError &&
+            !filteredCandidates.length && (
+              <div className="flex min-h-[280px] items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-gradient-to-br from-orange-50/50 to-rose-50/50 text-center">
+
+                <div>
+
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-2xl shadow-lg">
+                    â—‡
+                  </div>
+
+                  <h3 className="mt-4 text-lg font-black text-slate-800">
+                    No candidates found
+                  </h3>
+
+                  <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">
+                    Try changing the filters or
+                    wait for new applications to
+                    arrive.
+                  </p>
+
+                </div>
+
+              </div>
+            )}
+
+
+          {!candidateLoading &&
+            !candidateError &&
+            paginatedCandidates.length > 0 && (
+              <div className="space-y-4">
+
+                {paginatedCandidates.map(
+                  (candidate) => {
+                    const score = Math.round(
+                      Number(
+                        candidate.skill_match ||
+                          0
+                      )
+                    );
+
+                    const matchCategory =
+                      getMatchCategory(score);
+
+                    const targetId =
+                      candidate.application_id ||
+                      candidate.id;
+
+                    return (
+                      <div
+                        key={`${candidate.id}-${candidate.job_id}`}
+                        className="group relative overflow-hidden rounded-[25px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1.5 hover:border-orange-200 hover:shadow-[0_22px_50px_rgba(194,65,12,0.13)]"
+                      >
+
+                        {/* Accent edge */}
+
+                        <div
+                          className={`absolute left-0 top-0 h-full w-1.5 ${
+                            score >= 80
+                              ? "bg-gradient-to-b from-orange-400 to-rose-500"
+                              : score >= 60
+                              ? "bg-gradient-to-b from-amber-400 to-orange-500"
+                              : "bg-gradient-to-b from-slate-300 to-slate-400"
+                          }`}
+                        />
+
+
+                        <div className="p-5 md:p-6">
+
+                          <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+
+                            {/* Checkbox */}
+
+                            <div className="flex items-start">
+
+                              <input
+                                type="checkbox"
+                                checked={selectedCandidateIds.includes(
+                                  candidate.id
+                                )}
+                                onChange={() =>
+                                  toggleCandidateSelection(
+                                    candidate.id
+                                  )
+                                }
+                                className="mt-2 h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+                              />
+
+                            </div>
+
+
+                            {/* Avatar */}
+
+                            <div className="shrink-0">
+
+                              <div className="relative">
+
+                                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ea580c] via-[#f97316] to-[#fb7185] text-lg font-black text-white shadow-[0_10px_25px_rgba(234,88,12,0.25)] transition-all duration-300 group-hover:scale-105 group-hover:rotate-1">
+                                  {getInitials(
+                                    candidate.name
+                                  )}
+                                </div>
+
+                                {candidate.has_video && (
+                                  <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-[9px] text-white shadow-md">
+                                    â–¶
+                                  </span>
+                                )}
+
+                              </div>
+
+                            </div>
+
+
+                            {/* Candidate info */}
+
+                            <div className="min-w-0 flex-1">
+
+                              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+
+                                <div className="min-w-0">
+
+                                  <div className="flex flex-wrap items-center gap-2">
+
+                                    <h3 className="truncate text-lg font-black text-slate-900 transition-colors duration-300 group-hover:text-orange-700">
+                                      {candidate.name ||
+                                        "Candidate"}
+                                    </h3>
+
+                                    <span
+                                      className={`rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${getStatusClasses(
+                                        candidate.application_status
+                                      )}`}
+                                    >
+                                      {getStatusLabel(
+                                        candidate.application_status
+                                      )}
+                                    </span>
+
+                                  </div>
+
+                                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                                    {candidate.domain_role ||
+                                      candidate.role_target ||
+                                      "Professional Candidate"}
+                                  </p>
+
+                                  <p className="mt-1 text-[11px] text-slate-400">
+                                    Applied for{" "}
+                                    <span className="font-semibold text-slate-500">
+                                      {candidate.job_title}
+                                    </span>
+                                  </p>
+
+                                </div>
+
+
+                                {/* Match score */}
+
+                                <div className="shrink-0">
+
+                                  <div className="rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 to-rose-50 px-4 py-3 text-center shadow-sm transition-all duration-300 group-hover:shadow-md">
+
+                                    <div className="text-2xl font-black text-orange-600">
+                                      {score}%
+                                    </div>
+
+                                    <div className="text-[9px] font-black uppercase tracking-wider text-slate-500">
+                                      {matchCategory} Match
+                                    </div>
+
+                                  </div>
+
+                                </div>
+
+                              </div>
+
+
+                              {/* Score bar */}
+
+                              <div className="mt-5">
+
+                                <div className="mb-2 flex items-center justify-between">
+
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    Compatibility
+                                  </span>
+
+                                  <span className="text-[10px] font-black text-slate-600">
+                                    {score}/100
+                                  </span>
+
+                                </div>
+
+                                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+
+                                  <div
+                                    className="h-full rounded-full bg-gradient-to-r from-orange-500 via-rose-500 to-amber-400 transition-all duration-700 group-hover:brightness-110"
+                                    style={{
+                                      width: `${Math.min(
+                                        score,
+                                        100
+                                      )}%`,
+                                    }}
+                                  />
+
+                                </div>
+
+                              </div>
+
+
+                              {/* Skills */}
+
+                              <div className="mt-5 grid grid-cols-1 gap-2 md:grid-cols-3">
+
+                                <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm">
+
+                                  <div className="text-[9px] font-black uppercase tracking-wider text-emerald-600">
+                                    Matched
+                                  </div>
+
+                                  <div className="mt-1 text-[11px] leading-5 text-slate-600">
+                                    {candidate.matched_skills?.length
+                                      ? candidate.matched_skills.join(
+                                          ", "
+                                        )
+                                      : "No direct matches listed"}
+                                  </div>
+
+                                </div>
+
+
+                                <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm">
+
+                                  <div className="text-[9px] font-black uppercase tracking-wider text-orange-600">
+                                    Developing
+                                  </div>
+
+                                  <div className="mt-1 text-[11px] leading-5 text-slate-600">
+                                    {candidate.partial_skills
+                                      ?.length
+                                      ? candidate.partial_skills
+                                          .map(
+                                            (skill) =>
+                                              `${skill.skill} (${skill.student_level}/${skill.required_level})`
+                                          )
+                                          .join(
+                                            ", "
+                                          )
+                                      : "No developing skills listed"}
+                                  </div>
+
+                                </div>
+
+
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm">
+
+                                  <div className="text-[9px] font-black uppercase tracking-wider text-slate-500">
+                                    Missing
+                                  </div>
+
+                                  <div className="mt-1 text-[11px] leading-5 text-slate-600">
+                                    {candidate.missing_skills
+                                      ?.length
+                                      ? candidate.missing_skills.join(
+                                          ", "
+                                        )
+                                      : "No major gaps listed"}
+                                  </div>
+
+                                </div>
+
+                              </div>
+
+
+                              {/* Actions */}
+
+                              <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4">
+
+                                <div className="flex flex-wrap items-center gap-2">
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setExpandedCandidateId(
+                                        expandedCandidateId ===
+                                          candidate.id
+                                          ? null
+                                          : candidate.id
+                                      )
+                                    }
+                                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-bold text-slate-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 hover:shadow-md"
+                                  >
+                                    {expandedCandidateId ===
+                                    candidate.id
+                                      ? "Hide Match Details â†‘"
+                                      : "Why Recommended? â†“"}
+                                  </button>
+
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleViewProfile(
+                                        candidate
+                                      )
+                                    }
+                                    className="rounded-xl bg-slate-900 px-3.5 py-2 text-[11px] font-bold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-[0_10px_25px_rgba(234,88,12,0.25)]"
+                                  >
+                                    Review Candidate
+                                  </button>
+
+
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      !candidate.application_id
+                                    }
+                                    onClick={() => {
+                                      setEmailCandidate(
+                                        candidate
+                                      );
+
+                                      setEmailForm({
+                                        subject: "",
+                                        message: "",
+                                      });
+                                    }}
+                                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-bold text-slate-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    âœ‰ Send Email
+                                  </button>
+
+
+                                  {candidate.application_id &&
+                                    candidate.application_data?.video && (
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          loadingVideo
+                                        }
+                                        onClick={() =>
+                                          handleViewApplicationVideo(
+                                            candidate
+                                          )
+                                        }
+                                        className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-bold text-slate-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 hover:shadow-md disabled:opacity-50"
+                                      >
+                                        ðŸŽ¥ View Video
+                                      </button>
+                                    )}
+
+                                </div>
+
+
+                                <div className="flex flex-wrap gap-2">
+
+                                  {candidate.application_status !==
+                                    "shortlisted" && (
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        updatingApplicationId ===
+                                        targetId
+                                      }
+                                      onClick={() =>
+                                        handleApplicationStatus(
+                                          candidate,
+                                          "shortlisted"
+                                        )
+                                      }
+                                      className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[11px] font-bold text-emerald-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md disabled:opacity-50"
+                                    >
+                                      {updatingApplicationId ===
+                                      targetId
+                                        ? "Updating..."
+                                        : "âœ“ Shortlist"}
+                                    </button>
+                                  )}
+
+
+                                  {candidate.application_status !==
+                                    "rejected" && (
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        updatingApplicationId ===
+                                        targetId
+                                      }
+                                      onClick={() => {
+                                        showDialog({
+                                          type: "confirm",
+                                          title:
+                                            "Reject Candidate?",
+                                          message: `Are you sure you want to reject ${candidate.name}?`,
+                                          confirmText:
+                                            "Reject",
+                                          cancelText:
+                                            "Cancel",
+                                          showCancel:
+                                            true,
+                                          destructive:
+                                            true,
+                                          onConfirm:
+                                            () => {
+                                              closeDialog();
+
+                                              handleApplicationStatus(
+                                                candidate,
+                                                "rejected"
+                                              );
+                                            },
+                                        });
+                                      }}
+                                      className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-[11px] font-bold text-rose-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-rose-100 hover:shadow-md disabled:opacity-50"
+                                    >
+                                      {updatingApplicationId ===
+                                      targetId
+                                        ? "Updating..."
+                                        : "Ã— Reject"}
+                                    </button>
+                                  )}
+
+
+                                  {candidate.application_status !==
+                                    "submitted" && (
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        updatingApplicationId ===
+                                        targetId
+                                      }
+                                      onClick={() =>
+                                        handleApplicationStatus(
+                                          candidate,
+                                          "submitted"
+                                        )
+                                      }
+                                      className="rounded-xl border border-orange-200 bg-orange-50 px-3.5 py-2 text-[11px] font-bold text-orange-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-orange-100 hover:shadow-md disabled:opacity-50"
+                                    >
+                                      Move to Submitted
+                                    </button>
+                                  )}
+
+                                </div>
+
+
+                                {/* Application status message */}
+
+                                <div className="text-[11px] text-slate-500">
+
+                                  {candidate.interview?.status ===
+                                    "cancelled" && (
+                                    <span className="font-semibold text-rose-600">
+                                      Interview has been cancelled.
+                                    </span>
+                                  )}
+
+                                  {candidate.application_status ===
+                                    "shortlisted" && (
+                                    <span className="font-semibold text-emerald-600">
+                                      Candidate is shortlisted for further review.
+                                    </span>
+                                  )}
+
+                                  {candidate.application_status ===
+                                    "rejected" && (
+                                    <span className="font-semibold text-rose-600">
+                                      Candidate was rejected for this application.
+                                    </span>
+                                  )}
+
+                                  {candidate.application_status ===
+                                    "selected" && (
+                                    <span className="font-semibold text-amber-600">
+                                      âœ“ Candidate has been selected for this position.
+                                    </span>
+                                  )}
+
+                                  {(!candidate.application_status ||
+                                    candidate.application_status ===
+                                      "submitted") && (
+                                    <span className="font-semibold text-orange-600">
+                                      Application is awaiting employer review.
+                                    </span>
+                                  )}
+
+                                </div>
+
+                              </div>
+
+
+                              {/* Expanded Match Details */}
+
+                              {expandedCandidateId ===
+                                candidate.id && (
+                                <div className="mt-5 overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-[#fff7ed] via-[#fff1f2] to-[#fffbeb] p-5">
+
+                                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+                                    <div>
+                                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">
+                                        Match explanation
+                                      </p>
+
+                                      <h4 className="mt-1 text-lg font-black text-slate-900">
+                                        Why this candidate?
+                                      </h4>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white px-5 py-3 text-center shadow-md">
+                                      <div className="text-2xl font-black text-orange-600">
+                                        {score}%
+                                      </div>
+                                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                        Overall Match
+                                      </div>
+                                    </div>
+
+                                  </div>
+
+
+                                  <div className="mt-5 h-3 overflow-hidden rounded-full bg-white shadow-inner">
+
+                                    <div
+                                      className="h-full rounded-full bg-gradient-to-r from-orange-500 via-rose-500 to-amber-400 transition-all duration-700"
+                                      style={{
+                                        width: `${Math.min(
+                                          score,
+                                          100
+                                        )}%`,
+                                      }}
+                                    />
+
+                                  </div>
+
+
+                                  <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+                                    <div className="rounded-2xl bg-white p-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md">
+                                      <div className="text-2xl font-black text-emerald-600">
+                                        {candidate
+                                          .matched_skills
+                                          ?.length || 0}
+                                      </div>
+                                      <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        Matched Skills
+                                      </div>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white p-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md">
+                                      <div className="text-2xl font-black text-orange-500">
+                                        {candidate
+                                          .partial_skills
+                                          ?.length || 0}
+                                      </div>
+                                      <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        Developing
+                                      </div>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white p-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md">
+                                      <div className="text-2xl font-black text-slate-500">
+                                        {candidate
+                                          .missing_skills
+                                          ?.length || 0}
+                                      </div>
+                                      <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        Missing
+                                      </div>
+                                    </div>
+
+                                  </div>
+
+
+                                  <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+
+                                    <div>
+                                      <div className="text-[10px] font-black uppercase tracking-wider text-emerald-600">
+                                        Matched Skills
+                                      </div>
+
+                                      <p className="mt-2 text-xs leading-6 text-slate-600">
+                                        {candidate
+                                          .matched_skills
+                                          ?.length
+                                          ? candidate.matched_skills.join(
+                                              ", "
+                                            )
+                                          : "None listed"}
+                                      </p>
+                                    </div>
+
+
+                                    <div>
+                                      <div className="text-[10px] font-black uppercase tracking-wider text-orange-600">
+                                        Developing Skills
+                                      </div>
+
+                                      <p className="mt-2 text-xs leading-6 text-slate-600">
+                                        {candidate
+                                          .partial_skills
+                                          ?.length
+                                          ? candidate.partial_skills
+                                              .map(
+                                                (skill) =>
+                                                  `${skill.skill} (${skill.student_level}/${skill.required_level})`
+                                              )
+                                              .join(
+                                                ", "
+                                              )
+                                          : "None listed"}
+                                      </p>
+                                    </div>
+
+
+                                    <div>
+                                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                        Missing Skills
+                                      </div>
+
+                                      <p className="mt-2 text-xs leading-6 text-slate-600">
+                                        {candidate
+                                          .missing_skills
+                                          ?.length
+                                          ? candidate.missing_skills.join(
+                                              ", "
+                                            )
+                                          : "None listed"}
+                                      </p>
+                                    </div>
+
+                                  </div>
+
+
+                                  <div className="mt-5 rounded-2xl border border-white bg-white/80 p-4 shadow-sm">
+
+                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                      Recommendation
+                                    </div>
+
+                                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+
+                                      {score >= 80 &&
+                                        "This candidate has a strong skill alignment with the position and may be suitable for the next stage of review."}
+
+                                      {score >= 60 &&
+                                        score < 80 &&
+                                        "This candidate shows good alignment with the position, with some skills that may require additional evaluation."}
+
+                                      {score < 60 &&
+                                        "This candidate has partial alignment with the position. Review the skill gaps and overall profile before proceeding."}
+
+                                    </p>
+
+                                  </div>
+
+                                </div>
+                              )}
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+                    );
+                  }
+                )}
+
+
+                {/* Candidate Pagination */}
+
+                {totalPages > 1 && (
+                  <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+
+                    <span className="text-xs font-semibold text-slate-500">
+                      Page {currentPage} of{" "}
+                      {totalPages}
+                    </span>
+
+                    <div className="flex gap-2">
+
+                      <button
+                        type="button"
+                        disabled={
+                          currentPage === 1
+                        }
+                        onClick={() =>
+                          setCurrentPage(
+                            (page) =>
+                              page - 1
+                          )
+                        }
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        â† Previous
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={
+                          currentPage ===
+                          totalPages
+                        }
+                        onClick={() =>
+                          setCurrentPage(
+                            (page) =>
+                              page + 1
+                          )
+                        }
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Next â†’
+                      </button>
+
+                    </div>
+
+                  </div>
+                )}
+
+              </div>
+            )}
+
+        </div>
+
+      </section>
+
+
+      {/* =====================================================
+          HIRING PIPELINE
+      ===================================================== */}
+
+      <section className="mt-6 overflow-hidden rounded-[28px] bg-[#19120f] shadow-[0_20px_60px_rgba(30,15,10,0.22)]">
+
+        <div className="relative overflow-hidden px-6 py-7 md:px-8">
+
+          <div className="absolute right-0 top-0 h-48 w-48 translate-x-16 -translate-y-20 rounded-full bg-orange-500/15 blur-3xl" />
+
+          <div className="absolute left-1/3 bottom-0 h-32 w-32 rounded-full bg-rose-500/10 blur-3xl" />
+
+          <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+
+            <div>
+
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-300">
+                Recruitment flow
+              </p>
+
+              <h2 className="mt-1 text-2xl font-black text-white">
+                Hiring Pipeline
+              </h2>
+
+              <p className="mt-1 max-w-xl text-xs leading-5 text-orange-100/50">
+                Track shortlisted candidates and
+                interviews from review through the next
+                stage.
+              </p>
+
+            </div>
+
+
+            <div className="flex gap-2">
+
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-center">
+                <div className="text-lg font-black text-white">
+                  {shortlistedCount}
+                </div>
+
+                <div className="text-[9px] uppercase tracking-wider text-orange-100/45">
+                  Shortlisted
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-center">
+                <div className="text-lg font-black text-white">
+                  {scheduledInterviewCount}
+                </div>
+
+                <div className="text-[9px] uppercase tracking-wider text-orange-100/45">
+                  Interviews
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div className="relative mt-7">
+
+            {paginatedPipelineCandidates.length ? (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+                {paginatedPipelineCandidates.map(
+                  (candidate) => {
+                    const interviewScheduled =
+                      candidate.interview &&
+                      candidate.interview.status !==
+                        "cancelled";
+
+                    return (
+                      <div
+                        key={`pipeline-${candidate.id}`}
+                        className="group rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-orange-400/30 hover:bg-white/[0.08] hover:shadow-[0_20px_45px_rgba(0,0,0,0.2)]"
+                      >
+
+                        <div className="flex items-center justify-between gap-3">
+
+                          <div className="flex min-w-0 items-center gap-3">
+
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-rose-500 text-xs font-black text-white shadow-lg transition-transform duration-300 group-hover:scale-105">
+                              {getInitials(
+                                candidate.name
+                              )}
+                            </div>
+
+                            <div className="min-w-0">
+
+                              <div className="truncate text-sm font-black text-white">
+                                {candidate.name}
+                              </div>
+
+                              <div className="truncate text-[10px] text-orange-100/45">
+                                {candidate.job_title}
+                              </div>
+
+                            </div>
+
+                          </div>
+
+
+                          <div className="shrink-0 rounded-xl bg-orange-400/10 px-3 py-2 text-center">
+                            <div className="text-lg font-black text-orange-300">
+                              {Math.round(
+                                Number(
+                                  candidate.skill_match ||
+                                    0
+                                )
+                              )}
+                              %
+                            </div>
+
+                            <div className="text-[8px] uppercase tracking-wider text-orange-100/40">
+                              Match
+                            </div>
+                          </div>
+
+                        </div>
+
+
+                        {/* Pipeline steps */}
+
+                        <div className="mt-6 grid grid-cols-3 gap-2">
+
+                          {[
+                            {
+                              label:
+                                "Shortlisted",
+                              active: true,
+                            },
+                            {
+                              label:
+                                "Interview",
+                              active:
+                                Boolean(
+                                  interviewScheduled
+                                ),
+                            },
+                            {
+                              label:
+                                "Completed",
+                              active: false,
+                            },
+                          ].map(
+                            (step, index) => (
+                              <div
+                                key={
+                                  step.label
+                                }
+                                className="relative"
+                              >
+
+                                {index < 2 && (
+                                  <div className="absolute left-[calc(50%+14px)] right-[-8px] top-3.5 h-px bg-white/10" />
+                                )}
+
+                                <div className="relative text-center">
+
+                                  <div
+                                    className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full border text-[10px] font-black transition-all duration-300 ${
+                                      step.active
+                                        ? "border-orange-300 bg-orange-400 text-white shadow-[0_0_0_5px_rgba(251,146,60,0.08)]"
+                                        : "border-white/10 bg-white/5 text-orange-100/25"
+                                    }`}
+                                  >
+                                    {step.active
+                                      ? "âœ“"
+                                      : index + 1}
+                                  </div>
+
+                                  <div
+                                    className={`mt-2 text-[9px] font-bold ${
+                                      step.active
+                                        ? "text-orange-200"
+                                        : "text-orange-100/25"
+                                    }`}
+                                  >
+                                    {step.label}
+                                  </div>
+
+                                </div>
+
+                              </div>
+                            )
+                          )}
+
+                        </div>
+
+
+                        {/* Current stage */}
+
+                        <div className="mt-5 rounded-2xl border border-white/10 bg-black/10 p-4">
+
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
+                            <div>
+
+                              <div className="text-[9px] font-black uppercase tracking-[0.15em] text-orange-100/35">
+                                Current Stage
+                              </div>
+
+                              <div className="mt-1 text-sm font-bold text-white">
+                                {interviewScheduled
+                                  ? "Interview Scheduled"
+                                  : "Shortlisted"}
+                              </div>
+
+                            </div>
+
+                            {interviewScheduled && (
+                              <div className="text-[10px] font-semibold text-orange-200/70">
+                                {formatDateTime(
+                                  candidate
+                                    .interview
+                                    ?.scheduled_at
+                                )}
+                              </div>
+                            )}
+
+                          </div>
+
+                        </div>
+
+
+                        {/* Pipeline actions */}
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleViewProfile(
+                                candidate
+                              )
+                            }
+                            className="rounded-xl bg-white px-3 py-2 text-[10px] font-black text-slate-900 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-orange-50 hover:text-orange-700 hover:shadow-md"
+                          >
+                            View Profile
+                          </button>
+
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openInterviewForm(
+                                candidate
+                              )
+                            }
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold text-orange-100 transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-300/30 hover:bg-orange-400/10 hover:text-orange-200"
+                          >
+                            {interviewScheduled
+                              ? "Edit Interview"
+                              : "Schedule Interview"}
+                          </button>
+
+
+                          {interviewScheduled && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCancelCandidate(
+                                  candidate
+                                );
+                                setShowCancelModal(
+                                  true
+                                );
+                              }}
+                              className="rounded-xl border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-[10px] font-bold text-rose-300 transition-all duration-300 hover:-translate-y-0.5 hover:border-rose-400/40 hover:bg-rose-400/10"
+                            >
+                              Cancel Interview
+                            </button>
+                          )}
+
+
+                          <button
+                            type="button"
+                            disabled={
+                              !candidate.application_id
+                            }
+                            onClick={() => {
+                              setEmailCandidate(
+                                candidate
+                              );
+
+                              setEmailForm({
+                                subject: "",
+                                message: "",
+                              });
+                            }}
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold text-orange-100/70 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white disabled:opacity-40"
+                          >
+                            Send Email
+                          </button>
+
+                        </div>
+
+                      </div>
+                    );
+                  }
+                )}
+
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-10 text-center">
+
+                <div className="text-3xl text-orange-300/50">
+                  â—‡
+                </div>
+
+                <p className="mt-3 text-sm font-bold text-white">
+                  Pipeline is waiting
+                </p>
+
+                <p className="mt-1 text-xs text-orange-100/40">
+                  Shortlisted candidates and scheduled
+                  interviews will appear here.
+                </p>
+
+              </div>
+            )}
+
+          </div>
+
+
+          {pipelineTotalPages > 1 && (
+            <div className="relative mt-6 flex items-center justify-between border-t border-white/10 pt-5">
+
+              <span className="text-xs font-semibold text-orange-100/40">
+                Page {pipelinePage} of{" "}
+                {pipelineTotalPages}
+              </span>
+
+              <div className="flex gap-2">
+
+                <button
+                  type="button"
+                  disabled={
+                    pipelinePage === 1
+                  }
+                  onClick={() =>
+                    setPipelinePage(
+                      (page) => page - 1
+                    )
+                  }
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-orange-100/70 transition-all hover:-translate-y-0.5 hover:bg-white/10 disabled:opacity-30"
+                >
+                  â† Previous
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    pipelinePage ===
+                    pipelineTotalPages
+                  }
+                  onClick={() =>
+                    setPipelinePage(
+                      (page) => page + 1
+                    )
+                  }
+                  className="rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-orange-400 hover:shadow-orange-500/20 disabled:opacity-30"
+                >
+                  Next â†’
+                </button>
+
+              </div>
+
+            </div>
+          )}
+
+        </div>
+
+      </section>
+
+
+      {/* =====================================================
+          INTERVIEW MODAL
+      ===================================================== */}
+
+      {interviewCandidate && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+
+          <div className="w-full max-w-xl overflow-hidden rounded-[28px] bg-white shadow-[0_30px_100px_rgba(0,0,0,0.35)]">
+
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#24130f] via-[#9a3412] to-[#be123c] px-6 py-6">
+
+              <div className="absolute right-0 top-0 h-32 w-32 translate-x-10 -translate-y-10 rounded-full bg-orange-300/20 blur-2xl" />
+
+              <div className="relative flex items-start justify-between gap-4">
+
+                <div>
+
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange-200/70">
+                    Interview management
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-black text-white">
+                    {interviewCandidate.interview &&
+                    interviewCandidate.interview.status !==
+                      "cancelled"
+                      ? "Edit Interview"
+                      : "Schedule Interview"}
+                  </h2>
+
+                  <p className="mt-1 text-xs text-orange-100/70">
+                    {interviewCandidate.name}
+                  </p>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setInterviewCandidate(null)
+                  }
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white transition-all hover:bg-white/20 hover:rotate-90"
+                >
+                  Ã—
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <form
+              onSubmit={
+                handleScheduleInterview
+              }
+              className="space-y-5 p-6"
+            >
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+                <div>
+
+                  <label className="mb-2 block text-xs font-bold text-slate-600">
+                    Scheduled Date & Time
+                  </label>
+
+                  <input
+                    type="datetime-local"
+                    required
+                    min={new Date()
+                      .toISOString()
+                      .slice(0, 16)}
+                    value={
+                      interviewForm.scheduled_at
+                    }
+                    onChange={(event) =>
+                      setInterviewForm(
+                        (prev) => ({
+                          ...prev,
+                          scheduled_at:
+                            event.target.value,
+                        })
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold outline-none transition-all focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-100"
                   />
 
                 </div>
 
 
-                {/* Interview Completed */}
-                <div className="flex flex-col items-center min-w-[120px]">
+                <div>
 
-                  <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 grid place-items-center text-xs font-bold">
-                    3
-                  </div>
+                  <label className="mb-2 block text-xs font-bold text-slate-600">
+                    Duration
+                  </label>
 
-                  <span className="mt-2 text-[11px] font-medium text-slate-400 whitespace-nowrap">
-                    Interview Completed
-                  </span>
+                  <select
+                    value={
+                      interviewForm.duration
+                    }
+                    onChange={(event) =>
+                      setInterviewForm(
+                        (prev) => ({
+                          ...prev,
+                          duration:
+                            Number(
+                              event.target
+                                .value
+                            ),
+                        })
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold outline-none transition-all focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                  >
+                    {[15, 30, 45, 60, 90].map(
+                      (minutes) => (
+                        <option
+                          key={minutes}
+                          value={minutes}
+                        >
+                          {minutes} minutes
+                        </option>
+                      )
+                    )}
+                  </select>
 
                 </div>
 
               </div>
 
-            </div>
-
-
-            {/* Current Stage */}
-            <div className="mt-4 flex items-center justify-between gap-3">
 
               <div>
 
-                <div className="text-[11px] text-slate-400">
-                  Current Stage
-                </div>
+                <label className="mb-2 block text-xs font-bold text-slate-600">
+                  Interview Type
+                </label>
 
-                <div className="text-sm font-semibold text-slate-700">
-                  {interviewScheduled
-                    ? "Interview Scheduled"
-                    : "Shortlisted"}
-                </div>
+                <select
+                  value={
+                    interviewForm.interview_type
+                  }
+                  onChange={(event) => {
+                    const type =
+                      event.target.value;
 
-                {interviewScheduled &&
-                  c.interview?.scheduled_at && (
-                    <div className="text-xs text-slate-500 mt-1">
-                      {new Date(
-                        c.interview.scheduled_at
-                      ).toLocaleString("en-IN", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                    </div>
-                  )}
+                    setInterviewForm(
+                      (prev) => ({
+                        ...prev,
+                        interview_type:
+                          type,
+                        meeting_link:
+                          type === "online"
+                            ? prev.meeting_link
+                            : "",
+                      })
+                    );
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold outline-none transition-all focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                >
+                  <option value="online">
+                    Online
+                  </option>
+
+                  <option value="in-person">
+                    In-person
+                  </option>
+                </select>
 
               </div>
 
 
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2">
+              {interviewForm.interview_type ===
+                "online" && (
+                <div>
 
-                <button
-  type="button"
-  onClick={() => handleViewProfile(c)}
-  className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 hover:bg-slate-100"
->
-  View Profile
-</button>
+                  <label className="mb-2 block text-xs font-bold text-slate-600">
+                    Meeting Link
+                  </label>
+
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://meet.google.com/..."
+                    value={
+                      interviewForm.meeting_link
+                    }
+                    onChange={(event) =>
+                      setInterviewForm(
+                        (prev) => ({
+                          ...prev,
+                          meeting_link:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                  />
+
+                </div>
+              )}
+
+
+              <div>
+
+                <label className="mb-2 block text-xs font-bold text-slate-600">
+                  Notes
+                </label>
+
+                <textarea
+                  rows={4}
+                  placeholder="Add interview notes or instructions..."
+                  value={
+                    interviewForm.notes
+                  }
+                  onChange={(event) =>
+                    setInterviewForm(
+                      (prev) => ({
+                        ...prev,
+                        notes:
+                          event.target.value,
+                      })
+                    )
+                  }
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs leading-5 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                />
+
+              </div>
+
+
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setInterviewCandidate(c);
-
-                    if (
-                      c.interview &&
-                      c.interview.status !== "cancelled"
-                    ) {
-                      setInterviewForm({
-                        scheduled_at:
-                          formatDateTimeLocal(
-                            c.interview.scheduled_at
-                          ),
-                        duration: Number(
-                          c.interview.duration || 30
-                        ),
-                        interview_type:
-                          c.interview.interview_type ||
-                          "online",
-                        meeting_link:
-                          c.interview.meeting_link || "",
-                        notes:
-                          c.interview.notes || "",
-                      });
-                    } else {
-                      setInterviewForm({
-                        scheduled_at: "",
-                        duration: 30,
-                        interview_type: "online",
-                        meeting_link: "",
-                        notes: "",
-                      });
-                    }
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  onClick={() =>
+                    setInterviewCandidate(
+                      null
+                    )
+                  }
+                  className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm"
                 >
-                  {interviewScheduled
-                    ? "View / Edit Interview"
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={
+                    schedulingInterview
+                  }
+                  className="rounded-xl bg-gradient-to-r from-orange-600 to-rose-600 px-5 py-2.5 text-xs font-black text-white shadow-[0_10px_25px_rgba(234,88,12,0.25)] transition-all duration-300 hover:-translate-y-0.5 hover:from-orange-500 hover:to-rose-500 hover:shadow-[0_15px_30px_rgba(234,88,12,0.3)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {schedulingInterview
+                    ? "Saving..."
+                    : interviewCandidate.interview &&
+                      interviewCandidate.interview.status !==
+                        "cancelled"
+                    ? "Reschedule Interview"
                     : "Schedule Interview"}
                 </button>
 
-                {interviewScheduled && (
+              </div>
+
+            </form>
+
+          </div>
+
+        </div>
+      )}
+
+
+      {/* =====================================================
+          CANCEL INTERVIEW MODAL
+      ===================================================== */}
+
+      {showCancelModal &&
+        cancelCandidate && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+
+            <div className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-[0_30px_100px_rgba(0,0,0,0.35)]">
+
+              <div className="bg-gradient-to-br from-[#431407] via-[#9a3412] to-[#be123c] px-6 py-6">
+
+                <div className="flex items-start justify-between">
+
+                  <div>
+
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange-200/70">
+                      Interview action
+                    </p>
+
+                    <h2 className="mt-1 text-xl font-black text-white">
+                      Cancel Interview?
+                    </h2>
+
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {
-                      setCancelCandidate(c);
-                      setShowCancelModal(true);
+                      setShowCancelModal(
+                        false
+                      );
+                      setCancelCandidate(
+                        null
+                      );
                     }}
-                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white transition-all hover:bg-white/20"
                   >
-                    Cancel Interview
+                    Ã—
                   </button>
-                )}
+
+                </div>
+
+              </div>
+
+
+              <div className="p-6">
+
+                <div className="rounded-2xl bg-slate-50 p-4">
+
+                  <div className="font-black text-slate-900">
+                    {cancelCandidate.name}
+                  </div>
+
+                  <div className="mt-1 text-xs text-slate-500">
+                    {cancelCandidate.job_title}
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+
+                    <div className="rounded-xl bg-white p-3 shadow-sm">
+
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        Scheduled
+                      </div>
+
+                      <div className="mt-1 text-xs font-bold text-slate-700">
+                        {formatDateTime(
+                          cancelCandidate
+                            .interview
+                            ?.scheduled_at
+                        )}
+                      </div>
+
+                    </div>
+
+                    <div className="rounded-xl bg-white p-3 shadow-sm">
+
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        Duration
+                      </div>
+
+                      <div className="mt-1 text-xs font-bold text-slate-700">
+                        {cancelCandidate
+                          .interview
+                          ?.duration ||
+                          30}{" "}
+                        minutes
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  <div className="mt-3 text-xs text-slate-500">
+                    Type:{" "}
+                    <span className="font-bold text-slate-700">
+                      {cancelCandidate
+                        .interview
+                        ?.interview_type ||
+                        "online"}
+                    </span>
+                  </div>
+
+                </div>
+
+
+                <p className="mt-4 text-xs leading-5 text-slate-500">
+                  Cancelling the interview will update
+                  its status for this application.
+                </p>
+
+
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCancelModal(
+                        false
+                      );
+                      setCancelCandidate(
+                        null
+                      );
+                    }}
+                    className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 transition-all hover:bg-slate-50 hover:shadow-sm"
+                  >
+                    Keep Interview
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={
+                      schedulingInterview
+                    }
+                    onClick={() =>
+                      handleCancelInterview(
+                        cancelCandidate
+                      )
+                    }
+                    className="rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-rose-700 hover:shadow-rose-200 disabled:opacity-50"
+                  >
+                    {schedulingInterview
+                      ? "Cancelling..."
+                      : "Cancel Interview"}
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+
+      {/* =====================================================
+          VIDEO MODAL
+      ===================================================== */}
+
+      {videoCandidate && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md">
+
+          <div className="w-full max-w-4xl overflow-hidden rounded-[28px] bg-[#15100e] shadow-[0_30px_100px_rgba(0,0,0,0.55)]">
+
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+
+              <div>
+
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange-300">
+                  Candidate media
+                </p>
+
+                <h2 className="mt-1 text-lg font-black text-white">
+                  Video Introduction
+                </h2>
+
+                <p className="text-xs text-orange-100/45">
+                  {videoCandidate.name}
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setVideoCandidate(
+                    null
+                  );
+                  setVideoUrl("");
+                }}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white transition-all hover:bg-white/20 hover:rotate-90"
+              >
+                Ã—
+              </button>
+
+            </div>
+
+
+            <div className="p-4 md:p-6">
+
+              {loadingVideo ? (
+                <div className="flex min-h-[400px] items-center justify-center rounded-2xl bg-black">
+
+                  <div className="text-center">
+
+                    <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-orange-400" />
+
+                    <p className="mt-4 text-xs font-semibold text-orange-100/60">
+                      Loading candidate video...
+                    </p>
+
+                  </div>
+
+                </div>
+              ) : videoUrl ? (
+                <video
+                  controls
+                  autoPlay
+                  className="max-h-[70vh] w-full rounded-2xl bg-black shadow-2xl"
+                  src={videoUrl}
+                >
+                  Your browser does not support video playback.
+                </video>
+              ) : (
+                <div className="flex min-h-[400px] items-center justify-center rounded-2xl bg-black text-center">
+
+                  <div>
+
+                    <div className="text-3xl text-orange-300">
+                      !
+                    </div>
+
+                    <p className="mt-3 text-sm font-bold text-white">
+                      Video unavailable
+                    </p>
+
+                    <p className="mt-1 text-xs text-orange-100/40">
+                      No playable video URL was returned.
+                    </p>
+
+                  </div>
+
+                </div>
+              )}
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+
+      {/* =====================================================
+          EMAIL MODAL
+      ===================================================== */}
+
+      {emailCandidate && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+
+          <div className="w-full max-w-xl overflow-hidden rounded-[28px] bg-white shadow-[0_30px_100px_rgba(0,0,0,0.35)]">
+
+            <div className="bg-gradient-to-br from-[#24130f] via-[#9a3412] to-[#be123c] px-6 py-6">
+
+              <div className="flex items-start justify-between">
+
+                <div>
+
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange-200/70">
+                    Candidate communication
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-black text-white">
+                    Send Email
+                  </h2>
+
+                  <p className="mt-1 text-xs text-orange-100/65">
+                    To: {emailCandidate.name}
+                  </p>
+
+                </div>
 
                 <button
                   type="button"
-                  disabled={!c.application_id}
-                  onClick={() => {
-                    setEmailCandidate(c);
-                    setEmailForm({
-                      subject: "",
-                      message: "",
-                    });
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                  onClick={() =>
+                    setEmailCandidate(
+                      null
+                    )
+                  }
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white transition-all hover:bg-white/20 hover:rotate-90"
                 >
-                  Send Email
+                  Ã—
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <form
+              onSubmit={
+                handleSendApplicantEmail
+              }
+              className="space-y-5 p-6"
+            >
+
+              <div>
+
+                <label className="mb-2 block text-xs font-bold text-slate-600">
+                  Subject
+                </label>
+
+                <input
+                  type="text"
+                  required
+                  value={
+                    emailForm.subject
+                  }
+                  onChange={(event) =>
+                    setEmailForm(
+                      (prev) => ({
+                        ...prev,
+                        subject:
+                          event.target
+                            .value,
+                      })
+                    )
+                  }
+                  placeholder="Interview opportunity"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold outline-none transition-all focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                />
+
+              </div>
+
+
+              <div>
+
+                <label className="mb-2 block text-xs font-bold text-slate-600">
+                  Message
+                </label>
+
+                <textarea
+                  rows={7}
+                  required
+                  value={
+                    emailForm.message
+                  }
+                  onChange={(event) =>
+                    setEmailForm(
+                      (prev) => ({
+                        ...prev,
+                        message:
+                          event.target
+                            .value,
+                      })
+                    )
+                  }
+                  placeholder="Write your message to the candidate..."
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs leading-5 outline-none transition-all placeholder:text-slate-400 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                />
+
+              </div>
+
+
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEmailCandidate(
+                      null
+                    )
+                  }
+                  className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={
+                    sendingEmail
+                  }
+                  className="rounded-xl bg-gradient-to-r from-orange-600 to-rose-600 px-5 py-2.5 text-xs font-black text-white shadow-[0_10px_25px_rgba(234,88,12,0.25)] transition-all duration-300 hover:-translate-y-0.5 hover:from-orange-500 hover:to-rose-500 hover:shadow-[0_15px_30px_rgba(234,88,12,0.3)] disabled:opacity-50"
+                >
+                  {sendingEmail
+                    ? "Sending..."
+                    : "Send Email"}
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+
+        </div>
+      )}
+
+
+      {/* =====================================================
+          PROFILE MODAL
+      ===================================================== */}
+
+      {profileCandidate && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
+              setProfileCandidate(
+                null
+              );
+              setCandidateProfile(
+                null
+              );
+            }
+          }}
+        >
+
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[30px] bg-white shadow-[0_35px_120px_rgba(0,0,0,0.35)]">
+
+            {/* Profile Header */}
+
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#24130f] via-[#9a3412] to-[#be123c] px-6 py-7 md:px-8">
+
+              <div className="absolute right-0 top-0 h-44 w-44 translate-x-14 -translate-y-14 rounded-full bg-orange-300/20 blur-3xl" />
+
+              <div className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-rose-300/10 blur-2xl" />
+
+              <div className="relative flex items-start justify-between gap-5">
+
+                <div className="flex min-w-0 items-center gap-4">
+
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-xl font-black text-white shadow-lg backdrop-blur-md">
+                    {getInitials(
+                      profileCandidate.name
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+
+                    <h2 className="truncate text-2xl font-black text-white">
+                      {profileCandidate.name}
+                    </h2>
+
+                    <p className="mt-1 truncate text-xs text-orange-100/70">
+                      {candidateProfile
+                        ?.email ||
+                        profileCandidate.email ||
+                        "Email unavailable"}
+                    </p>
+
+                    <p className="mt-1 text-xs font-semibold text-orange-200">
+                      {candidateProfile
+                        ?.profile
+                        ?.role_target ||
+                        profileCandidate.role_target ||
+                        profileCandidate.domain_role ||
+                        "Candidate"}
+                    </p>
+
+                  </div>
+
+                </div>
+
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileCandidate(
+                      null
+                    );
+                    setCandidateProfile(
+                      null
+                    );
+                  }}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white transition-all hover:bg-white/20 hover:rotate-90"
+                >
+                  Ã—
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <div className="p-6 md:p-8">
+
+              {loadingProfile ? (
+                <div className="space-y-4">
+
+                  <div className="animate-pulse rounded-2xl bg-slate-100 p-6">
+
+                    <div className="h-4 w-40 rounded bg-slate-200" />
+
+                    <div className="mt-4 h-3 w-full rounded bg-slate-200" />
+
+                    <div className="mt-3 h-3 w-3/4 rounded bg-slate-200" />
+
+                  </div>
+
+                  <div className="animate-pulse rounded-2xl bg-slate-100 p-6">
+
+                    <div className="h-4 w-32 rounded bg-slate-200" />
+
+                    <div className="mt-4 h-20 rounded bg-slate-200" />
+
+                  </div>
+
+                </div>
+              ) : candidateProfile ? (
+                <div className="space-y-6">
+
+                  {/* Application summary */}
+
+                  <div>
+
+                    <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">
+                      Application overview
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+
+                      <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                          Status
+                        </div>
+
+                        <div className="mt-2 text-sm font-black text-orange-700">
+                          {getStatusLabel(
+                            profileCandidate.application_status
+                          )}
+                        </div>
+
+                      </div>
+
+
+                      <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                          Match
+                        </div>
+
+                        <div className="mt-2 text-sm font-black text-rose-700">
+                          {Math.round(
+                            Number(
+                              profileCandidate.skill_match ||
+                                0
+                            )
+                          )}
+                          %
+                        </div>
+
+                      </div>
+
+
+                      <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                          Target Role
+                        </div>
+
+                        <div className="mt-2 truncate text-xs font-black text-amber-700">
+                          {profileCandidate.role_target ||
+                            profileCandidate.domain_role ||
+                            "Not specified"}
+                        </div>
+
+                      </div>
+
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                          Domain
+                        </div>
+
+                        <div className="mt-2 truncate text-xs font-black text-slate-700">
+                          {profileCandidate.domain_role ||
+                            "Not specified"}
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+
+                  {/* Student details */}
+
+                  <div>
+
+                    <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">
+                      Candidate details
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+
+                      {[
+                        [
+                          "Career Goal",
+                          candidateProfile
+                            ?.profile
+                            ?.career_goal,
+                        ],
+                        [
+                          "Institution",
+                          candidateProfile
+                            ?.profile
+                            ?.institution,
+                        ],
+                        [
+                          "Company",
+                          candidateProfile
+                            ?.profile
+                            ?.company,
+                        ],
+                        [
+                          "Last Login",
+                          candidateProfile
+                            ?.profile
+                            ?.last_login
+                            ? formatDateTime(
+                                candidateProfile
+                                  .profile
+                                  .last_login
+                              )
+                            : null,
+                        ],
+                      ].map(
+                        ([label, value]) => (
+                          <div
+                            key={label}
+                            className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+                          >
+
+                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                              {label}
+                            </div>
+
+                            <div className="mt-2 text-sm font-semibold leading-5 text-slate-700">
+                              {value ||
+                                "Not provided"}
+                            </div>
+
+                          </div>
+                        )
+                      )}
+
+                    </div>
+
+                  </div>
+
+
+                  {/* Resume */}
+
+                  {candidateProfile?.profile
+                    ?.resume?.url && (
+                    <div>
+
+                      <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">
+                        Resume
+                      </div>
+
+                      <div className="flex flex-col gap-4 rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 to-rose-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+
+                        <div className="flex items-center gap-3">
+
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-lg shadow-sm">
+                            â–¤
+                          </div>
+
+                          <div>
+
+                            <div className="text-sm font-black text-slate-800">
+                              {candidateProfile
+                                .profile
+                                .resume
+                                .name ||
+                                "Candidate Resume"}
+                            </div>
+
+                            <div className="mt-1 text-[10px] text-slate-500">
+                              {candidateProfile
+                                .profile
+                                .resume
+                                .type ||
+                                "Resume document"}
+                            </div>
+
+                          </div>
+
+                        </div>
+
+
+                        <a
+                          href={
+                            String(
+                              candidateProfile
+                                .profile
+                                .resume
+                                .url
+                            ).startsWith(
+                              "http"
+                            )
+                              ? candidateProfile
+                                  .profile
+                                  .resume
+                                  .url
+                              : `http://localhost:5000${candidateProfile.profile.resume.url}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-xl bg-slate-900 px-4 py-2.5 text-center text-xs font-black text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-lg"
+                        >
+                          Open Resume â†—
+                        </a>
+
+                      </div>
+
+                    </div>
+                  )}
+
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-rose-100 bg-rose-50 p-5 text-sm font-semibold text-rose-700">
+                  Candidate profile details could not
+                  be loaded.
+                </div>
+              )}
+
+
+              <div className="mt-7 flex justify-end border-t border-slate-100 pt-5">
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileCandidate(
+                      null
+                    );
+                    setCandidateProfile(
+                      null
+                    );
+                  }}
+                  className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-black text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-lg"
+                >
+                  Close
                 </button>
 
               </div>
@@ -2321,427 +4448,31 @@ const sortedDomainRoles = Array.from(
             </div>
 
           </div>
-        );
-      })}
+
+        </div>
+      )}
 
 
-{pipelineTotalPages > 1 && (
-  <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-100">
-    <span className="text-xs text-slate-500">
-      Page {pipelinePage} of {pipelineTotalPages}
-    </span>
+      {/* =====================================================
+          APP DIALOG
+      ===================================================== */}
 
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        disabled={pipelinePage === 1}
-        onClick={() =>
-          setPipelinePage((page) => page - 1)
+      <AppDialog
+        open={dialog.open}
+        type={dialog.type}
+        title={dialog.title}
+        message={dialog.message}
+        confirmText={dialog.confirmText}
+        cancelText={dialog.cancelText}
+        showCancel={dialog.showCancel}
+        destructive={dialog.destructive}
+        onConfirm={
+          dialog.onConfirm ||
+          closeDialog
         }
-        className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Previous
-      </button>
-
-      <button
-        type="button"
-        disabled={pipelinePage === pipelineTotalPages}
-        onClick={() =>
-          setPipelinePage((page) => page + 1)
-        }
-        className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Next
-      </button>
-    </div>
-  </div>
-)}
-
-    {/* Empty State */}
-    {candidates.filter(
-      (c) =>
-        c.application_status === "shortlisted" ||
-        (c.interview &&
-          c.interview.status !== "cancelled")
-    ).length === 0 && (
-      <div className="text-center py-10">
-
-        <div className="text-sm font-medium text-slate-600">
-          No candidates in the hiring pipeline
-        </div>
-
-        <div className="text-xs text-slate-400 mt-1">
-          Shortlist a recommended candidate to start the hiring process.
-        </div>
-
-      </div>
-    )}
-
-  </div>
-</Card>
-      </div>
-
-
-         {/*video window */}
-
-      {videoCandidate && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-    <div className="w-full max-w-3xl rounded-xl bg-white shadow-xl overflow-hidden">
-
-      {/* Header */}
-      <div className="flex items-center justify-between border-b px-5 py-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-800">
-            Video Introduction
-          </h2>
-
-          <p className="mt-1 text-xs text-slate-500">
-            {videoCandidate.name || "Candidate"}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setVideoCandidate(null);
-            setVideoUrl("");
-          }}
-          className="text-slate-400 hover:text-slate-600 text-lg"
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* Video */}
-      <div className="p-5">
-        {loadingVideo ? (
-          <div className="flex items-center justify-center h-64 text-sm text-slate-500">
-            Loading video...
-          </div>
-        ) : videoUrl ? (
-          <video
-            controls
-            autoPlay
-            className="w-full max-h-[70vh] rounded-lg bg-black"
-            src={videoUrl}
-          >
-            Your browser does not support video playback.
-          </video>
-        ) : (
-          <div className="flex items-center justify-center h-64 text-sm text-slate-500">
-            Video could not be loaded.
-          </div>
-        )}
-      </div>
-
-    </div>
-  </div>
-)}
-
-{emailCandidate && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-    <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-
-      <div className="flex items-center justify-between border-b px-5 py-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-800">
-            Send Email
-          </h2>
-
-          <p className="mt-1 text-xs text-slate-500">
-            To: {emailCandidate.name}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setEmailCandidate(null)}
-          className="text-slate-400 hover:text-slate-600"
-        >
-          ✕
-        </button>
-      </div>
-
-      <form
-        onSubmit={handleSendApplicantEmail}
-        className="space-y-4 p-5"
-      >
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
-            Subject
-          </label>
-
-          <input
-            type="text"
-            value={emailForm.subject}
-            onChange={(e) =>
-              setEmailForm((current) => ({
-                ...current,
-                subject: e.target.value,
-              }))
-            }
-            placeholder="Enter email subject"
-            required
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
-            Message
-          </label>
-
-          <textarea
-            rows={7}
-            value={emailForm.message}
-            onChange={(e) =>
-              setEmailForm((current) => ({
-                ...current,
-                message: e.target.value,
-              }))
-            }
-            placeholder="Write your message..."
-            required
-            className="w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={() => setEmailCandidate(null)}
-            disabled={sendingEmail}
-            className="rounded-md border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="submit"
-            disabled={sendingEmail}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {sendingEmail ? "Sending..." : "Send Email"}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
-
-
-
-{profileCandidate && (
-  <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-    onClick={() => {
-      setProfileCandidate(null);
-      setCandidateProfile(null);
-    }}
-  >
-    <div
-      className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between border-b px-6 py-5">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-lg font-bold">
-            {(profileCandidate.name || "?")
-              .split(" ")
-              .map((p) => p[0])
-              .slice(0, 2)
-              .join("")
-              .toUpperCase()}
-          </div>
-
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">
-              {profileCandidate.name || "Candidate"}
-            </h2>
-
-            <p className="text-sm text-slate-500">
-              {profileCandidate.email || "—"}
-            </p>
-
-            {profileCandidate.role_target && (
-              <p className="text-sm text-blue-600 mt-1">
-                {profileCandidate.role_target}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setProfileCandidate(null);
-            setCandidateProfile(null);
-          }}
-          className="text-2xl text-slate-400 hover:text-slate-700"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="p-6 space-y-6">
-        {loadingProfile ? (
-          <div className="py-10 text-center text-sm text-slate-500">
-            Loading candidate profile...
-          </div>
-        ) : (
-          <>
-            {/* Application summary */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">
-                Application
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <div className="text-xs text-slate-500">
-                    Application Status
-                  </div>
-                  <div className="text-sm font-semibold text-slate-800 mt-1">
-                    {profileCandidate.application_status || "Not Applied"}
-                  </div>
-                </div>
-
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <div className="text-xs text-slate-500">
-                    Skill Match
-                  </div>
-                  <div className="text-sm font-semibold text-slate-800 mt-1">
-                    {profileCandidate.skill_match ?? 0}%
-                  </div>
-                </div>
-
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <div className="text-xs text-slate-500">
-                    Target Role
-                  </div>
-                  <div className="text-sm font-semibold text-slate-800 mt-1">
-                    {profileCandidate.domain_role || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <div className="text-xs text-slate-500">
-                    Domain
-                  </div>
-                  <div className="text-sm font-semibold text-slate-800 mt-1">
-                    {profileCandidate.domain_role || "—"}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Student profile */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">
-                Student Details
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-lg border border-slate-200 p-3">
-                  <div className="text-xs text-slate-500">
-                    Career Goal
-                  </div>
-                  <div className="text-sm text-slate-800 mt-1">
-                    {candidateProfile?.profile?.career_goal || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-slate-200 p-3">
-                  <div className="text-xs text-slate-500">
-                    Institution
-                  </div>
-                  <div className="text-sm text-slate-800 mt-1">
-                    {candidateProfile?.profile?.institution || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-slate-200 p-3">
-                  <div className="text-xs text-slate-500">
-                    Company
-                  </div>
-                  <div className="text-sm text-slate-800 mt-1">
-                    {candidateProfile?.profile?.company || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-slate-200 p-3">
-                  <div className="text-xs text-slate-500">
-                    Last Login
-                  </div>
-                  <div className="text-sm text-slate-800 mt-1">
-                    {candidateProfile?.last_login
-                      ? new Date(
-                          candidateProfile.last_login
-                        ).toLocaleString("en-IN")
-                      : "—"}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Resume */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">
-                Resume
-              </h3>
-
-              {candidateProfile?.profile?.resume?.url ? (
-                <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
-                  <div>
-                    <div className="text-sm font-medium text-slate-800">
-                      {candidateProfile.profile.resume.file_name ||
-                        "Resume"}
-                    </div>
-
-                    <div className="text-xs text-slate-500 mt-1">
-                      {candidateProfile.profile.resume.file_type || ""}
-                    </div>
-                  </div>
-
-                  <a
-  href={
-    candidateProfile?.profile?.resume?.url?.startsWith("http")
-      ? candidateProfile.profile.resume.url
-      : `http://localhost:5000${candidateProfile?.profile?.resume?.url || ""}`
-  }
-  target="_blank"
-  rel="noopener noreferrer"
-  className="text-sm text-brand-blue-600 hover:underline"
->
-  Open Resume
-</a>
-                </div>
-              ) : (
-                <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
-                  No resume uploaded.
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="flex justify-end gap-2 border-t px-6 py-4">
-        <button
-          type="button"
-          onClick={() => {
-            setProfileCandidate(null);
-            setCandidateProfile(null);
-          }}
-          className="px-4 py-2 rounded-md border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        onCancel={closeDialog}
+        onClose={closeDialog}
+      />
 
     </div>
   );

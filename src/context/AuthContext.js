@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useContext,
@@ -34,21 +33,18 @@ export function AuthProvider({ children }) {
   });
 
   const backendUser = dbUser;
-  const setBackendUser = setDbUser;
 
   /*
    * ---------------------------------------------------------
    * Clerk password change with reverification
    * ---------------------------------------------------------
-   *
-   * Password changes are sensitive Clerk operations.
-   * useReverification() automatically handles the
-   * verification requirement when Clerk asks for it.
    */
   const updatePasswordWithReverification = useReverification(
     async ({ currentPassword, newPassword }) => {
       if (!user) {
-        throw new Error('You must be signed in to change your password.');
+        throw new Error(
+          'You must be signed in to change your password.'
+        );
       }
 
       return user.updatePassword({
@@ -62,11 +58,15 @@ export function AuthProvider({ children }) {
   const changePassword = useCallback(
     async ({ currentPassword, newPassword }) => {
       if (!user) {
-        throw new Error('You must be signed in to change your password.');
+        throw new Error(
+          'You must be signed in to change your password.'
+        );
       }
 
       if (!currentPassword || !newPassword) {
-        throw new Error('Current password and new password are required.');
+        throw new Error(
+          'Current password and new password are required.'
+        );
       }
 
       return updatePasswordWithReverification({
@@ -83,7 +83,9 @@ export function AuthProvider({ children }) {
       try {
         const stored =
           e?.detail ||
-          JSON.parse(localStorage.getItem('edu_user') || 'null');
+          JSON.parse(
+            localStorage.getItem('edu_user') || 'null'
+          );
 
         if (stored) {
           setDbUser(stored);
@@ -91,12 +93,26 @@ export function AuthProvider({ children }) {
       } catch (_) {}
     };
 
-    window.addEventListener('edu_user_updated', handleUserUpdate);
-    window.addEventListener('storage', handleUserUpdate);
+    window.addEventListener(
+      'edu_user_updated',
+      handleUserUpdate
+    );
+
+    window.addEventListener(
+      'storage',
+      handleUserUpdate
+    );
 
     return () => {
-      window.removeEventListener('edu_user_updated', handleUserUpdate);
-      window.removeEventListener('storage', handleUserUpdate);
+      window.removeEventListener(
+        'edu_user_updated',
+        handleUserUpdate
+      );
+
+      window.removeEventListener(
+        'storage',
+        handleUserUpdate
+      );
     };
   }, []);
 
@@ -109,20 +125,26 @@ export function AuthProvider({ children }) {
         (async () => {
           try {
             const apiBase =
-              process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+              process.env.REACT_APP_API_BASE ||
+              'http://localhost:5000';
 
-            const res = await fetch(`${apiBase}/api/users/me`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
+            const res = await fetch(
+              `${apiBase}/api/users/me`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
 
             if (res.ok) {
               const data = await res.json();
 
               if (data && data.name) {
                 const current = JSON.parse(
-                  localStorage.getItem('edu_user') || '{}'
+                  localStorage.getItem(
+                    'edu_user'
+                  ) || '{}'
                 );
 
                 const updated = {
@@ -166,6 +188,27 @@ export function AuthProvider({ children }) {
     return !localStorage.getItem('edu_token');
   });
 
+  /*
+   * ---------------------------------------------------------
+   * Clerk -> PostgreSQL authentication sync
+   * ---------------------------------------------------------
+   *
+   * IMPORTANT:
+   *
+   * A brand-new Clerk user may not have a role yet.
+   * Previously, this code used:
+   *
+   *   user.unsafeMetadata?.role || 'student'
+   *
+   * That caused a new Employer/Educator/Admin account
+   * to be created in PostgreSQL as "student" before
+   * onboarding was completed.
+   *
+   * We now wait for onboarding when no role exists.
+   *
+   * Existing users are still synced normally.
+   * Existing-user role protection remains on the backend.
+   */
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -204,6 +247,27 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    /*
+     * IMPORTANT:
+     *
+     * Do not create a PostgreSQL user when this is a
+     * brand-new Clerk account with no selected role.
+     *
+     * Onboarding.js will call /api/users/sync after
+     * the user selects Student, Educator, Employer, etc.
+     */
+    const selectedRole =
+      user.unsafeMetadata?.role || null;
+
+    if (!selectedRole) {
+      console.log(
+        '[AUTH] No Clerk role selected yet. Waiting for onboarding.'
+      );
+
+      setIsSyncing(false);
+      return;
+    }
+
     let isMounted = true;
 
     setIsSyncing(true);
@@ -232,9 +296,7 @@ export function AuthProvider({ children }) {
               Authorization: `Bearer ${clerkToken}`,
             },
             body: JSON.stringify({
-              role:
-                user.unsafeMetadata?.role ||
-                'student',
+              role: selectedRole,
 
               domainRoleId:
                 user.unsafeMetadata?.domain_role_id ||
@@ -246,13 +308,14 @@ export function AuthProvider({ children }) {
                 user.primaryEmailAddress?.emailAddress ||
                 user.emailAddresses?.[0]?.emailAddress,
 
-              emailAddresses: user.emailAddresses,
+              emailAddresses:
+                user.emailAddresses,
 
-              firstName: user.firstName,
+              firstName:
+                user.firstName,
 
-              lastName: user.lastName,
-
-              username: user.username,
+              lastName:
+                user.lastName,
 
               unsafeMetadata:
                 user.unsafeMetadata,
@@ -301,6 +364,42 @@ export function AuthProvider({ children }) {
               )
             );
           }
+        } else if (res.status === 403) {
+          const data =
+            await res.json().catch(() => ({}));
+
+          console.warn(
+            '[AUTH] Backend rejected login:',
+            data.error
+          );
+
+          localStorage.removeItem(
+            'edu_token'
+          );
+
+          localStorage.removeItem(
+            'edu_refresh'
+          );
+
+          localStorage.removeItem(
+            'edu_user'
+          );
+
+          if (isMounted) {
+            setDbUser(null);
+          }
+
+          const errorType =
+            data.error?.toLowerCase().includes(
+              'suspended'
+            )
+              ? 'suspended'
+              : 'deleted';
+
+          await signOut({
+            redirectUrl:
+              `/login?error=${errorType}`,
+          });
         }
       } catch (err) {
         console.error(
@@ -322,13 +421,16 @@ export function AuthProvider({ children }) {
     isSignedIn,
     user,
     getToken,
+    signOut,
   ]);
 
   const updateAuthUser = useCallback(
     (patch) => {
       try {
         const current = JSON.parse(
-          localStorage.getItem('edu_user') || '{}'
+          localStorage.getItem(
+            'edu_user'
+          ) || '{}'
         );
 
         const updated = {
@@ -434,15 +536,6 @@ export function AuthProvider({ children }) {
 
       updateAuthUser,
 
-      /*
-       * New password-change function.
-       * StudentSettings.js can call:
-       *
-       * await changePassword({
-       *   currentPassword,
-       *   newPassword
-       * })
-       */
       changePassword,
 
       authError: null,
@@ -516,4 +609,3 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
-
