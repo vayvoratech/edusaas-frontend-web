@@ -1,14 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { Card, StatPill } from '../components/ui/Card';
+import { StatPill } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { getJobs,  getEligibleStudents, getDomainRoles, inviteCandidate, getUserProfile } from '../services/api';
+import {
+  getJobs,
+  getEligibleStudents,
+  getDomainRoles,
+  inviteCandidate,
+  getUserProfile,
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from 'react-router-dom';
 
-const initials = (n) => (n || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+const initials = (n) =>
+  (n || '?')
+    .split(' ')
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
 export default function Candidates() {
-  const navigate = useNavigate();
   const location = useLocation();
   const selectedCandidate = location.state?.candidate;
   const { user } = useAuth();
@@ -18,11 +29,11 @@ export default function Candidates() {
   const [q, setQ] = useState('');
 
   // Modals
-  const [viewing, setViewing] = useState(null);          // candidate selected for View Profile
-  const [viewProfile, setViewProfile] = useState(null);  // hydrated profile from API
+  const [viewing, setViewing] = useState(null); // candidate selected for View Profile
+  const [viewProfile, setViewProfile] = useState(null); // hydrated profile from API
   const [viewLoading, setViewLoading] = useState(false);
 
-  const [inviting, setInviting] = useState(null);        // candidate selected for Invite
+  const [inviting, setInviting] = useState(null); // candidate selected for Invite
   const [inviteJob, setInviteJob] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
   const [inviteBusy, setInviteBusy] = useState(false);
@@ -33,106 +44,105 @@ export default function Candidates() {
   const [selectedDomainRoleId, setSelectedDomainRoleId] = useState('all');
 
   const loadCandidates = async (jobList) => {
-  if (!jobList?.length) {
-    setCandidates([]);
-    return;
-  }
+    if (!jobList?.length) {
+      setCandidates([]);
+      return;
+    }
 
-  try {
-    setError(null);
-
-    const responses = await Promise.all(
-      jobList.map((job) => getEligibleStudents(job.id))
-    );
-
-    const allCandidates = responses.flatMap(
-      (response) => response?.eligible_students || []
-    );
-
-    // Remove duplicate students who match multiple jobs
-    const uniqueCandidates = Array.from(
-      new Map(
-        allCandidates.map((candidate) => [
-          String(candidate.id),
-          candidate,
-        ])
-      ).values()
-    );
-
-    setCandidates(uniqueCandidates);
-  } catch (e) {
-    setError(e.response?.data?.error || e.message);
-    setCandidates([]);
-  }
-};
-
-  useEffect(() => {
-  let currentUserId = user?.id;
-
-  try {
-    const stored = JSON.parse(
-      localStorage.getItem("edu_user") || "{}"
-    );
-
-    if (stored?.id) currentUserId = stored.id;
-  } catch (e) {}
-
-  if (!currentUserId) return;
-
-  Promise.all([
-    getJobs({ employer_id: currentUserId }),
-    getDomainRoles(),
-  ])
-    .then(async ([js, roles]) => {
-      setJobs(js || []);
-      setDomainRoles(roles || []);
+    try {
       setError(null);
 
-      if (!js || !js.length) {
-        setCandidates([]);
-        return;
-      }
+      const responses = await Promise.all(
+        jobList.map((job) => getEligibleStudents(job.id))
+      );
 
-      // Keep the first job as the default job for Invite
-      setInviteJob(js[0].id);
+      const allCandidates = responses.flatMap(
+        (response) => response?.eligible_students || []
+      );
 
-      // Load candidates from all employer jobs
-      await loadCandidates(js);
-    })
-    .catch((e) => {
+      // Remove duplicate students who match multiple jobs
+      const uniqueCandidates = Array.from(
+        new Map(
+          allCandidates.map((candidate) => [
+            String(candidate.id),
+            candidate,
+          ])
+        ).values()
+      );
+
+      setCandidates(uniqueCandidates);
+    } catch (e) {
       setError(e.response?.data?.error || e.message);
       setCandidates([]);
-    });
-}, [user?.id]);
+    }
+  };
 
-// sorted by domainrole
+  useEffect(() => {
+    let currentUserId = user?.id;
+
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem('edu_user') || '{}'
+      );
+
+      if (stored?.id) currentUserId = stored.id;
+    } catch (e) {}
+
+    if (!currentUserId) return;
+
+    Promise.all([
+      getJobs({ employer_id: currentUserId }),
+      getDomainRoles(),
+    ])
+      .then(async ([js, roles]) => {
+        setJobs(js || []);
+        setDomainRoles(roles || []);
+        setError(null);
+
+        if (!js || !js.length) {
+          setCandidates([]);
+          return;
+        }
+
+        // Keep the first job as the default job for Invite
+        setInviteJob(js[0].id);
+
+        // Load candidates from all employer jobs
+        await loadCandidates(js);
+      })
+      .catch((e) => {
+        setError(e.response?.data?.error || e.message);
+        setCandidates([]);
+      });
+  }, [user?.id]);
+
+  // sorted by domainrole
   const sortedDomainRoles = [...domainRoles].sort((a, b) =>
-  (a.domain_name || "").localeCompare(
-    b.domain_name || ""
-  )
-);
+    (a.domain_name || '').localeCompare(b.domain_name || '')
+  );
 
   const filtered = candidates.filter((c) => {
-  if (
-    selectedDomainRoleId !== "all" &&
-    String(c.domain_role_id) !== String(selectedDomainRoleId)
-  ) {
-    return false;
-  }
+    if (
+      selectedDomainRoleId !== 'all' &&
+      String(c.domain_role_id) !== String(selectedDomainRoleId)
+    ) {
+      return false;
+    }
 
-  if (!q) return true;
+    if (!q) return true;
 
-  return (
-    c.name?.toLowerCase().includes(q.toLowerCase()) ||
-    c.domain_role?.toLowerCase().includes(q.toLowerCase()) ||
-    c.fit_category?.toLowerCase().includes(q.toLowerCase())
-  );
-});
+    return (
+      c.name?.toLowerCase().includes(q.toLowerCase()) ||
+      c.domain_role?.toLowerCase().includes(q.toLowerCase()) ||
+      c.fit_category?.toLowerCase().includes(q.toLowerCase())
+    );
+  });
 
   const openView = async (c) => {
     setViewing(c);
     setViewProfile(null);
     setViewLoading(true);
+
     try {
       const p = await getUserProfile(c.id);
       setViewProfile(p);
@@ -152,7 +162,9 @@ export default function Candidates() {
   const openInvite = (c) => {
     setInviting(c);
     setInviteMessage(
-      `Hi ${c.name?.split(' ')[0] || 'there'}, we'd love for you to apply to one of our roles.`
+      `Hi ${
+        c.name?.split(' ')[0] || 'there'
+      }, we'd love for you to apply to one of our roles.`
     );
     setInviteError(null);
     setInviteSent(false);
@@ -160,12 +172,15 @@ export default function Candidates() {
 
   const sendInvite = async (e) => {
     e.preventDefault();
+
     if (!inviteJob) {
       setInviteError('Pick a job to invite for.');
       return;
     }
+
     setInviteBusy(true);
     setInviteError(null);
+
     try {
       await inviteCandidate(inviteJob, inviting.id, inviteMessage);
       setInviteSent(true);
@@ -180,28 +195,34 @@ export default function Candidates() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Candidates</h2>
-          <p className="text-sm text-slate-500">Skill-matched students for your open roles.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-           {domainRoles.length > 0 && (
-  <select
-    value={selectedDomainRoleId}
-    onChange={(e) => setSelectedDomainRoleId(e.target.value)}
-    className="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue-500"
-  >
-    <option value="all">All Domain Roles</option>
+          <h2 className="text-2xl font-bold text-slate-900">
+            Candidates
+          </h2>
 
-    {sortedDomainRoles.map((role) => (
-      <option
-        key={role.domain_role_id}
-        value={role.domain_role_id}
-      >
-        {role.domain_name}
-      </option>
-    ))}
-  </select>
-)}
+          <p className="text-sm text-slate-500">
+            Skill-matched students for your open roles.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {domainRoles.length > 0 && (
+            <select
+              value={selectedDomainRoleId}
+              onChange={(e) => setSelectedDomainRoleId(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue-500"
+            >
+              <option value="all">All Domain Roles</option>
+
+              {sortedDomainRoles.map((role) => (
+                <option
+                  key={role.domain_role_id}
+                  value={role.domain_role_id}
+                >
+                  {role.domain_name}
+                </option>
+              ))}
+            </select>
+          )}
 
           <input
             type="search"
@@ -213,7 +234,11 @@ export default function Candidates() {
         </div>
       </div>
 
-      {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {filtered.map((c) => (
@@ -224,30 +249,63 @@ export default function Candidates() {
             <div className="w-10 h-10 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold text-sm shrink-0">
               {initials(c.name)}
             </div>
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <div className="font-semibold text-sm text-slate-800 truncate">{c.name}</div>
+                <div className="font-semibold text-sm text-slate-800 truncate">
+                  {c.name}
+                </div>
+
                 {c.ai_hiring_match && (
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      c.ai_hiring_match.match_level === "EXCELLENT"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : c.ai_hiring_match.match_level === "GOOD"
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
+                      c.ai_hiring_match.match_level === 'EXCELLENT'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : c.ai_hiring_match.match_level === 'GOOD'
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
                     }`}
                   >
-                    🤖 AI {c.ai_hiring_match.match_level} ({Math.round(c.ai_hiring_match.match_percentage)}%)
+                    🤖 AI {c.ai_hiring_match.match_level} (
+                    {Math.round(
+                      c.ai_hiring_match.match_percentage
+                    )}
+                    %)
                   </span>
                 )}
               </div>
-              <div className="text-xs text-slate-500 truncate">{c.domain_role || c.role_target}</div>
+
+              <div className="text-xs text-slate-500 truncate">
+                {c.domain_role || c.role_target}
+              </div>
             </div>
-            <StatPill label="Skill Match" value={`${c.skill_match}%`} tone={c.skill_match >= 80 ? 'green' : c.skill_match >= 60 ? 'orange' : 'slate'} />
-            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => openView(c)}>
+
+            <StatPill
+              label="Skill Match"
+              value={`${c.skill_match}%`}
+              tone={
+                c.skill_match >= 80
+                  ? 'green'
+                  : c.skill_match >= 60
+                  ? 'orange'
+                  : 'slate'
+              }
+            />
+
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => openView(c)}
+            >
               View Profile
             </Button>
-            <Button size="sm" className="w-full sm:w-auto" onClick={() => openInvite(c)}>
+
+            <Button
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => openInvite(c)}
+            >
               Invite
             </Button>
           </div>
@@ -268,37 +326,88 @@ export default function Candidates() {
               <div className="w-12 h-12 rounded-full bg-brand-blue-100 text-brand-blue-700 grid place-items-center font-semibold">
                 {initials(viewing.name)}
               </div>
+
               <div className="min-w-0">
-                <h3 className="font-semibold text-slate-900">{viewing.name}</h3>
-                <div className="text-xs text-slate-500 truncate">{viewing.email}</div>
+                <h3 className="font-semibold text-slate-900">
+                  {viewing.name}
+                </h3>
+
+                <div className="text-xs text-slate-500 truncate">
+                  {viewing.email}
+                </div>
               </div>
             </div>
 
             {viewLoading ? (
-              <p className="text-sm text-slate-500">Loading profile…</p>
+              <p className="text-sm text-slate-500">
+                Loading profile…
+              </p>
             ) : (
               <dl className="space-y-2 text-sm">
-                <Row k="Role" v={viewProfile?.role || viewing.role || '—'} />
-                <Row k="Target role" v={viewing.domain_role || viewing.role_target || '—'} />
-                <Row k="Skill match" v={`${viewing.skill_match}%`} />
+                <Row
+                  k="Role"
+                  v={viewProfile?.role || viewing.role || '—'}
+                />
+
+                <Row
+                  k="Target role"
+                  v={
+                    viewing.domain_role ||
+                    viewing.role_target ||
+                    '—'
+                  }
+                />
+
+                <Row
+                  k="Skill match"
+                  v={`${viewing.skill_match}%`}
+                />
+
                 {viewing.ai_hiring_match && (
                   <Row
                     k="AI Match Assessment"
-                    v={`${viewing.ai_hiring_match.match_level} (${Math.round(viewing.ai_hiring_match.match_percentage)}% confidence)`}
+                    v={`${viewing.ai_hiring_match.match_level} (${Math.round(
+                      viewing.ai_hiring_match.match_percentage
+                    )}% confidence)`}
                   />
                 )}
-                <Row k="Career goal" v={viewProfile?.profile?.career_goal || '—'} />
-                <Row k="Institution" v={viewProfile?.profile?.institution || '—'} />
-                <Row k="Company" v={viewProfile?.profile?.company || '—'} />
+
+                <Row
+                  k="Career goal"
+                  v={viewProfile?.profile?.career_goal || '—'}
+                />
+
+                <Row
+                  k="Institution"
+                  v={viewProfile?.profile?.institution || '—'}
+                />
+
+                <Row
+                  k="Company"
+                  v={viewProfile?.profile?.company || '—'}
+                />
+
                 <Row
                   k="Last login"
-                  v={viewProfile?.last_login ? new Date(viewProfile.last_login).toLocaleString() : '—'}
+                  v={
+                    viewProfile?.last_login
+                      ? new Date(
+                          viewProfile.last_login
+                        ).toLocaleString()
+                      : '—'
+                  }
                 />
               </dl>
             )}
 
             <div className="flex justify-end gap-2 mt-5">
-              <Button variant="outline" onClick={() => setViewing(null)}>Close</Button>
+              <Button
+                variant="outline"
+                onClick={() => setViewing(null)}
+              >
+                Close
+              </Button>
+
               <Button
                 onClick={() => {
                   setViewing(null);
@@ -323,7 +432,10 @@ export default function Candidates() {
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
           >
-            <h3 className="font-semibold text-lg">Invite {inviting.name}</h3>
+            <h3 className="font-semibold text-lg">
+              Invite {inviting.name}
+            </h3>
+
             <p className="text-sm text-slate-500 mb-4">
               Sends an in-app notification to the candidate.
             </p>
@@ -334,7 +446,10 @@ export default function Candidates() {
               </div>
             ) : (
               <div className="mb-3">
-                <label className="text-xs text-slate-500">Job</label>
+                <label className="text-xs text-slate-500">
+                  Job
+                </label>
+
                 <select
                   value={inviteJob}
                   onChange={(e) => setInviteJob(e.target.value)}
@@ -350,7 +465,10 @@ export default function Candidates() {
             )}
 
             <div className="mb-5">
-              <label className="text-xs text-slate-500">Message</label>
+              <label className="text-xs text-slate-500">
+                Message
+              </label>
+
               <textarea
                 rows={4}
                 value={inviteMessage}
@@ -360,8 +478,11 @@ export default function Candidates() {
             </div>
 
             {inviteError && (
-              <div className="p-3 mb-3 rounded-lg bg-red-50 text-red-600 text-sm">{inviteError}</div>
+              <div className="p-3 mb-3 rounded-lg bg-red-50 text-red-600 text-sm">
+                {inviteError}
+              </div>
             )}
+
             {inviteSent && (
               <div className="p-3 mb-3 rounded-lg bg-brand-green-50 text-brand-green-700 text-sm">
                 ✓ Invite sent.
@@ -369,11 +490,20 @@ export default function Candidates() {
             )}
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setInviting(null)} disabled={inviteBusy}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setInviting(null)}
+                disabled={inviteBusy}
+              >
                 {inviteSent ? 'Close' : 'Cancel'}
               </Button>
+
               {!inviteSent && (
-                <Button type="submit" disabled={inviteBusy || jobs.length === 0}>
+                <Button
+                  type="submit"
+                  disabled={inviteBusy || jobs.length === 0}
+                >
                   {inviteBusy ? 'Sending…' : 'Send invite'}
                 </Button>
               )}
@@ -389,7 +519,9 @@ function Row({ k, v }) {
   return (
     <div className="flex justify-between gap-3">
       <dt className="text-slate-500">{k}</dt>
-      <dd className="text-slate-800 text-right break-words max-w-[60%]">{v}</dd>
+      <dd className="text-slate-800 text-right break-words max-w-[60%]">
+        {v}
+      </dd>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -117,9 +116,18 @@ const TIME_ZONE_OPTIONS = [
   },
 
   { value: 'Australia/Sydney', label: 'Australia Eastern — Australia/Sydney' },
-  { value: 'Australia/Melbourne', label: 'Australia Melbourne — Australia/Melbourne' },
-  { value: 'Australia/Brisbane', label: 'Australia Brisbane — Australia/Brisbane' },
-  { value: 'Australia/Perth', label: 'Australia Western — Australia/Perth' },
+  {
+    value: 'Australia/Melbourne',
+    label: 'Australia Melbourne — Australia/Melbourne',
+  },
+  {
+    value: 'Australia/Brisbane',
+    label: 'Australia Brisbane — Australia/Brisbane',
+  },
+  {
+    value: 'Australia/Perth',
+    label: 'Australia Western — Australia/Perth',
+  },
   { value: 'Pacific/Auckland', label: 'New Zealand — Pacific/Auckland' },
 ];
 
@@ -222,9 +230,43 @@ function Icon({ name, size = 19 }) {
       return (
         <svg {...common}>
           <path d="M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h2.5A6.5 6.5 0 0 0 21 6.5 9 9 0 0 0 12 3Z" />
-          <circle cx="7.5" cy="9" r="1" fill="currentColor" stroke="none" />
-          <circle cx="10" cy="6.5" r="1" fill="currentColor" stroke="none" />
-          <circle cx="14" cy="6.5" r="1" fill="currentColor" stroke="none" />
+          <circle
+            cx="7.5"
+            cy="9"
+            r="1"
+            fill="currentColor"
+            stroke="none"
+          />
+          <circle
+            cx="10"
+            cy="6.5"
+            r="1"
+            fill="currentColor"
+            stroke="none"
+          />
+          <circle
+            cx="14"
+            cy="6.5"
+            r="1"
+            fill="currentColor"
+            stroke="none"
+          />
+        </svg>
+      );
+
+    case 'shield':
+      return (
+        <svg {...common}>
+          <path d="M12 3 20 6v5c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10V6l8-3Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      );
+
+    case 'spark':
+      return (
+        <svg {...common}>
+          <path d="m12 3 1.4 5.6L19 10l-5.6 1.4L12 17l-1.4-5.6L5 10l5.6-1.4L12 3Z" />
+          <path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7L19 16Z" />
         </svg>
       );
 
@@ -251,12 +293,15 @@ function Toggle({ checked, onChange }) {
         border
         transition-all
         duration-300
+        focus:outline-none
+        focus:ring-2
+        focus:ring-emerald-500/30
         ${
           checked
             ? `
-              border-blue-500/70
-              bg-blue-600
-              shadow-[0_0_16px_rgba(59,130,246,0.28)]
+              border-emerald-600
+              bg-emerald-600
+              shadow-[0_0_20px_rgba(5,150,105,0.30)]
             `
             : `
               border-slate-300
@@ -265,9 +310,6 @@ function Toggle({ checked, onChange }) {
               dark:bg-slate-700
             `
         }
-        focus:outline-none
-        focus:ring-2
-        focus:ring-blue-500/30
       `}
     >
       <span
@@ -279,7 +321,7 @@ function Toggle({ checked, onChange }) {
           -translate-y-1/2
           rounded-full
           bg-white
-          shadow-sm
+          shadow-[0_2px_7px_rgba(15,23,42,0.20)]
           transition-all
           duration-300
           ${checked ? 'left-[24px]' : 'left-[2px]'}
@@ -299,93 +341,110 @@ function Row({
   compactControl = false,
 }) {
   return (
-    <div className="group relative py-1">
+    <div className="group relative">
       <div
+        aria-hidden="true"
         className="
           pointer-events-none
           absolute
-          -inset-x-1
-          -inset-y-1
-          rounded-2xl
+          -inset-px
+          rounded-[1.35rem]
+          bg-gradient-to-r
+          from-emerald-500/0
+          via-emerald-400/10
+          to-lime-400/0
           opacity-0
           blur-xl
           transition-all
-          duration-300
+          duration-500
           group-hover:opacity-100
-          group-hover:bg-blue-500/[0.07]
-          dark:group-hover:bg-blue-400/[0.08]
         "
       />
 
       <div
         className={`
           relative
-          grid
-          gap-4
-          rounded-2xl
+          overflow-hidden
+          rounded-[1.25rem]
           border
-          border-transparent
-          px-3
-          py-4
+          border-slate-200/80
+          bg-white/80
+          p-4
+          shadow-[0_8px_28px_rgba(15,23,42,0.035)]
+          backdrop-blur-sm
           transition-all
           duration-300
-          sm:grid-cols-[minmax(0,1fr)_auto]
-          sm:items-center
-          sm:gap-5
-          sm:px-4
+          group-hover:-translate-y-0.5
+          group-hover:border-emerald-200
+          group-hover:shadow-[0_12px_32px_rgba(5,150,105,0.08)]
+          dark:border-slate-800
+          dark:bg-slate-900/70
+          dark:group-hover:border-emerald-900
+          sm:p-5
           ${
             compactControl
-              ? 'grid-cols-[minmax(0,1fr)_auto] items-center'
-              : 'grid-cols-1'
+              ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4'
+              : 'grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6'
           }
-          group-hover:border-slate-200
-          group-hover:bg-slate-50/80
-          dark:group-hover:border-slate-700
-          dark:group-hover:bg-slate-800/70
         `}
       >
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <div
+          aria-hidden="true"
+          className="
+            pointer-events-none
+            absolute
+            right-0
+            top-0
+            h-20
+            w-20
+            rounded-full
+            bg-emerald-400/5
+            blur-2xl
+          "
+        />
+
+        <div className="relative flex min-w-0 items-start gap-3.5">
           <div
             className="
               flex
-              h-10
-              w-10
+              h-11
+              w-11
               shrink-0
               items-center
               justify-center
-              rounded-xl
+              rounded-2xl
               border
-              border-slate-200
-              bg-slate-50
-              text-slate-500
+              border-emerald-100
+              bg-gradient-to-br
+              from-emerald-50
+              via-white
+              to-lime-50
+              text-emerald-700
+              shadow-sm
               transition-all
               duration-300
-              group-hover:border-blue-200
-              group-hover:bg-blue-50
-              group-hover:text-blue-600
-              dark:border-slate-700
-              dark:bg-slate-800
-              dark:text-slate-400
-              dark:group-hover:border-slate-600
-              dark:group-hover:bg-slate-700
-              dark:group-hover:text-blue-400
+              group-hover:scale-105
+              group-hover:border-emerald-200
+              group-hover:shadow-[0_8px_20px_rgba(5,150,105,0.12)]
+              dark:border-emerald-900
+              dark:from-emerald-950
+              dark:via-slate-900
+              dark:to-lime-950
+              dark:text-emerald-400
             "
           >
-            <Icon name={icon} />
+            <Icon name={icon} size={19} />
           </div>
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 pt-0.5">
             <div
               className="
                 break-words
                 text-sm
-                font-semibold
+                font-bold
+                tracking-[-0.01em]
                 text-slate-800
-                transition-colors
-                duration-300
-                group-hover:text-blue-700
                 dark:text-slate-100
-                dark:group-hover:text-blue-300
               "
             >
               {title}
@@ -411,6 +470,7 @@ function Row({
 
         <div
           className={`
+            relative
             flex
             min-w-0
             items-center
@@ -457,26 +517,26 @@ function SettingSelect({
         border
         border-slate-300
         bg-white
-        px-3
+        px-3.5
         py-2.5
         text-sm
-        font-medium
+        font-semibold
         text-slate-700
+        shadow-sm
         outline-none
         transition-all
         duration-300
-        hover:border-blue-300
-        hover:bg-slate-50
-        focus:border-blue-500
+        hover:border-emerald-300
+        hover:bg-emerald-50/30
+        focus:border-emerald-500
         focus:ring-2
-        focus:ring-blue-500/20
+        focus:ring-emerald-500/20
         dark:border-slate-600
         dark:bg-slate-800
         dark:text-slate-100
-        dark:hover:border-slate-500
-        dark:hover:bg-slate-700
-        dark:focus:border-blue-500
-        dark:focus:ring-blue-500/20
+        dark:hover:border-emerald-700
+        dark:hover:bg-slate-800
+        dark:focus:border-emerald-500
         ${className}
       `}
     >
@@ -706,12 +766,27 @@ function PasswordInput({
   autoComplete,
 }) {
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+    <div className="space-y-2.5">
+      <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">
         {label}
       </label>
 
       <div className="relative">
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-3.5
+            top-1/2
+            flex
+            -translate-y-1/2
+            items-center
+            text-slate-400
+          "
+        >
+          <Icon name="lock" size={17} />
+        </div>
+
         <input
           type={show ? 'text' : 'password'}
           value={value}
@@ -724,17 +799,19 @@ function PasswordInput({
             border
             border-slate-300
             bg-white
-            px-3
             py-3
+            pl-10
             pr-20
             text-sm
+            font-medium
             text-slate-800
+            shadow-sm
             outline-none
             transition
             placeholder:text-slate-400
-            focus:border-blue-500
-            focus:ring-2
-            focus:ring-blue-500/20
+            focus:border-emerald-500
+            focus:ring-4
+            focus:ring-emerald-500/10
             dark:border-slate-600
             dark:bg-slate-800
             dark:text-slate-100
@@ -754,14 +831,14 @@ function PasswordInput({
             px-2.5
             py-1.5
             text-xs
-            font-medium
+            font-bold
             text-slate-500
             transition
-            hover:bg-slate-100
-            hover:text-slate-700
+            hover:bg-emerald-50
+            hover:text-emerald-700
             dark:text-slate-400
             dark:hover:bg-slate-700
-            dark:hover:text-slate-200
+            dark:hover:text-emerald-300
           "
         >
           {show ? 'Hide' : 'Show'}
@@ -1135,655 +1212,1349 @@ export default function EducatorSettings() {
 
   return (
     <>
-      <div
-        className="
-          w-full
-          max-w-full
-          space-y-6
-        "
-      >
-        {/* ================= HEADER ================= */}
+      <div className="relative w-full max-w-full overflow-hidden">
+        {/* =====================================================
+            BEAUTIFUL GRADIENT BACKGROUND
+        ===================================================== */}
 
-        <div>
-          <h2
-            className="
-              text-2xl
-              font-bold
-              text-slate-900
-              dark:text-slate-50
-            "
-          >
-            {t('settings')}
-          </h2>
-
-          <p
-            className="
-              mt-1
-              text-sm
-              text-slate-500
-              dark:text-slate-400
-            "
-          >
-            {t('manage_account_description')}
-          </p>
-        </div>
-
-        {/* ================= CARD ================= */}
-
-        <Card
+        <div
+          aria-hidden="true"
           className="
-            !w-full
-            !max-w-full
-            !overflow-hidden
-            !p-0
-            !border
-            !border-slate-200
-            !bg-white
-            !shadow-[0_8px_30px_rgba(15,23,42,0.05)]
-            dark:!border-slate-800
-            dark:!bg-slate-950
-            dark:!shadow-[0_10px_40px_rgba(0,0,0,0.30)]
+            pointer-events-none
+            fixed
+            inset-0
+            -z-10
+            overflow-hidden
+            bg-[#f6f8f5]
+            dark:bg-[#07120e]
           "
         >
-          {/* ================= TABS ================= */}
+          <div
+            className="
+              absolute
+              -left-40
+              -top-40
+              h-[500px]
+              w-[500px]
+              rounded-full
+              bg-emerald-300/20
+              blur-[100px]
+              dark:bg-emerald-900/20
+            "
+          />
 
           <div
             className="
-              flex
-              overflow-x-auto
-              border-b
-              border-slate-200
-              bg-slate-50
-              px-3
-              sm:px-5
-              dark:border-slate-800
-              dark:bg-slate-900
+              absolute
+              right-[-180px]
+              top-[5%]
+              h-[550px]
+              w-[550px]
+              rounded-full
+              bg-lime-200/20
+              blur-[110px]
+              dark:bg-lime-900/10
+            "
+          />
+
+          <div
+            className="
+              absolute
+              bottom-[-220px]
+              left-[25%]
+              h-[500px]
+              w-[500px]
+              rounded-full
+              bg-teal-200/15
+              blur-[110px]
+              dark:bg-emerald-950/30
+            "
+          />
+
+          <div
+            className="
+              absolute
+              left-[45%]
+              top-[35%]
+              h-[280px]
+              w-[280px]
+              rounded-full
+              bg-green-100/20
+              blur-[90px]
+              dark:bg-green-950/20
+            "
+          />
+        </div>
+
+        <div className="relative space-y-6">
+          {/* =====================================================
+              HEADER
+          ===================================================== */}
+
+          <section
+            className="
+              relative
+              overflow-hidden
+              rounded-[1.75rem]
+              border
+              border-emerald-100/80
+              bg-white/90
+              shadow-[0_20px_70px_rgba(15,23,42,0.07)]
+              backdrop-blur-xl
+              dark:border-emerald-950
+              dark:bg-slate-950/90
             "
           >
-            {TABS.map((item) => {
-              const tabKey = item.toLowerCase();
+            {/* gradient top line */}
+            <div className="h-1.5 bg-gradient-to-r from-emerald-700 via-emerald-500 to-lime-400" />
 
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setTab(item)}
-                  className={`
-                    relative
-                    shrink-0
-                    px-4
-                    py-4
-                    text-sm
-                    font-medium
-                    transition-all
-                    duration-300
+            {/* decorative glow */}
+            <div
+              aria-hidden="true"
+              className="
+                pointer-events-none
+                absolute
+                right-[-80px]
+                top-[-110px]
+                h-72
+                w-72
+                rounded-full
+                bg-emerald-300/20
+                blur-[80px]
+                dark:bg-emerald-800/15
+              "
+            />
 
-                    ${
-                      tab === item
-                        ? `
-                          text-blue-600
-                          dark:text-blue-400
-                        `
-                        : `
-                          text-slate-500
-                          hover:text-slate-800
-                          dark:text-slate-400
-                          dark:hover:text-slate-200
-                        `
-                    }
-                  `}
-                >
-                  {t(tabKey)}
+            <div
+              aria-hidden="true"
+              className="
+                pointer-events-none
+                absolute
+                bottom-[-100px]
+                left-[35%]
+                h-64
+                w-64
+                rounded-full
+                bg-lime-200/20
+                blur-[80px]
+                dark:bg-lime-900/10
+              "
+            />
 
-                  {tab === item && (
+            <div className="relative p-5 sm:p-7 lg:p-8">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex min-w-0 items-start gap-4">
+                  <div
+                    className="
+                      relative
+                      flex
+                      h-14
+                      w-14
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-2xl
+                      bg-gradient-to-br
+                      from-emerald-700
+                      via-emerald-600
+                      to-lime-500
+                      text-white
+                      shadow-[0_12px_30px_rgba(5,150,105,0.25)]
+                    "
+                  >
+                    <Icon name="spark" size={25} />
+
                     <span
                       className="
                         absolute
-                        bottom-0
-                        left-3
-                        right-3
-                        h-0.5
+                        -right-1
+                        -top-1
+                        h-3
+                        w-3
                         rounded-full
-                        bg-blue-500
-                        dark:bg-blue-400
+                        border-2
+                        border-white
+                        bg-lime-300
+                        dark:border-slate-950
                       "
                     />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                  </div>
 
-          {/* ================= CONTENT ================= */}
+                  <div className="min-w-0">
+                    <div
+                      className="
+                        mb-2
+                        inline-flex
+                        items-center
+                        gap-1.5
+                        rounded-full
+                        border
+                        border-emerald-100
+                        bg-emerald-50
+                        px-2.5
+                        py-1
+                        text-[10px]
+                        font-bold
+                        uppercase
+                        tracking-[0.16em]
+                        text-emerald-700
+                        dark:border-emerald-900
+                        dark:bg-emerald-950
+                        dark:text-emerald-300
+                      "
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Educator Workspace
+                    </div>
 
-          <div
-            className="
-              px-3
-              py-4
-              sm:px-5
-              sm:py-5
-              dark:bg-slate-950
-            "
-          >
-            {/* ================= ACCOUNT ================= */}
+                    <h1
+                      className="
+                        text-2xl
+                        font-black
+                        tracking-[-0.035em]
+                        text-slate-900
+                        dark:text-white
+                        sm:text-3xl
+                      "
+                    >
+                      {t('settings', 'Settings')}
+                    </h1>
 
-            {tab === 'Account' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('profile_visibility')}
-                  icon="user"
+                    <p
+                      className="
+                        mt-1.5
+                        max-w-2xl
+                        text-sm
+                        leading-6
+                        text-slate-500
+                        dark:text-slate-400
+                      "
+                    >
+                      Personalize your educator experience,
+                      notifications, privacy, language and
+                      workspace preferences.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Account summary */}
+                <div
+                  className="
+                    flex
+                    flex-wrap
+                    items-center
+                    gap-2
+                    lg:max-w-md
+                    lg:justify-end
+                  "
                 >
-                  <SettingSelect
-                    value={draft.profile_visibility}
-                    onChange={(e) =>
-                      set(
-                        'profile_visibility',
-                        e.target.value
-                      )
-                    }
-                    className="w-full sm:w-64"
-                  >
-                    <option value="classmates">
-                      {t('visible_to_all_classmates')}
-                    </option>
-
-                    <option value="private">
-                      {t('private')}
-                    </option>
-
-                    <option value="public">
-                      {t('public')}
-                    </option>
-                  </SettingSelect>
-                </Row>
-
-                <Row
-                  title={t('email_address')}
-                  desc={t('email_read_only')}
-                  icon="mail"
-                >
-                  <input
-                    value={draft.email}
-                    readOnly
+                  <div
                     className="
-                      w-full
+                      flex
+                      min-w-0
+                      items-center
+                      gap-2
                       rounded-xl
                       border
                       border-slate-200
-                      bg-slate-50
+                      bg-slate-50/80
                       px-3
-                      py-2.5
-                      text-sm
-                      text-slate-600
-                      outline-none
-                      sm:w-64
-                      dark:border-slate-700
-                      dark:bg-slate-800
-                      dark:text-slate-300
-                    "
-                  />
-                </Row>
-
-                {/* ================= CHANGE PASSWORD ================= */}
-
-                <Row
-                  title={t('change_password')}
-                  desc="Update your account password securely."
-                  icon="lock"
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={openPasswordModal}
-                    className="
-                      w-full
-                      sm:w-auto
-                      sm:min-w-[110px]
+                      py-2
+                      dark:border-slate-800
+                      dark:bg-slate-900
                     "
                   >
-                    {t('change')}
-                  </Button>
-                </Row>
-
-                <Row
-                  title={t('enable_dark_mode')}
-                  desc={t('dark_mode_description')}
-                  icon="moon"
-                >
-                  <Toggle
-                    checked={draft.dark_mode}
-                    onChange={(value) =>
-                      set(
-                        'dark_mode',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                {/* ================= RESPONSIVE LEARNING REMINDER ================= */}
-
-                <Row
-                  title={t('learning_reminders')}
-                  desc={t('receive_task_reminders')}
-                  icon="bell"
-                  compactControl
-                >
-                  <Toggle
-                    checked={
-                      draft.learning_reminders
-                    }
-                    onChange={(value) =>
-                      set(
-                        'learning_reminders',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                {/* ================= LANGUAGE ================= */}
-
-                <Row
-                  title={t('language')}
-                  desc={t('choose_preferred_language')}
-                  icon="globe"
-                >
-                  <div
-                    className="
-                      flex
-                      w-full
-                      min-w-0
-                      flex-col
-                      gap-3
-                      sm:w-auto
-                      sm:flex-row
-                      sm:items-center
-                    "
-                  >
-                    <SettingSelect
-                      value={draft.language}
-                      onChange={(e) =>
-                        changeLanguage(
-                          e.target.value
-                        )
-                      }
-                      className="
-                        w-full
-                        sm:w-64
-                        max-w-full
-                      "
-                    >
-                      {LANGUAGE_OPTIONS.map(
-                        (language) => (
-                          <option
-                            key={language.value}
-                            value={language.value}
-                          >
-                            {language.label}
-                          </option>
-                        )
-                      )}
-                    </SettingSelect>
-
                     <div
                       className="
                         flex
-                        min-h-[52px]
-                        w-full
-                        min-w-0
-                        flex-col
+                        h-7
+                        w-7
+                        shrink-0
+                        items-center
+                        justify-center
+                        rounded-lg
+                        bg-emerald-100
+                        text-emerald-700
+                        dark:bg-emerald-950
+                        dark:text-emerald-400
+                      "
+                    >
+                      <Icon name="mail" size={15} />
+                    </div>
+
+                    <span
+                      className="
+                        max-w-[220px]
+                        truncate
+                        text-xs
+                        font-semibold
+                        text-slate-600
+                        dark:text-slate-300
+                      "
+                    >
+                      {user?.email || draft.email || 'Account'}
+                    </span>
+                  </div>
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                      rounded-xl
+                      border
+                      border-emerald-100
+                      bg-gradient-to-r
+                      from-emerald-50
+                      to-lime-50
+                      px-3
+                      py-2
+                      dark:border-emerald-900
+                      dark:from-emerald-950
+                      dark:to-lime-950
+                    "
+                  >
+                    <Icon
+                      name="globe"
+                      size={15}
+                    />
+
+                    <span
+                      className="
+                        text-xs
+                        font-bold
+                        text-emerald-700
+                        dark:text-emerald-300
+                      "
+                    >
+                      {getNativeLanguageName(
+                        draft.language
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick information */}
+              <div
+                className="
+                  mt-6
+                  grid
+                  gap-3
+                  sm:grid-cols-3
+                "
+              >
+                <div
+                  className="
+                    rounded-2xl
+                    border
+                    border-slate-200/80
+                    bg-white/75
+                    p-3.5
+                    dark:border-slate-800
+                    dark:bg-slate-900/70
+                  "
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="
+                        flex
+                        h-9
+                        w-9
                         items-center
                         justify-center
                         rounded-xl
-                        border
-                        border-blue-200
-                        bg-blue-50
-                        px-4
-                        py-2
-                        text-center
-                        transition-all
-                        duration-300
-                        sm:w-52
-                        dark:border-blue-900
-                        dark:bg-blue-950
+                        bg-emerald-50
+                        text-emerald-700
+                        dark:bg-emerald-950
+                        dark:text-emerald-400
                       "
                     >
-                      <span
-                        className="
-                          text-[10px]
-                          font-medium
-                          uppercase
-                          tracking-wider
-                          text-blue-500
-                          dark:text-blue-400
-                        "
-                      >
-                        {t('selected_language')}
-                      </span>
+                      <Icon name="user" size={16} />
+                    </div>
 
-                      <span
-                        className="
-                          mt-0.5
-                          max-w-full
-                          truncate
-                          text-sm
-                          font-semibold
-                          text-blue-700
-                          dark:text-blue-300
-                        "
-                      >
-                        {getNativeLanguageName(
-                          draft.language
-                        )}
-                      </span>
-
-                      <span
-                        className="
-                          max-w-full
-                          truncate
-                          text-[11px]
-                          text-blue-600/80
-                          dark:text-blue-300/80
-                        "
-                      >
-                        {getLanguageName(
-                          draft.language
-                        )}
-                      </span>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Profile
+                      </p>
+                      <p className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
+                        Educator account
+                      </p>
                     </div>
                   </div>
-                </Row>
+                </div>
 
-                {/* ================= TIME ZONE ================= */}
-
-                <Row
-                  title={t('time_zone')}
-                  desc={
-                    t('choose_time_zone') !==
-                    'choose_time_zone'
-                      ? t('choose_time_zone')
-                      : 'Choose the time zone used for dates and times.'
-                  }
-                  icon="clock"
+                <div
+                  className="
+                    rounded-2xl
+                    border
+                    border-slate-200/80
+                    bg-white/75
+                    p-3.5
+                    dark:border-slate-800
+                    dark:bg-slate-900/70
+                  "
                 >
-                  <div
-                    className="
-                      flex
-                      w-full
-                      min-w-0
-                      flex-col
-                      gap-3
-                      sm:w-auto
-                      sm:flex-row
-                      sm:items-center
-                    "
-                  >
-                    <SettingSelect
-                      value={draft.time_zone}
-                      onChange={(e) =>
-                        changeTimeZone(
-                          e.target.value
-                        )
-                      }
-                      className="
-                        w-full
-                        sm:w-[260px]
-                        max-w-full
-                      "
-                    >
-                      {TIME_ZONE_OPTIONS.map(
-                        (timeZone) => (
-                          <option
-                            key={timeZone.value}
-                            value={timeZone.value}
-                          >
-                            {timeZone.label}
-                          </option>
-                        )
-                      )}
-                    </SettingSelect>
-
+                  <div className="flex items-center gap-3">
                     <div
                       className="
                         flex
-                        min-h-[52px]
-                        w-full
-                        min-w-0
-                        flex-col
+                        h-9
+                        w-9
                         items-center
                         justify-center
                         rounded-xl
-                        border
-                        border-blue-200
-                        bg-blue-50
-                        px-4
-                        py-2
-                        text-center
-                        transition-all
-                        duration-300
-                        sm:w-[180px]
-                        dark:border-blue-900
-                        dark:bg-blue-950
+                        bg-lime-50
+                        text-lime-700
+                        dark:bg-lime-950
+                        dark:text-lime-400
                       "
                     >
-                      <span
-                        className="
-                          text-[10px]
-                          font-medium
-                          uppercase
-                          tracking-wider
-                          text-blue-500
-                          dark:text-blue-400
-                        "
-                      >
-                        Selected Time Zone
-                      </span>
+                      <Icon name="globe" size={16} />
+                    </div>
 
-                      <span
-                        className="
-                          mt-0.5
-                          text-base
-                          font-bold
-                          text-blue-700
-                          dark:text-blue-300
-                        "
-                      >
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Language
+                      </p>
+                      <p className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
+                        {getLanguageName(draft.language)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  className="
+                    rounded-2xl
+                    border
+                    border-slate-200/80
+                    bg-white/75
+                    p-3.5
+                    dark:border-slate-800
+                    dark:bg-slate-900/70
+                  "
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="
+                        flex
+                        h-9
+                        w-9
+                        items-center
+                        justify-center
+                        rounded-xl
+                        bg-green-50
+                        text-green-700
+                        dark:bg-green-950
+                        dark:text-green-400
+                      "
+                    >
+                      <Icon name="clock" size={16} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Time zone
+                      </p>
+                      <p className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
                         {getTimeZoneLabel(
                           draft.time_zone
                         )}
-                      </span>
+                      </p>
                     </div>
                   </div>
-                </Row>
+                </div>
               </div>
-            )}
+            </div>
+          </section>
 
-            {/* ================= NOTIFICATIONS ================= */}
+          {/* =====================================================
+              SETTINGS CONTAINER
+          ===================================================== */}
 
-            {tab === 'Notifications' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('weekly_digest_email')}
-                  desc={t('progress_recommendations')}
-                  icon="mail"
-                >
-                  <Toggle
-                    checked={
-                      draft.weekly_digest
-                    }
-                    onChange={(value) =>
-                      set(
-                        'weekly_digest',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                {/* ================= RESPONSIVE LEARNING REMINDER ================= */}
-
-                <Row
-                  title={t('learning_reminders')}
-                  desc={t('upcoming_task_notifications')}
-                  icon="bell"
-                  compactControl
-                >
-                  <Toggle
-                    checked={
-                      draft.learning_reminders
-                    }
-                    onChange={(value) =>
-                      set(
-                        'learning_reminders',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-              </div>
-            )}
-
-            {/* ================= PRIVACY ================= */}
-
-            {tab === 'Privacy' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('show_activity_classmates')}
-                  desc={t('recent_submissions_comments')}
-                  icon="users"
-                >
-                  <Toggle
-                    checked={
-                      draft.activity_visible
-                    }
-                    onChange={(value) =>
-                      set(
-                        'activity_visible',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                <Row
-                  title={t('show_progress_leaderboards')}
-                  icon="chart"
-                >
-                  <Toggle
-                    checked={
-                      draft.show_progress
-                    }
-                    onChange={(value) =>
-                      set(
-                        'show_progress',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-              </div>
-            )}
-
-            {/* ================= PREFERENCES ================= */}
-
-            {tab === 'Preferences' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('theme')}
-                  desc={t('choose_application_appearance')}
-                  icon="palette"
-                >
-                  <SettingSelect
-                    value={draft.theme}
-                    width="180px"
-                    onChange={(e) =>
-                      changeTheme(
-                        e.target.value
-                      )
-                    }
-                    className="w-full sm:w-auto"
-                  >
-                    <option value="Light">
-                      {t('light')}
-                    </option>
-
-                    <option value="Dark">
-                      {t('dark')}
-                    </option>
-
-                    <option value="SaaS Blue-White">
-                      SaaS Blue-White
-                    </option>
-                  </SettingSelect>
-                </Row>
-              </div>
-            )}
-          </div>
-
-          {/* ================= FOOTER ================= */}
-
-          <div
+          <Card
             className="
-              flex
-              flex-col
-              gap-3
-              border-t
-              border-slate-200
-              bg-slate-50
-              px-3
-              py-4
-              sm:flex-row
-              sm:items-center
-              sm:justify-end
-              sm:px-5
-              dark:border-slate-800
-              dark:bg-slate-900
+              !overflow-visible
+              !rounded-[1.75rem]
+              !border-slate-200/80
+              !bg-white/90
+              !shadow-[0_18px_60px_rgba(15,23,42,0.055)]
+              backdrop-blur-xl
+              dark:!border-slate-800
+              dark:!bg-slate-950/90
             "
           >
-            {saved === 'ok' && (
-              <span
-                className="
-                  text-xs
-                  font-medium
-                  text-emerald-600
-                  sm:mr-auto
-                  dark:text-emerald-400
-                "
-              >
-                {t('changes_saved_successfully')}
-              </span>
-            )}
+            {/* =====================================================
+                TAB NAVIGATION
+            ===================================================== */}
 
-            {saved === 'error' && (
-              <span
-                className="
-                  text-xs
-                  font-medium
-                  text-red-600
-                  sm:mr-auto
-                  dark:text-red-400
-                "
-              >
-                {t('failed_to_save_changes')}
-              </span>
-            )}
-
-            <Button
-              variant="outline"
-              onClick={onCancel}
+            <div
+              className="
+                border-b
+                border-slate-200/80
+                px-4
+                py-4
+                dark:border-slate-800
+                sm:px-6
+              "
             >
-              {t('cancel')}
-            </Button>
+              <div
+                className="
+                  flex
+                  w-full
+                  gap-2
+                  overflow-x-auto
+                  rounded-2xl
+                  bg-slate-100/70
+                  p-1.5
+                  dark:bg-slate-900
+                "
+              >
+                {TABS.map((item) => {
+                  const active = tab === item;
 
-            <Button onClick={onSave}>
-              {t('save_changes')}
-            </Button>
-          </div>
-        </Card>
+                  const tabIcons = {
+                    Account: 'user',
+                    Notifications: 'bell',
+                    Privacy: 'shield',
+                    Preferences: 'palette',
+                  };
+
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setTab(item)}
+                      className={`
+                        relative
+                        flex
+                        min-w-fit
+                        flex-1
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-xl
+                        px-4
+                        py-2.5
+                        text-xs
+                        font-bold
+                        transition-all
+                        duration-300
+                        sm:text-sm
+                        ${
+                          active
+                            ? `
+                              bg-white
+                              text-emerald-700
+                              shadow-[0_5px_18px_rgba(15,23,42,0.08)]
+                              dark:bg-slate-800
+                              dark:text-emerald-300
+                            `
+                            : `
+                              text-slate-500
+                              hover:bg-white/70
+                              hover:text-slate-800
+                              dark:text-slate-400
+                              dark:hover:bg-slate-800/60
+                              dark:hover:text-slate-200
+                            `
+                        }
+                      `}
+                    >
+                      <Icon
+                        name={tabIcons[item]}
+                        size={16}
+                      />
+
+                      <span>{item}</span>
+
+                      {active && (
+                        <span
+                          className="
+                            absolute
+                            bottom-0.5
+                            left-1/2
+                            h-0.5
+                            w-7
+                            -translate-x-1/2
+                            rounded-full
+                            bg-gradient-to-r
+                            from-emerald-600
+                            to-lime-400
+                          "
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* =====================================================
+                CONTENT
+            ===================================================== */}
+
+            <div className="p-4 sm:p-6 lg:p-7">
+              {/* ===================================================
+                  ACCOUNT
+              =================================================== */}
+
+              {tab === 'Account' && (
+                <div className="space-y-6">
+                  <div
+                    className="
+                      relative
+                      overflow-hidden
+                      rounded-[1.4rem]
+                      border
+                      border-emerald-100
+                      bg-gradient-to-br
+                      from-emerald-50
+                      via-white
+                      to-lime-50
+                      p-5
+                      dark:border-emerald-950
+                      dark:from-emerald-950/60
+                      dark:via-slate-900
+                      dark:to-lime-950/30
+                    "
+                  >
+                    <div
+                      aria-hidden="true"
+                      className="
+                        pointer-events-none
+                        absolute
+                        right-[-60px]
+                        top-[-80px]
+                        h-44
+                        w-44
+                        rounded-full
+                        bg-emerald-300/20
+                        blur-3xl
+                      "
+                    />
+
+                    <div className="relative flex items-start gap-4">
+                      <div
+                        className="
+                          flex
+                          h-11
+                          w-11
+                          shrink-0
+                          items-center
+                          justify-center
+                          rounded-2xl
+                          bg-emerald-700
+                          text-white
+                          shadow-[0_10px_25px_rgba(5,150,105,0.22)]
+                        "
+                      >
+                        <Icon name="user" size={20} />
+                      </div>
+
+                      <div>
+                        <h2 className="text-base font-black text-slate-900 dark:text-white">
+                          Account settings
+                        </h2>
+
+                        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          Manage your educator identity and
+                          account security.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Row
+                      title="Email address"
+                      desc="Your account email address is managed through your authentication provider."
+                      icon="mail"
+                    >
+                      <div
+                        className="
+                          w-full
+                          max-w-full
+                          rounded-xl
+                          border
+                          border-slate-200
+                          bg-slate-50
+                          px-3.5
+                          py-2.5
+                          text-sm
+                          font-semibold
+                          text-slate-600
+                          dark:border-slate-700
+                          dark:bg-slate-800
+                          dark:text-slate-300
+                          sm:min-w-[240px]
+                        "
+                      >
+                        <span className="block truncate">
+                          {user?.email ||
+                            draft.email ||
+                            'Not available'}
+                        </span>
+                      </div>
+                    </Row>
+
+                    <Row
+                      title="Password"
+                      desc="Update your account password to keep your educator account secure."
+                      icon="lock"
+                    >
+                      <Button
+                        type="button"
+                        onClick={openPasswordModal}
+                        className="
+                          w-full
+                          !rounded-xl
+                          !border-0
+                          !bg-gradient-to-r
+                          !from-emerald-700
+                          !to-emerald-600
+                          !px-5
+                          !py-2.5
+                          !text-sm
+                          !font-bold
+                          !text-white
+                          !shadow-[0_8px_22px_rgba(5,150,105,0.18)]
+                          transition-all
+                          duration-300
+                          hover:!from-emerald-800
+                          hover:!to-emerald-700
+                          hover:shadow-[0_10px_28px_rgba(5,150,105,0.25)]
+                          sm:w-auto
+                        "
+                      >
+                        Change password
+                      </Button>
+                    </Row>
+                  </div>
+                </div>
+              )}
+
+              {/* ===================================================
+                  NOTIFICATIONS
+              =================================================== */}
+
+              {tab === 'Notifications' && (
+                <div className="space-y-6">
+                  <div
+                    className="
+                      relative
+                      overflow-hidden
+                      rounded-[1.4rem]
+                      border
+                      border-emerald-100
+                      bg-gradient-to-br
+                      from-emerald-50
+                      via-white
+                      to-green-50
+                      p-5
+                      dark:border-emerald-950
+                      dark:from-emerald-950/50
+                      dark:via-slate-900
+                      dark:to-green-950/30
+                    "
+                  >
+                    <div className="relative flex items-start gap-4">
+                      <div
+                        className="
+                          flex
+                          h-11
+                          w-11
+                          shrink-0
+                          items-center
+                          justify-center
+                          rounded-2xl
+                          bg-emerald-700
+                          text-white
+                          shadow-[0_10px_25px_rgba(5,150,105,0.22)]
+                        "
+                      >
+                        <Icon name="bell" size={20} />
+                      </div>
+
+                      <div>
+                        <h2 className="text-base font-black text-slate-900 dark:text-white">
+                          Notification preferences
+                        </h2>
+
+                        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          Choose which learning and platform
+                          updates you want to receive.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Row
+                      title="Learning reminders"
+                      desc="Receive reminders about learning activities and important tasks."
+                      icon="bell"
+                      compactControl
+                    >
+                      <Toggle
+                        checked={draft.learning_reminders}
+                        onChange={(value) =>
+                          set(
+                            'learning_reminders',
+                            value
+                          )
+                        }
+                      />
+                    </Row>
+
+                    <Row
+                      title="Weekly digest"
+                      desc="Receive a weekly summary of important learning activity."
+                      icon="chart"
+                      compactControl
+                    >
+                      <Toggle
+                        checked={draft.weekly_digest}
+                        onChange={(value) =>
+                          set(
+                            'weekly_digest',
+                            value
+                          )
+                        }
+                      />
+                    </Row>
+                  </div>
+                </div>
+              )}
+
+              {/* ===================================================
+                  PRIVACY
+              =================================================== */}
+
+              {tab === 'Privacy' && (
+                <div className="space-y-6">
+                  <div
+                    className="
+                      relative
+                      overflow-hidden
+                      rounded-[1.4rem]
+                      border
+                      border-emerald-100
+                      bg-gradient-to-br
+                      from-emerald-50
+                      via-white
+                      to-lime-50
+                      p-5
+                      dark:border-emerald-950
+                      dark:from-emerald-950/50
+                      dark:via-slate-900
+                      dark:to-lime-950/20
+                    "
+                  >
+                    <div className="relative flex items-start gap-4">
+                      <div
+                        className="
+                          flex
+                          h-11
+                          w-11
+                          shrink-0
+                          items-center
+                          justify-center
+                          rounded-2xl
+                          bg-emerald-700
+                          text-white
+                          shadow-[0_10px_25px_rgba(5,150,105,0.22)]
+                        "
+                      >
+                        <Icon name="shield" size={20} />
+                      </div>
+
+                      <div>
+                        <h2 className="text-base font-black text-slate-900 dark:text-white">
+                          Privacy controls
+                        </h2>
+
+                        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          Control how your educator activity and
+                          progress are shared.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Row
+                      title="Profile visibility"
+                      desc="Choose who can see your educator profile."
+                      icon="users"
+                    >
+                      <SettingSelect
+                        value={draft.profile_visibility}
+                        onChange={(e) =>
+                          set(
+                            'profile_visibility',
+                            e.target.value
+                          )
+                        }
+                        width="180px"
+                      >
+                        <option value="private">
+                          Only me
+                        </option>
+                        <option value="classmates">
+                          Classmates
+                        </option>
+                        <option value="public">
+                          Everyone
+                        </option>
+                      </SettingSelect>
+                    </Row>
+
+                    <Row
+                      title="Activity visibility"
+                      desc="Allow your learning activity to be visible to others."
+                      icon="users"
+                      compactControl
+                    >
+                      <Toggle
+                        checked={draft.activity_visible}
+                        onChange={(value) =>
+                          set(
+                            'activity_visible',
+                            value
+                          )
+                        }
+                      />
+                    </Row>
+
+                    <Row
+                      title="Show progress"
+                      desc="Allow your learning progress to be visible where applicable."
+                      icon="chart"
+                      compactControl
+                    >
+                      <Toggle
+                        checked={draft.show_progress}
+                        onChange={(value) =>
+                          set(
+                            'show_progress',
+                            value
+                          )
+                        }
+                      />
+                    </Row>
+                  </div>
+                </div>
+              )}
+
+              {/* ===================================================
+                  PREFERENCES
+              =================================================== */}
+
+              {tab === 'Preferences' && (
+                <div className="space-y-6">
+                  <div
+                    className="
+                      relative
+                      overflow-hidden
+                      rounded-[1.4rem]
+                      border
+                      border-emerald-100
+                      bg-gradient-to-br
+                      from-emerald-50
+                      via-white
+                      to-lime-50
+                      p-5
+                      dark:border-emerald-950
+                      dark:from-emerald-950/50
+                      dark:via-slate-900
+                      dark:to-lime-950/20
+                    "
+                  >
+                    <div className="relative flex items-start gap-4">
+                      <div
+                        className="
+                          flex
+                          h-11
+                          w-11
+                          shrink-0
+                          items-center
+                          justify-center
+                          rounded-2xl
+                          bg-emerald-700
+                          text-white
+                          shadow-[0_10px_25px_rgba(5,150,105,0.22)]
+                        "
+                      >
+                        <Icon name="palette" size={20} />
+                      </div>
+
+                      <div>
+                        <h2 className="text-base font-black text-slate-900 dark:text-white">
+                          Workspace preferences
+                        </h2>
+
+                        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          Customize the appearance, language and
+                          regional settings of your workspace.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Row
+                      title="Appearance"
+                      desc="Choose the visual theme for your educator workspace."
+                      icon="palette"
+                    >
+                      <SettingSelect
+                        value={draft.theme}
+                        onChange={(e) =>
+                          changeTheme(e.target.value)
+                        }
+                        width="200px"
+                      >
+                        <option value="Light">
+                          Light
+                        </option>
+                        <option value="Dark">
+                          Dark
+                        </option>
+                        <option value="SaaS Blue-White">
+                          SaaS Blue-White
+                        </option>
+                      </SettingSelect>
+                    </Row>
+
+                    <Row
+                      title="Dark mode"
+                      desc="Use the darker interface for reduced brightness."
+                      icon="moon"
+                      compactControl
+                    >
+                      <Toggle
+                        checked={draft.dark_mode}
+                        onChange={(value) =>
+                          set('dark_mode', value)
+                        }
+                      />
+                    </Row>
+
+                    <Row
+                      title="Language"
+                      desc="Select the language used throughout the application."
+                      icon="globe"
+                    >
+                      <SettingSelect
+                        value={draft.language}
+                        onChange={(e) =>
+                          changeLanguage(
+                            e.target.value
+                          )
+                        }
+                        width="200px"
+                      >
+                        {LANGUAGE_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={option.value}
+                              value={option.value}
+                            >
+                              {option.label}
+                            </option>
+                          )
+                        )}
+                      </SettingSelect>
+                    </Row>
+
+                    <Row
+                      title="Time zone"
+                      desc="Used for dates, schedules, reminders and regional timestamps."
+                      icon="clock"
+                    >
+                      <SettingSelect
+                        value={draft.time_zone}
+                        onChange={(e) =>
+                          changeTimeZone(
+                            e.target.value
+                          )
+                        }
+                        width="200px"
+                      >
+                        {TIME_ZONE_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={option.value}
+                              value={option.value}
+                            >
+                              {option.label}
+                            </option>
+                          )
+                        )}
+                      </SettingSelect>
+                    </Row>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* =====================================================
+                FOOTER ACTION BAR
+            ===================================================== */}
+
+            <div
+              className="
+                border-t
+                border-slate-200/80
+                bg-gradient-to-r
+                from-slate-50/80
+                via-white
+                to-emerald-50/40
+                px-4
+                py-4
+                dark:border-slate-800
+                dark:from-slate-900
+                dark:via-slate-950
+                dark:to-emerald-950/20
+                sm:px-6
+                sm:py-5
+              "
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-h-[24px]">
+                  {saved === 'ok' && (
+                    <div
+                      className="
+                        inline-flex
+                        items-center
+                        gap-2
+                        rounded-xl
+                        border
+                        border-emerald-200
+                        bg-emerald-50
+                        px-3
+                        py-2
+                        text-xs
+                        font-bold
+                        text-emerald-700
+                        dark:border-emerald-900
+                        dark:bg-emerald-950
+                        dark:text-emerald-300
+                      "
+                    >
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+                        ✓
+                      </span>
+                      Settings saved successfully.
+                    </div>
+                  )}
+
+                  {saved === 'error' && (
+                    <div
+                      className="
+                        inline-flex
+                        items-center
+                        gap-2
+                        rounded-xl
+                        border
+                        border-red-200
+                        bg-red-50
+                        px-3
+                        py-2
+                        text-xs
+                        font-bold
+                        text-red-700
+                        dark:border-red-900
+                        dark:bg-red-950
+                        dark:text-red-300
+                      "
+                    >
+                      Unable to save settings.
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
+                  <Button
+                    type="button"
+                    onClick={onCancel}
+                    className="
+                      w-full
+                      !rounded-xl
+                      !border
+                      !border-slate-300
+                      !bg-white
+                      !px-5
+                      !py-2.5
+                      !text-sm
+                      !font-bold
+                      !text-slate-600
+                      shadow-sm
+                      transition-all
+                      hover:!border-slate-400
+                      hover:!bg-slate-50
+                      dark:!border-slate-700
+                      dark:!bg-slate-900
+                      dark:!text-slate-300
+                      dark:hover:!bg-slate-800
+                      sm:w-auto
+                    "
+                  >
+                    Cancel
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={onSave}
+                    className="
+                      w-full
+                      !rounded-xl
+                      !border-0
+                      !bg-gradient-to-r
+                      !from-emerald-700
+                      !via-emerald-600
+                      !to-lime-500
+                      !px-6
+                      !py-2.5
+                      !text-sm
+                      !font-bold
+                      !text-white
+                      !shadow-[0_10px_28px_rgba(5,150,105,0.22)]
+                      transition-all
+                      duration-300
+                      hover:!from-emerald-800
+                      hover:!via-emerald-700
+                      hover:!to-lime-600
+                      hover:shadow-[0_12px_32px_rgba(5,150,105,0.30)]
+                      sm:w-auto
+                    "
+                  >
+                    Save changes
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* =====================================================
+              WORKSPACE STATUS
+          ===================================================== */}
+
+          <section
+            className="
+              relative
+              overflow-hidden
+              rounded-[1.5rem]
+              border
+              border-emerald-100/80
+              bg-gradient-to-br
+              from-[#0b2f24]
+              via-[#104638]
+              to-[#173d2f]
+              p-5
+              text-white
+              shadow-[0_20px_55px_rgba(5,46,36,0.18)]
+              sm:p-6
+            "
+          >
+            <div
+              aria-hidden="true"
+              className="
+                pointer-events-none
+                absolute
+                right-[-90px]
+                top-[-100px]
+                h-64
+                w-64
+                rounded-full
+                bg-emerald-300/10
+                blur-3xl
+              "
+            />
+
+            <div
+              aria-hidden="true"
+              className="
+                pointer-events-none
+                absolute
+                bottom-[-100px]
+                left-[35%]
+                h-56
+                w-56
+                rounded-full
+                bg-lime-300/10
+                blur-3xl
+              "
+            />
+
+            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="
+                      flex
+                      h-7
+                      w-7
+                      items-center
+                      justify-center
+                      rounded-lg
+                      bg-white/10
+                      text-lime-300
+                    "
+                  >
+                    <Icon name="shield" size={15} />
+                  </span>
+
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">
+                    Workspace status
+                  </span>
+                </div>
+
+                <h3 className="mt-2 text-base font-black sm:text-lg">
+                  Your educator preferences are ready
+                </h3>
+
+                <p className="mt-1 max-w-xl text-xs leading-5 text-emerald-100/70">
+                  Your language, privacy, notification and
+                  appearance preferences are stored locally
+                  for this workspace.
+                </p>
+              </div>
+
+              <div
+                className="
+                  flex
+                  shrink-0
+                  items-center
+                  gap-2
+                  rounded-2xl
+                  border
+                  border-white/10
+                  bg-white/[0.06]
+                  px-4
+                  py-3
+                  backdrop-blur-md
+                "
+              >
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime-300 opacity-60" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-lime-300" />
+                </span>
+
+                <span className="text-xs font-bold text-white">
+                  Preferences active
+                </span>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
 
-      {/* ================= PASSWORD MODAL ================= */}
+      {/* =========================================================
+          REDESIGNED PASSWORD MODAL
+      ========================================================= */}
 
       {passwordOpen && (
         <div
@@ -1794,13 +2565,10 @@ export default function EducatorSettings() {
             flex
             items-center
             justify-center
-            overflow-y-auto
-            bg-slate-950/60
-            px-3
-            py-4
-            backdrop-blur-sm
-            sm:px-4
-            sm:py-6
+            bg-slate-950/65
+            p-3
+            backdrop-blur-md
+            sm:p-5
           "
           onMouseDown={(event) => {
             if (
@@ -1813,229 +2581,522 @@ export default function EducatorSettings() {
         >
           <div
             className="
-              my-auto
+              relative
+              max-h-[94vh]
               w-full
-              max-w-md
-              max-h-[calc(100vh-32px)]
+              max-w-3xl
               overflow-y-auto
-              rounded-2xl
+              rounded-[1.75rem]
               border
-              border-slate-200
+              border-white/10
               bg-white
-              p-4
-              shadow-2xl
-              sm:p-6
+              shadow-[0_35px_100px_rgba(0,0,0,0.30)]
               dark:border-slate-700
-              dark:bg-slate-900
+              dark:bg-slate-950
             "
             role="dialog"
             aria-modal="true"
             aria-labelledby="change-password-title"
           >
-            {/* MODAL HEADER */}
-
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3
-                  id="change-password-title"
-                  className="
-                    text-lg
-                    font-bold
-                    text-slate-900
-                    dark:text-white
-                  "
-                >
-                  Change Password
-                </h3>
-
-                <p
-                  className="
-                    mt-1
-                    text-xs
-                    leading-5
-                    text-slate-500
-                    dark:text-slate-400
-                  "
-                >
-                  Enter your current password and choose
-                  a new password for your account.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={closePasswordModal}
-                disabled={passwordLoading}
-                aria-label="Close"
-                className="
-                  flex
-                  h-9
-                  w-9
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-lg
-                  text-xl
-                  text-slate-400
-                  transition
-                  hover:bg-slate-100
-                  hover:text-slate-700
-                  disabled:cursor-not-allowed
-                  disabled:opacity-50
-                  dark:hover:bg-slate-800
-                  dark:hover:text-slate-200
-                "
-              >
-                ×
-              </button>
-            </div>
-
-            {/* SUCCESS */}
-
-            {passwordSuccess && (
-              <div
-                className="
-                  mb-4
-                  rounded-xl
-                  border
-                  border-emerald-200
-                  bg-emerald-50
-                  px-4
-                  py-3
-                  text-sm
-                  font-medium
-                  text-emerald-700
-                  dark:border-emerald-900
-                  dark:bg-emerald-950
-                  dark:text-emerald-300
-                "
-              >
-                Password changed successfully.
-              </div>
-            )}
-
-            {/* ERROR */}
-
-            {passwordError && (
-              <div
-                className="
-                  mb-4
-                  rounded-xl
-                  border
-                  border-red-200
-                  bg-red-50
-                  px-4
-                  py-3
-                  text-sm
-                  leading-5
-                  text-red-700
-                  dark:border-red-900
-                  dark:bg-red-950
-                  dark:text-red-300
-                "
-                role="alert"
-              >
-                {passwordError}
-              </div>
-            )}
-
-            {/* FORM */}
-
-            <form
-              onSubmit={handlePasswordChange}
-              className="space-y-4"
+            {/* Close */}
+            <button
+              type="button"
+              onClick={closePasswordModal}
+              disabled={passwordLoading}
+              className="
+                absolute
+                right-4
+                top-4
+                z-20
+                flex
+                h-9
+                w-9
+                items-center
+                justify-center
+                rounded-xl
+                border
+                border-white/10
+                bg-white/10
+                text-white/80
+                transition
+                hover:bg-white/20
+                hover:text-white
+                disabled:cursor-not-allowed
+                disabled:opacity-50
+                dark:border-slate-700
+              "
+              aria-label="Close"
             >
-              <PasswordInput
-                label="Current password"
-                value={currentPassword}
-                onChange={(e) =>
-                  setCurrentPassword(
-                    e.target.value
-                  )
-                }
-                show={showCurrentPassword}
-                onToggle={() =>
-                  setShowCurrentPassword(
-                    (value) => !value
-                  )
-                }
-                placeholder="Enter current password"
-                autoComplete="current-password"
-              />
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <path d="M6 6l12 12" />
+                <path d="M18 6 6 18" />
+              </svg>
+            </button>
 
-              <PasswordInput
-                label="New password"
-                value={newPassword}
-                onChange={(e) =>
-                  setNewPassword(
-                    e.target.value
-                  )
-                }
-                show={showNewPassword}
-                onToggle={() =>
-                  setShowNewPassword(
-                    (value) => !value
-                  )
-                }
-                placeholder="Enter new password"
-                autoComplete="new-password"
-              />
-
-              <PasswordInput
-                label="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) =>
-                  setConfirmPassword(
-                    e.target.value
-                  )
-                }
-                show={showConfirmPassword}
-                onToggle={() =>
-                  setShowConfirmPassword(
-                    (value) => !value
-                  )
-                }
-                placeholder="Confirm new password"
-                autoComplete="new-password"
-              />
-
-              {/* ACTIONS */}
-
+            <div className="grid lg:grid-cols-[0.78fr_1.22fr]">
+              {/* LEFT SIDE */}
               <div
                 className="
-                  flex
-                  flex-col-reverse
-                  gap-3
-                  pt-2
-                  sm:flex-row
-                  sm:justify-end
+                  relative
+                  overflow-hidden
+                  bg-gradient-to-br
+                  from-[#073b2e]
+                  via-[#0b5a43]
+                  to-[#174d35]
+                  p-6
+                  text-white
+                  sm:p-8
+                  lg:min-h-[560px]
                 "
               >
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={closePasswordModal}
-                  disabled={passwordLoading}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
+                <div
+                  aria-hidden="true"
+                  className="
+                    pointer-events-none
+                    absolute
+                    -right-20
+                    -top-20
+                    h-64
+                    w-64
+                    rounded-full
+                    bg-emerald-300/10
+                    blur-3xl
+                  "
+                />
 
-                <Button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="w-full sm:w-auto"
-                >
-                  {passwordLoading
-                    ? 'Changing...'
-                    : 'Change Password'}
-                </Button>
+                <div
+                  aria-hidden="true"
+                  className="
+                    pointer-events-none
+                    absolute
+                    -bottom-20
+                    -left-20
+                    h-60
+                    w-60
+                    rounded-full
+                    bg-lime-300/10
+                    blur-3xl
+                  "
+                />
+
+                <div className="relative flex h-full flex-col">
+                  <div
+                    className="
+                      flex
+                      h-14
+                      w-14
+                      items-center
+                      justify-center
+                      rounded-2xl
+                      border
+                      border-white/15
+                      bg-white/10
+                      text-lime-200
+                      shadow-[0_12px_35px_rgba(0,0,0,0.12)]
+                      backdrop-blur-sm
+                    "
+                  >
+                    <Icon name="lock" size={25} />
+                  </div>
+
+                  <div className="mt-7">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200">
+                      Account security
+                    </div>
+
+                    <h2
+                      id="change-password-title"
+                      className="
+                        mt-2
+                        text-2xl
+                        font-black
+                        tracking-[-0.03em]
+                        sm:text-3xl
+                      "
+                    >
+                      Secure your account
+                    </h2>
+
+                    <p className="mt-3 text-sm leading-6 text-emerald-50/75">
+                      Create a new password for your educator
+                      account. Your existing account and settings
+                      will remain unchanged.
+                    </p>
+                  </div>
+
+                  <div className="mt-auto pt-8">
+                    <div className="space-y-3">
+                      <div
+                        className="
+                          flex
+                          items-center
+                          gap-3
+                          rounded-xl
+                          border
+                          border-white/10
+                          bg-white/[0.06]
+                          p-3
+                        "
+                      >
+                        <span
+                          className="
+                            flex
+                            h-7
+                            w-7
+                            shrink-0
+                            items-center
+                            justify-center
+                            rounded-lg
+                            bg-white/10
+                            text-lime-200
+                          "
+                        >
+                          ✓
+                        </span>
+
+                        <span className="text-xs font-semibold text-emerald-50/80">
+                          Verify your current password
+                        </span>
+                      </div>
+
+                      <div
+                        className="
+                          flex
+                          items-center
+                          gap-3
+                          rounded-xl
+                          border
+                          border-white/10
+                          bg-white/[0.06]
+                          p-3
+                        "
+                      >
+                        <span
+                          className="
+                            flex
+                            h-7
+                            w-7
+                            shrink-0
+                            items-center
+                            justify-center
+                            rounded-lg
+                            bg-white/10
+                            text-lime-200
+                          "
+                        >
+                          ✓
+                        </span>
+
+                        <span className="text-xs font-semibold text-emerald-50/80">
+                          Choose a different password
+                        </span>
+                      </div>
+
+                      <div
+                        className="
+                          flex
+                          items-center
+                          gap-3
+                          rounded-xl
+                          border
+                          border-white/10
+                          bg-white/[0.06]
+                          p-3
+                        "
+                      >
+                        <span
+                          className="
+                            flex
+                            h-7
+                            w-7
+                            shrink-0
+                            items-center
+                            justify-center
+                            rounded-lg
+                            bg-white/10
+                            text-lime-200
+                          "
+                        >
+                          ✓
+                        </span>
+
+                        <span className="text-xs font-semibold text-emerald-50/80">
+                          Confirm your new password
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </form>
+
+              {/* RIGHT SIDE */}
+              <div className="p-5 sm:p-8">
+                <div className="mb-6">
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-600 dark:text-emerald-400">
+                    Change password
+                  </p>
+
+                  <h3 className="mt-1.5 text-xl font-black tracking-[-0.02em] text-slate-900 dark:text-white">
+                    Update your password
+                  </h3>
+
+                  <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                    Enter your current password and choose a
+                    new one.
+                  </p>
+                </div>
+
+                {passwordError && (
+                  <div
+                    className="
+                      mb-5
+                      rounded-xl
+                      border
+                      border-red-200
+                      bg-red-50
+                      px-3.5
+                      py-3
+                      text-xs
+                      font-semibold
+                      leading-5
+                      text-red-700
+                      dark:border-red-900
+                      dark:bg-red-950/60
+                      dark:text-red-300
+                    "
+                    role="alert"
+                  >
+                    {passwordError}
+                  </div>
+                )}
+
+                {passwordSuccess && (
+                  <div
+                    className="
+                      mb-5
+                      flex
+                      items-center
+                      gap-3
+                      rounded-xl
+                      border
+                      border-emerald-200
+                      bg-emerald-50
+                      px-3.5
+                      py-3
+                      text-xs
+                      font-bold
+                      text-emerald-700
+                      dark:border-emerald-900
+                      dark:bg-emerald-950
+                      dark:text-emerald-300
+                    "
+                  >
+                    <span
+                      className="
+                        flex
+                        h-7
+                        w-7
+                        shrink-0
+                        items-center
+                        justify-center
+                        rounded-full
+                        bg-emerald-600
+                        text-white
+                      "
+                    >
+                      ✓
+                    </span>
+
+                    Password changed successfully.
+                  </div>
+                )}
+
+                <form
+                  onSubmit={handlePasswordChange}
+                  className="space-y-5"
+                >
+                  <PasswordInput
+                    label="Current password"
+                    value={currentPassword}
+                    onChange={(e) =>
+                      setCurrentPassword(
+                        e.target.value
+                      )
+                    }
+                    show={showCurrentPassword}
+                    onToggle={() =>
+                      setShowCurrentPassword(
+                        (prev) => !prev
+                      )
+                    }
+                    placeholder="Enter current password"
+                    autoComplete="current-password"
+                  />
+
+                  <PasswordInput
+                    label="New password"
+                    value={newPassword}
+                    onChange={(e) =>
+                      setNewPassword(
+                        e.target.value
+                      )
+                    }
+                    show={showNewPassword}
+                    onToggle={() =>
+                      setShowNewPassword(
+                        (prev) => !prev
+                      )
+                    }
+                    placeholder="Enter new password"
+                    autoComplete="new-password"
+                  />
+
+                  <PasswordInput
+                    label="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) =>
+                      setConfirmPassword(
+                        e.target.value
+                      )
+                    }
+                    show={showConfirmPassword}
+                    onToggle={() =>
+                      setShowConfirmPassword(
+                        (prev) => !prev
+                      )
+                    }
+                    placeholder="Confirm new password"
+                    autoComplete="new-password"
+                  />
+
+                  <div
+                    className="
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-slate-50
+                      px-3.5
+                      py-3
+                      dark:border-slate-800
+                      dark:bg-slate-900
+                    "
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5 text-emerald-600 dark:text-emerald-400">
+                        <Icon name="shield" size={16} />
+                      </div>
+
+                      <p className="text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                        For security, your new password must be
+                        different from your current password.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={closePasswordModal}
+                      disabled={passwordLoading}
+                      className="
+                        w-full
+                        rounded-xl
+                        border
+                        border-slate-300
+                        bg-white
+                        px-5
+                        py-3
+                        text-sm
+                        font-bold
+                        text-slate-600
+                        shadow-sm
+                        transition-all
+                        hover:border-slate-400
+                        hover:bg-slate-50
+                        disabled:cursor-not-allowed
+                        disabled:opacity-50
+                        dark:border-slate-700
+                        dark:bg-slate-900
+                        dark:text-slate-300
+                        dark:hover:bg-slate-800
+                        sm:w-auto
+                      "
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={
+                        passwordLoading ||
+                        passwordSuccess
+                      }
+                      className="
+                        flex
+                        w-full
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-xl
+                        border-0
+                        bg-gradient-to-r
+                        from-emerald-700
+                        via-emerald-600
+                        to-lime-500
+                        px-5
+                        py-3
+                        text-sm
+                        font-bold
+                        text-white
+                        shadow-[0_10px_28px_rgba(5,150,105,0.20)]
+                        transition-all
+                        duration-300
+                        hover:from-emerald-800
+                        hover:via-emerald-700
+                        hover:to-lime-600
+                        disabled:cursor-not-allowed
+                        disabled:opacity-60
+                        sm:w-auto
+                      "
+                    >
+                      {passwordLoading ? (
+                        <>
+                          <span
+                            className="
+                              h-4
+                              w-4
+                              animate-spin
+                              rounded-full
+                              border-2
+                              border-white/30
+                              border-t-white
+                            "
+                          />
+
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="lock" size={16} />
+                          Update password
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       )}
     </>
   );
 }
-

@@ -1,7 +1,10 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+
 import {
   getAssessmentReports,
   getAssessmentReport,
@@ -60,38 +63,36 @@ export default function AssessmentReviews() {
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   const [selectedReport, setSelectedReport] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
-
   const [adminNotes, setAdminNotes] = useState('');
   const [savingDecision, setSavingDecision] = useState(false);
 
   const handleViewEvidence = async (reportId) => {
-  try {
-    setEvidenceLoading(true);
+    try {
+      setEvidenceLoading(true);
 
-    const { blob } = await getAssessmentReportEvidence(reportId);
+      const { blob } = await getAssessmentReportEvidence(reportId);
+      const fileUrl = URL.createObjectURL(blob);
 
-    const fileUrl = URL.createObjectURL(blob);
-    window.open(fileUrl, "_blank");
+      window.open(fileUrl, '_blank');
 
-    setTimeout(() => {
-      URL.revokeObjectURL(fileUrl);
-    }, 60000);
-  } catch (err) {
-    console.error("Failed to open assessment evidence:", err);
+      setTimeout(() => {
+        URL.revokeObjectURL(fileUrl);
+      }, 60000);
+    } catch (err) {
+      console.error('Failed to open assessment evidence:', err);
 
-    setError(
-      err.response?.data?.error ||
-      err.response?.data?.message ||
-      "Failed to open evidence file."
-    );
-  } finally {
-    setEvidenceLoading(false);
-  }
-};
+      setError(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          'Failed to open evidence file.'
+      );
+    } finally {
+      setEvidenceLoading(false);
+    }
+  };
 
   const loadReports = useCallback(async () => {
     try {
@@ -102,17 +103,15 @@ export default function AssessmentReviews() {
 
       const data = Array.isArray(response)
         ? response
-        : response?.reports ||
-          response?.data ||
-          [];
+        : response?.reports || response?.data || [];
 
       setReports(data);
     } catch (err) {
       setError(
         err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to load assessment reports'
+          err.response?.data?.message ||
+          err.message ||
+          'Failed to load assessment reports'
       );
     } finally {
       setLoading(false);
@@ -120,8 +119,8 @@ export default function AssessmentReviews() {
   }, [statusFilter]);
 
   useEffect(() => {
-  loadReports();
-}, [loadReports]);
+    loadReports();
+  }, [loadReports]);
 
   const pendingCount = useMemo(
     () =>
@@ -130,11 +129,7 @@ export default function AssessmentReviews() {
           .toLowerCase()
           .replace(/_/g, ' ');
 
-        return [
-          'pending',
-          'under review',
-          'reviewing',
-        ].includes(status);
+        return ['pending', 'under review', 'reviewing'].includes(status);
       }).length,
     [reports]
   );
@@ -145,18 +140,21 @@ export default function AssessmentReviews() {
       setError('');
 
       const response = await getAssessmentReport(report.id);
-
       const detail = response?.report || response?.data || response;
 
       setSelectedReport(detail);
-      setAdminNotes(detail?.admin_notes && detail.admin_notes !== 'null' ? detail.admin_notes : '');
-    } catch (err) {
 
+      setAdminNotes(
+        detail?.admin_notes && detail.admin_notes !== 'null'
+          ? detail.admin_notes
+          : ''
+      );
+    } catch (err) {
       setError(
         err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to load assessment report details'
+          err.response?.data?.message ||
+          err.message ||
+          'Failed to load assessment report details'
       );
     } finally {
       setDetailLoading(false);
@@ -189,9 +187,9 @@ export default function AssessmentReviews() {
     } catch (err) {
       setError(
         err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to update assessment report'
+          err.response?.data?.message ||
+          err.message ||
+          'Failed to update assessment report'
       );
     } finally {
       setSavingDecision(false);
@@ -294,9 +292,7 @@ export default function AssessmentReviews() {
 
               <tbody className="divide-y divide-slate-100">
                 {reports.map((report) => {
-                  const status = String(
-                    report?.status ?? 'Pending'
-                  )
+                  const status = String(report?.status ?? 'Pending')
                     .toLowerCase()
                     .replace(/_/g, ' ');
 
@@ -328,20 +324,18 @@ export default function AssessmentReviews() {
                           {report.student_email ||
                             report.user_email ||
                             report.student?.email ||
-
-                            
-                            '�'}
-
+                            '—'}
                         </div>
                       </td>
 
                       <td className="px-3 py-4 font-medium text-slate-700">
-                       {formatAssessmentType(assessmentType)}
-                          </td>
+                        {formatAssessmentType(assessmentType)}
+                      </td>
 
                       <td className="px-3 py-4 text-slate-600">
-                       {formatAssessmentStage(report.assessment_stage) || "Not specified"}
-                        </td>
+                        {formatAssessmentStage(report.assessment_stage) ||
+                          'Not specified'}
+                      </td>
 
                       <td className="max-w-xs px-3 py-4 text-slate-600">
                         <div className="truncate">
@@ -404,7 +398,7 @@ export default function AssessmentReviews() {
                   disabled={savingDecision}
                   className="rounded-lg px-3 py-1 text-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
-
+                  ×
                 </button>
               </div>
             </div>
@@ -427,10 +421,7 @@ export default function AssessmentReviews() {
                     {selectedReport.student_email ||
                       selectedReport.user_email ||
                       selectedReport.student?.email ||
-
-                      '�'}
-
-                    
+                      '—'}
                   </div>
                 </div>
 
@@ -439,23 +430,24 @@ export default function AssessmentReviews() {
                     Assessment
                   </div>
 
-                 <div className="mt-1 font-semibold text-slate-900">
-  {formatAssessmentType(
-    selectedReport.assessment_type ||
-      selectedReport.quizSession?.assessment_type ||
-      selectedReport.quiz_session?.assessment_type
-  )}
-</div>
+                  <div className="mt-1 font-semibold text-slate-900">
+                    {formatAssessmentType(
+                      selectedReport.assessment_type ||
+                        selectedReport.quizSession?.assessment_type ||
+                        selectedReport.quiz_session?.assessment_type
+                    )}
+                  </div>
 
-<div className="mt-1 text-sm text-slate-500">
-  Stage:{" "}
-  {formatAssessmentStage(selectedReport.assessment_stage) ||
-    "Not specified"}
-</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    Stage:{' '}
+                    {formatAssessmentStage(
+                      selectedReport.assessment_stage
+                    ) || 'Not specified'}
+                  </div>
 
-<div className="mt-1 text-sm text-slate-500">
-  Session ID: {selectedReport.quiz_session_id || "—"}
-</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    Session ID: {selectedReport.quiz_session_id || '—'}
+                  </div>
                 </div>
               </div>
 
@@ -470,42 +462,43 @@ export default function AssessmentReviews() {
               </div>
 
               <div className="text-sm font-semibold text-slate-900">
-  Student Evidence / Explanation
-</div>
+                Student Evidence / Explanation
+              </div>
 
-<div className="mt-2 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
-  {selectedReport.additional_evidence ? (
-    selectedReport.additional_evidence
-  ) : (
-    <span className="text-slate-400">
-      No written explanation was provided by the student.
-    </span>
-  )}
-</div>
+              <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
+                {selectedReport.additional_evidence ? (
+                  selectedReport.additional_evidence
+                ) : (
+                  <span className="text-slate-400">
+                    No written explanation was provided by the student.
+                  </span>
+                )}
+              </div>
 
-{selectedReport.evidence && (
-  <div className="mt-4">
-    <div className="text-sm font-semibold text-slate-900">
-      Supporting Evidence File
-    </div>
+              {selectedReport.evidence && (
+                <div className="mt-4">
+                  <div className="text-sm font-semibold text-slate-900">
+                    Supporting Evidence File
+                  </div>
 
-    <div className="mt-2 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <span className="text-sm text-slate-700">
-        {selectedReport.evidence}
-      </span>
+                  <div className="mt-2 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <span className="text-sm text-slate-700">
+                      {selectedReport.evidence}
+                    </span>
 
-     <button
-  type="button"
-  onClick={() => handleViewEvidence(selectedReport.id)}
-  disabled={evidenceLoading}
-  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
->
-  {evidenceLoading ? "Opening..." : "View Evidence"}
-</button>
-    </div>
-  </div>
-)}
-
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleViewEvidence(selectedReport.id)
+                      }
+                      disabled={evidenceLoading}
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {evidenceLoading ? 'Opening...' : 'View Evidence'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="text-sm font-semibold text-slate-900">
@@ -590,3 +583,4 @@ export default function AssessmentReviews() {
     </div>
   );
 }
+

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -222,9 +221,27 @@ function Icon({ name, size = 19 }) {
       return (
         <svg {...common}>
           <path d="M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h2.5A6.5 6.5 0 0 0 21 6.5 9 9 0 0 0 12 3Z" />
-          <circle cx="7.5" cy="9" r="1" fill="currentColor" stroke="none" />
-          <circle cx="10" cy="6.5" r="1" fill="currentColor" stroke="none" />
-          <circle cx="14" cy="6.5" r="1" fill="currentColor" stroke="none" />
+          <circle
+            cx="7.5"
+            cy="9"
+            r="1"
+            fill="currentColor"
+            stroke="none"
+          />
+          <circle
+            cx="10"
+            cy="6.5"
+            r="1"
+            fill="currentColor"
+            stroke="none"
+          />
+          <circle
+            cx="14"
+            cy="6.5"
+            r="1"
+            fill="currentColor"
+            stroke="none"
+          />
         </svg>
       );
 
@@ -255,8 +272,10 @@ function Toggle({ checked, onChange }) {
           checked
             ? `
               border-blue-500/70
-              bg-blue-600
-              shadow-[0_0_16px_rgba(59,130,246,0.28)]
+              bg-gradient-to-r
+              from-blue-600
+              to-indigo-600
+              shadow-[0_0_18px_rgba(59,130,246,0.32)]
             `
             : `
               border-slate-300
@@ -279,7 +298,7 @@ function Toggle({ checked, onChange }) {
           -translate-y-1/2
           rounded-full
           bg-white
-          shadow-sm
+          shadow-[0_2px_7px_rgba(15,23,42,0.18)]
           transition-all
           duration-300
           ${checked ? 'left-[24px]' : 'left-[2px]'}
@@ -307,13 +326,18 @@ function Row({
           -inset-x-1
           -inset-y-1
           rounded-2xl
+          bg-gradient-to-r
+          from-blue-500/0
+          via-indigo-500/0
+          to-violet-500/0
           opacity-0
           blur-xl
           transition-all
           duration-300
+          group-hover:from-blue-500/5
+          group-hover:via-indigo-500/5
+          group-hover:to-violet-500/5
           group-hover:opacity-100
-          group-hover:bg-blue-500/[0.07]
-          dark:group-hover:bg-blue-400/[0.08]
         "
       />
 
@@ -338,39 +362,69 @@ function Row({
               ? 'grid-cols-[minmax(0,1fr)_auto] items-center'
               : 'grid-cols-1'
           }
-          group-hover:border-slate-200
-          group-hover:bg-slate-50/80
-          dark:group-hover:border-slate-700
-          dark:group-hover:bg-slate-800/70
+
+          hover:-translate-y-[1px]
+          hover:border-blue-100/80
+          hover:bg-gradient-to-r
+          hover:from-blue-50/70
+          hover:via-white
+          hover:to-violet-50/50
+          hover:shadow-[0_12px_35px_-28px_rgba(37,99,235,0.55)]
+
+          dark:hover:border-blue-900/60
+          dark:hover:bg-gradient-to-r
+          dark:hover:from-blue-950/40
+          dark:hover:via-slate-900
+          dark:hover:to-violet-950/30
         `}
       >
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <div
             className="
+              relative
               flex
-              h-10
-              w-10
+              h-11
+              w-11
               shrink-0
               items-center
               justify-center
-              rounded-xl
+              overflow-hidden
+              rounded-[14px]
               border
-              border-slate-200
-              bg-slate-50
-              text-slate-500
+              border-blue-100/80
+              bg-gradient-to-br
+              from-blue-50
+              via-indigo-50
+              to-violet-50
+              text-blue-600
+              shadow-[0_7px_20px_-13px_rgba(37,99,235,0.55)]
               transition-all
               duration-300
-              group-hover:border-blue-200
-              group-hover:bg-blue-50
-              group-hover:text-blue-600
-              dark:border-slate-700
-              dark:bg-slate-800
-              dark:text-slate-400
-              dark:group-hover:border-slate-600
-              dark:group-hover:bg-slate-700
-              dark:group-hover:text-blue-400
+              group-hover:scale-105
+              group-hover:shadow-[0_10px_25px_-13px_rgba(79,70,229,0.60)]
+
+              dark:border-blue-900/60
+              dark:from-blue-950
+              dark:via-indigo-950
+              dark:to-violet-950
+              dark:text-blue-400
             "
           >
+            <span
+              className="
+                pointer-events-none
+                absolute
+                -right-2
+                -top-2
+                h-6
+                w-6
+                rounded-full
+                bg-white/60
+                blur-md
+                dark:bg-blue-400/10
+              "
+            />
+
             <Icon name={icon} />
           </div>
 
@@ -466,7 +520,7 @@ function SettingSelect({
         transition-all
         duration-300
         hover:border-blue-300
-        hover:bg-slate-50
+        hover:bg-blue-50/30
         focus:border-blue-500
         focus:ring-2
         focus:ring-blue-500/20
@@ -707,7 +761,15 @@ function PasswordInput({
 }) {
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+      <label
+        className="
+          block
+          text-sm
+          font-semibold
+          text-slate-700
+          dark:text-slate-200
+        "
+      >
         {label}
       </label>
 
@@ -730,8 +792,10 @@ function PasswordInput({
             text-sm
             text-slate-800
             outline-none
-            transition
+            transition-all
+            duration-300
             placeholder:text-slate-400
+            hover:border-blue-300
             focus:border-blue-500
             focus:ring-2
             focus:ring-blue-500/20
@@ -754,14 +818,15 @@ function PasswordInput({
             px-2.5
             py-1.5
             text-xs
-            font-medium
+            font-semibold
             text-slate-500
-            transition
-            hover:bg-slate-100
-            hover:text-slate-700
+            transition-all
+            duration-200
+            hover:bg-blue-50
+            hover:text-blue-600
             dark:text-slate-400
             dark:hover:bg-slate-700
-            dark:hover:text-slate-200
+            dark:hover:text-blue-300
           "
         >
           {show ? 'Hide' : 'Show'}
@@ -1137,650 +1202,856 @@ export default function StudentSettings() {
     <>
       <div
         className="
+          relative
           w-full
           max-w-full
+          overflow-hidden
           space-y-6
         "
       >
-        {/* ================= HEADER ================= */}
+        {/* ================= BACKGROUND DECORATION ================= */}
 
-        <div>
-          <h2
-            className="
-              text-2xl
-              font-bold
-              text-slate-900
-              dark:text-slate-50
-            "
-          >
-            {t('settings')}
-          </h2>
-
-          <p
-            className="
-              mt-1
-              text-sm
-              text-slate-500
-              dark:text-slate-400
-            "
-          >
-            {t('manage_account_description')}
-          </p>
-        </div>
-
-        {/* ================= CARD ================= */}
-
-        <Card
+        <div
           className="
-            !w-full
-            !max-w-full
-            !overflow-hidden
-            !p-0
-            !border
-            !border-slate-200
-            !bg-white
-            !shadow-[0_8px_30px_rgba(15,23,42,0.05)]
-            dark:!border-slate-800
-            dark:!bg-slate-950
-            dark:!shadow-[0_10px_40px_rgba(0,0,0,0.30)]
+            pointer-events-none
+            absolute
+            -left-40
+            -top-40
+            h-80
+            w-80
+            rounded-full
+            bg-blue-500/8
+            blur-3xl
+            dark:bg-blue-500/8
           "
-        >
-          {/* ================= TABS ================= */}
+        />
 
-          <div
+        <div
+          className="
+            pointer-events-none
+            absolute
+            -right-40
+            top-32
+            h-80
+            w-80
+            rounded-full
+            bg-violet-500/8
+            blur-3xl
+            dark:bg-violet-500/8
+          "
+        />
+
+        <div className="relative space-y-6">
+
+          {/* ================= HEADER ================= */}
+
+          <div className="relative">
+            <div
+              className="
+                mb-2
+                inline-flex
+                items-center
+                gap-2
+                rounded-full
+                border
+                border-blue-100
+                bg-gradient-to-r
+                from-blue-50
+                via-indigo-50
+                to-violet-50
+                px-3
+                py-1.5
+                text-[10px]
+                font-bold
+                uppercase
+                tracking-[0.14em]
+                text-blue-600
+                shadow-[0_6px_20px_-14px_rgba(37,99,235,0.45)]
+                dark:border-blue-900/60
+                dark:from-blue-950
+                dark:via-indigo-950
+                dark:to-violet-950
+                dark:text-blue-300
+              "
+            >
+              <span
+                className="
+                  h-1.5
+                  w-1.5
+                  rounded-full
+                  bg-gradient-to-r
+                  from-blue-500
+                  to-violet-500
+                  shadow-[0_0_8px_rgba(99,102,241,0.65)]
+                "
+              />
+              Account Center
+            </div>
+
+         <div className="flex flex-col items-start">
+  
+
+  <h2
+    className="mt-1 text-[30px] font-extrabold tracking-[-0.045em] text-transparent sm:text-[34px]"
+    style={{
+      backgroundImage: 'linear-gradient(90deg, #0f172a 0%, #2563eb 100%)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+    }}
+  >
+    {t('settings')}
+  </h2>
+</div>
+
+            <p
+              className="
+                mt-1
+                max-w-2xl
+                text-sm
+                font-medium
+                leading-6
+                text-slate-500
+                dark:text-slate-400
+              "
+            >
+              {t('manage_account_description')}
+            </p>
+          </div>
+
+          {/* ================= CARD ================= */}
+
+          <Card
             className="
-              flex
-              overflow-x-auto
-              border-b
-              border-slate-200
-              bg-slate-50
-              px-3
-              sm:px-5
-              dark:border-slate-800
-              dark:bg-slate-900
+              !w-full
+              !max-w-full
+              !overflow-hidden
+              !p-0
+              !border
+              !border-slate-200/80
+              !bg-white/95
+              !shadow-[0_20px_70px_-35px_rgba(15,23,42,0.30)]
+              !backdrop-blur-xl
+              dark:!border-slate-800
+              dark:!bg-slate-950/95
+              dark:!shadow-[0_20px_70px_-30px_rgba(0,0,0,0.55)]
             "
           >
-            {TABS.map((item) => {
-              const tabKey = item.toLowerCase();
+            {/* ================= TABS ================= */}
 
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setTab(item)}
-                  className={`
-                    relative
-                    shrink-0
-                    px-4
-                    py-4
-                    text-sm
-                    font-medium
-                    transition-all
-                    duration-300
+            <div
+              className="
+                relative
+                flex
+                overflow-x-auto
+                border-b
+                border-slate-200/80
+                bg-gradient-to-r
+                from-slate-50
+                via-white
+                to-blue-50/40
+                px-3
+                sm:px-5
+                dark:border-slate-800
+                dark:from-slate-900
+                dark:via-slate-900
+                dark:to-blue-950/30
+              "
+            >
+              {TABS.map((item) => {
+                const tabKey = item.toLowerCase();
 
-                    ${
-                      tab === item
-                        ? `
-                          text-blue-600
-                          dark:text-blue-400
-                        `
-                        : `
-                          text-slate-500
-                          hover:text-slate-800
-                          dark:text-slate-400
-                          dark:hover:text-slate-200
-                        `
-                    }
-                  `}
-                >
-                  {t(tabKey)}
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setTab(item)}
+                    className={`
+                      relative
+                      shrink-0
+                      px-4
+                      py-4
+                      text-sm
+                      font-semibold
+                      transition-all
+                      duration-300
 
-                  {tab === item && (
-                    <span
+                      ${
+                        tab === item
+                          ? `
+                            text-blue-600
+                            dark:text-blue-400
+                          `
+                          : `
+                            text-slate-500
+                            hover:text-slate-800
+                            dark:text-slate-400
+                            dark:hover:text-slate-200
+                          `
+                      }
+                    `}
+                  >
+                    {t(tabKey)}
+
+                    {tab === item && (
+                      <>
+                        <span
+                          className="
+                            absolute
+                            bottom-0
+                            left-3
+                            right-3
+                            h-[3px]
+                            rounded-full
+                            bg-gradient-to-r
+                            from-blue-600
+                            via-indigo-500
+                            to-violet-500
+                            shadow-[0_0_12px_rgba(79,70,229,0.35)]
+                            dark:from-blue-400
+                            dark:via-indigo-400
+                            dark:to-violet-400
+                          "
+                        />
+
+                        <span
+                          className="
+                            pointer-events-none
+                            absolute
+                            bottom-0
+                            left-1/2
+                            h-8
+                            w-16
+                            -translate-x-1/2
+                            translate-y-2
+                            rounded-full
+                            bg-blue-500/10
+                            blur-xl
+                          "
+                        />
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ================= CONTENT ================= */}
+
+            <div
+              className="
+                relative
+                px-3
+                py-4
+                sm:px-5
+                sm:py-5
+                dark:bg-slate-950
+              "
+            >
+              {/* ================= ACCOUNT ================= */}
+
+              {tab === 'Account' && (
+                <div className="animate-fade-in">
+                  <Row
+                    title={t('profile_visibility')}
+                    icon="user"
+                  >
+                    <SettingSelect
+                      value={draft.profile_visibility}
+                      onChange={(e) =>
+                        set(
+                          'profile_visibility',
+                          e.target.value
+                        )
+                      }
+                      className="w-full sm:w-64"
+                    >
+                      <option value="classmates">
+                        {t('visible_to_all_classmates')}
+                      </option>
+
+                      <option value="private">
+                        {t('private')}
+                      </option>
+
+                      <option value="public">
+                        {t('public')}
+                      </option>
+                    </SettingSelect>
+                  </Row>
+
+                  <Row
+                    title={t('email_address')}
+                    desc={t('email_read_only')}
+                    icon="mail"
+                  >
+                    <input
+                      value={draft.email}
+                      readOnly
                       className="
-                        absolute
-                        bottom-0
-                        left-3
-                        right-3
-                        h-0.5
-                        rounded-full
-                        bg-blue-500
-                        dark:bg-blue-400
+                        w-full
+                        rounded-xl
+                        border
+                        border-slate-200
+                        bg-gradient-to-r
+                        from-slate-50
+                        to-slate-100/70
+                        px-3
+                        py-2.5
+                        text-sm
+                        font-medium
+                        text-slate-600
+                        outline-none
+                        sm:w-64
+                        dark:border-slate-700
+                        dark:from-slate-800
+                        dark:to-slate-800/70
+                        dark:text-slate-300
                       "
                     />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                  </Row>
 
-          {/* ================= CONTENT ================= */}
+                  {/* ================= CHANGE PASSWORD ================= */}
 
-          <div
-            className="
-              px-3
-              py-4
-              sm:px-5
-              sm:py-5
-              dark:bg-slate-950
-            "
-          >
-            {/* ================= ACCOUNT ================= */}
-
-            {tab === 'Account' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('profile_visibility')}
-                  icon="user"
-                >
-                  <SettingSelect
-                    value={draft.profile_visibility}
-                    onChange={(e) =>
-                      set(
-                        'profile_visibility',
-                        e.target.value
-                      )
-                    }
-                    className="w-full sm:w-64"
+                  <Row
+                    title={t('change_password')}
+                    desc="Update your account password securely."
+                    icon="lock"
                   >
-                    <option value="classmates">
-                      {t('visible_to_all_classmates')}
-                    </option>
-
-                    <option value="private">
-                      {t('private')}
-                    </option>
-
-                    <option value="public">
-                      {t('public')}
-                    </option>
-                  </SettingSelect>
-                </Row>
-
-                <Row
-                  title={t('email_address')}
-                  desc={t('email_read_only')}
-                  icon="mail"
-                >
-                  <input
-                    value={draft.email}
-                    readOnly
-                    className="
-                      w-full
-                      rounded-xl
-                      border
-                      border-slate-200
-                      bg-slate-50
-                      px-3
-                      py-2.5
-                      text-sm
-                      text-slate-600
-                      outline-none
-                      sm:w-64
-                      dark:border-slate-700
-                      dark:bg-slate-800
-                      dark:text-slate-300
-                    "
-                  />
-                </Row>
-
-                {/* ================= CHANGE PASSWORD ================= */}
-
-                <Row
-                  title={t('change_password')}
-                  desc="Update your account password securely."
-                  icon="lock"
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={openPasswordModal}
-                    className="
-                      w-full
-                      sm:w-auto
-                      sm:min-w-[110px]
-                    "
-                  >
-                    {t('change')}
-                  </Button>
-                </Row>
-
-                <Row
-                  title={t('enable_dark_mode')}
-                  desc={t('dark_mode_description')}
-                  icon="moon"
-                >
-                  <Toggle
-                    checked={draft.dark_mode}
-                    onChange={(value) =>
-                      set(
-                        'dark_mode',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                {/* ================= RESPONSIVE LEARNING REMINDER ================= */}
-
-                <Row
-                  title={t('learning_reminders')}
-                  desc={t('receive_task_reminders')}
-                  icon="bell"
-                  compactControl
-                >
-                  <Toggle
-                    checked={
-                      draft.learning_reminders
-                    }
-                    onChange={(value) =>
-                      set(
-                        'learning_reminders',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                {/* ================= LANGUAGE ================= */}
-
-                <Row
-                  title={t('language')}
-                  desc={t('choose_preferred_language')}
-                  icon="globe"
-                >
-                  <div
-                    className="
-                      flex
-                      w-full
-                      min-w-0
-                      flex-col
-                      gap-3
-                      sm:w-auto
-                      sm:flex-row
-                      sm:items-center
-                    "
-                  >
-                    <SettingSelect
-                      value={draft.language}
-                      onChange={(e) =>
-                        changeLanguage(
-                          e.target.value
-                        )
-                      }
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={openPasswordModal}
                       className="
                         w-full
-                        sm:w-64
-                        max-w-full
+                        border-slate-200
+                        bg-white
+                        font-semibold
+                        transition-all
+                        duration-300
+                        hover:border-blue-300
+                        hover:bg-gradient-to-r
+                        hover:from-blue-50
+                        hover:to-violet-50
+                        hover:text-blue-700
+                        hover:shadow-[0_8px_20px_-15px_rgba(37,99,235,0.55)]
+                        sm:w-auto
+                        sm:min-w-[110px]
                       "
                     >
-                      {LANGUAGE_OPTIONS.map(
-                        (language) => (
-                          <option
-                            key={language.value}
-                            value={language.value}
-                          >
-                            {language.label}
-                          </option>
-                        )
-                      )}
-                    </SettingSelect>
+                      {t('change')}
+                    </Button>
+                  </Row>
 
+                  <Row
+                    title={t('enable_dark_mode')}
+                    desc={t('dark_mode_description')}
+                    icon="moon"
+                  >
+                    <Toggle
+                      checked={draft.dark_mode}
+                      onChange={(value) =>
+                        set(
+                          'dark_mode',
+                          value
+                        )
+                      }
+                    />
+                  </Row>
+
+                  {/* ================= LEARNING REMINDER ================= */}
+
+                  <Row
+                    title={t('learning_reminders')}
+                    desc={t('receive_task_reminders')}
+                    icon="bell"
+                    compactControl
+                  >
+                    <Toggle
+                      checked={
+                        draft.learning_reminders
+                      }
+                      onChange={(value) =>
+                        set(
+                          'learning_reminders',
+                          value
+                        )
+                      }
+                    />
+                  </Row>
+
+                  {/* ================= LANGUAGE ================= */}
+
+                  <Row
+                    title={t('language')}
+                    desc={t('choose_preferred_language')}
+                    icon="globe"
+                  >
                     <div
                       className="
                         flex
-                        min-h-[52px]
                         w-full
                         min-w-0
                         flex-col
-                        items-center
-                        justify-center
-                        rounded-xl
-                        border
-                        border-blue-200
-                        bg-blue-50
-                        px-4
-                        py-2
-                        text-center
-                        transition-all
-                        duration-300
-                        sm:w-52
-                        dark:border-blue-900
-                        dark:bg-blue-950
+                        gap-3
+                        sm:w-auto
+                        sm:flex-row
+                        sm:items-center
                       "
                     >
-                      <span
+                      <SettingSelect
+                        value={draft.language}
+                        onChange={(e) =>
+                          changeLanguage(
+                            e.target.value
+                          )
+                        }
                         className="
-                          text-[10px]
-                          font-medium
-                          uppercase
-                          tracking-wider
-                          text-blue-500
-                          dark:text-blue-400
-                        "
-                      >
-                        {t('selected_language')}
-                      </span>
-
-                      <span
-                        className="
-                          mt-0.5
+                          w-full
+                          sm:w-64
                           max-w-full
-                          truncate
-                          text-sm
-                          font-semibold
-                          text-blue-700
-                          dark:text-blue-300
                         "
                       >
-                        {getNativeLanguageName(
-                          draft.language
+                        {LANGUAGE_OPTIONS.map(
+                          (language) => (
+                            <option
+                              key={language.value}
+                              value={language.value}
+                            >
+                              {language.label}
+                            </option>
+                          )
                         )}
-                      </span>
+                      </SettingSelect>
 
-                      <span
+                      <div
                         className="
-                          max-w-full
-                          truncate
-                          text-[11px]
-                          text-blue-600/80
-                          dark:text-blue-300/80
+                          flex
+                          min-h-[52px]
+                          w-full
+                          min-w-0
+                          flex-col
+                          items-center
+                          justify-center
+                          rounded-xl
+                          border
+                          border-blue-200/80
+                          bg-gradient-to-br
+                          from-blue-50
+                          via-indigo-50/80
+                          to-violet-50/70
+                          px-4
+                          py-2
+                          text-center
+                          shadow-[0_8px_24px_-18px_rgba(37,99,235,0.45)]
+                          transition-all
+                          duration-300
+                          sm:w-52
+                          dark:border-blue-900/70
+                          dark:from-blue-950
+                          dark:via-indigo-950
+                          dark:to-violet-950
                         "
                       >
-                        {getLanguageName(
-                          draft.language
-                        )}
-                      </span>
+                        <span
+                          className="
+                            text-[10px]
+                            font-bold
+                            uppercase
+                            tracking-wider
+                            text-blue-500
+                            dark:text-blue-400
+                          "
+                        >
+                          {t('selected_language')}
+                        </span>
+
+                        <span
+                          className="
+                            mt-0.5
+                            max-w-full
+                            truncate
+                            text-sm
+                            font-bold
+                            text-blue-700
+                            dark:text-blue-300
+                          "
+                        >
+                          {getNativeLanguageName(
+                            draft.language
+                          )}
+                        </span>
+
+                        <span
+                          className="
+                            max-w-full
+                            truncate
+                            text-[11px]
+                            font-medium
+                            text-blue-600/80
+                            dark:text-blue-300/80
+                          "
+                        >
+                          {getLanguageName(
+                            draft.language
+                          )}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </Row>
+                  </Row>
 
-                {/* ================= TIME ZONE ================= */}
+                  {/* ================= TIME ZONE ================= */}
 
-                <Row
-                  title={t('time_zone')}
-                  desc={
-                    t('choose_time_zone') !==
-                    'choose_time_zone'
-                      ? t('choose_time_zone')
-                      : 'Choose the time zone used for dates and times.'
-                  }
-                  icon="clock"
-                >
-                  <div
-                    className="
-                      flex
-                      w-full
-                      min-w-0
-                      flex-col
-                      gap-3
-                      sm:w-auto
-                      sm:flex-row
-                      sm:items-center
-                    "
+                  <Row
+                    title={t('time_zone')}
+                    desc={
+                      t('choose_time_zone') !==
+                      'choose_time_zone'
+                        ? t('choose_time_zone')
+                        : 'Choose the time zone used for dates and times.'
+                    }
+                    icon="clock"
                   >
-                    <SettingSelect
-                      value={draft.time_zone}
-                      onChange={(e) =>
-                        changeTimeZone(
-                          e.target.value
-                        )
-                      }
-                      className="
-                        w-full
-                        sm:w-[260px]
-                        max-w-full
-                      "
-                    >
-                      {TIME_ZONE_OPTIONS.map(
-                        (timeZone) => (
-                          <option
-                            key={timeZone.value}
-                            value={timeZone.value}
-                          >
-                            {timeZone.label}
-                          </option>
-                        )
-                      )}
-                    </SettingSelect>
-
                     <div
                       className="
                         flex
-                        min-h-[52px]
                         w-full
                         min-w-0
                         flex-col
-                        items-center
-                        justify-center
-                        rounded-xl
-                        border
-                        border-blue-200
-                        bg-blue-50
-                        px-4
-                        py-2
-                        text-center
-                        transition-all
-                        duration-300
-                        sm:w-[180px]
-                        dark:border-blue-900
-                        dark:bg-blue-950
+                        gap-3
+                        sm:w-auto
+                        sm:flex-row
+                        sm:items-center
                       "
                     >
-                      <span
+                      <SettingSelect
+                        value={draft.time_zone}
+                        onChange={(e) =>
+                          changeTimeZone(
+                            e.target.value
+                          )
+                        }
                         className="
-                          text-[10px]
-                          font-medium
-                          uppercase
-                          tracking-wider
-                          text-blue-500
-                          dark:text-blue-400
+                          w-full
+                          sm:w-[260px]
+                          max-w-full
                         "
                       >
-                        Selected Time Zone
-                      </span>
-
-                      <span
-                        className="
-                          mt-0.5
-                          text-base
-                          font-bold
-                          text-blue-700
-                          dark:text-blue-300
-                        "
-                      >
-                        {getTimeZoneLabel(
-                          draft.time_zone
+                        {TIME_ZONE_OPTIONS.map(
+                          (timeZone) => (
+                            <option
+                              key={timeZone.value}
+                              value={timeZone.value}
+                            >
+                              {timeZone.label}
+                            </option>
+                          )
                         )}
-                      </span>
+                      </SettingSelect>
+
+                      <div
+                        className="
+                          flex
+                          min-h-[52px]
+                          w-full
+                          min-w-0
+                          flex-col
+                          items-center
+                          justify-center
+                          rounded-xl
+                          border
+                          border-blue-200/80
+                          bg-gradient-to-br
+                          from-blue-50
+                          via-indigo-50/80
+                          to-violet-50/70
+                          px-4
+                          py-2
+                          text-center
+                          shadow-[0_8px_24px_-18px_rgba(37,99,235,0.45)]
+                          transition-all
+                          duration-300
+                          sm:w-[180px]
+                          dark:border-blue-900/70
+                          dark:from-blue-950
+                          dark:via-indigo-950
+                          dark:to-violet-950
+                        "
+                      >
+                        <span
+                          className="
+                            text-[10px]
+                            font-bold
+                            uppercase
+                            tracking-wider
+                            text-blue-500
+                            dark:text-blue-400
+                          "
+                        >
+                          Selected Time Zone
+                        </span>
+
+                        <span
+                          className="
+                            mt-0.5
+                            text-base
+                            font-bold
+                            text-blue-700
+                            dark:text-blue-300
+                          "
+                        >
+                          {getTimeZoneLabel(
+                            draft.time_zone
+                          )}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </Row>
-              </div>
-            )}
+                  </Row>
+                </div>
+              )}
 
-            {/* ================= NOTIFICATIONS ================= */}
+              {/* ================= NOTIFICATIONS ================= */}
 
-            {tab === 'Notifications' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('weekly_digest_email')}
-                  desc={t('progress_recommendations')}
-                  icon="mail"
-                >
-                  <Toggle
-                    checked={
-                      draft.weekly_digest
-                    }
-                    onChange={(value) =>
-                      set(
-                        'weekly_digest',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                {/* ================= RESPONSIVE LEARNING REMINDER ================= */}
-
-                <Row
-                  title={t('learning_reminders')}
-                  desc={t('upcoming_task_notifications')}
-                  icon="bell"
-                  compactControl
-                >
-                  <Toggle
-                    checked={
-                      draft.learning_reminders
-                    }
-                    onChange={(value) =>
-                      set(
-                        'learning_reminders',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-              </div>
-            )}
-
-            {/* ================= PRIVACY ================= */}
-
-            {tab === 'Privacy' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('show_activity_classmates')}
-                  desc={t('recent_submissions_comments')}
-                  icon="users"
-                >
-                  <Toggle
-                    checked={
-                      draft.activity_visible
-                    }
-                    onChange={(value) =>
-                      set(
-                        'activity_visible',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                <Row
-                  title={t('show_progress_leaderboards')}
-                  icon="chart"
-                >
-                  <Toggle
-                    checked={
-                      draft.show_progress
-                    }
-                    onChange={(value) =>
-                      set(
-                        'show_progress',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-              </div>
-            )}
-
-            {/* ================= PREFERENCES ================= */}
-
-            {tab === 'Preferences' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('theme')}
-                  desc={t('choose_application_appearance')}
-                  icon="palette"
-                >
-                  <SettingSelect
-                    value={draft.theme}
-                    width="180px"
-                    onChange={(e) =>
-                      changeTheme(
-                        e.target.value
-                      )
-                    }
-                    className="w-full sm:w-auto"
+              {tab === 'Notifications' && (
+                <div className="animate-fade-in">
+                  <Row
+                    title={t('weekly_digest_email')}
+                    desc={t('progress_recommendations')}
+                    icon="mail"
                   >
-                    <option value="Light">
-                      {t('light')}
-                    </option>
+                    <Toggle
+                      checked={
+                        draft.weekly_digest
+                      }
+                      onChange={(value) =>
+                        set(
+                          'weekly_digest',
+                          value
+                        )
+                      }
+                    />
+                  </Row>
 
-                    <option value="Dark">
-                      {t('dark')}
-                    </option>
+                  <Row
+                    title={t('learning_reminders')}
+                    desc={t('upcoming_task_notifications')}
+                    icon="bell"
+                    compactControl
+                  >
+                    <Toggle
+                      checked={
+                        draft.learning_reminders
+                      }
+                      onChange={(value) =>
+                        set(
+                          'learning_reminders',
+                          value
+                        )
+                      }
+                    />
+                  </Row>
+                </div>
+              )}
 
-                    <option value="SaaS Blue-White">
-                      SaaS Blue-White
-                    </option>
-                  </SettingSelect>
-                </Row>
-              </div>
-            )}
-          </div>
+              {/* ================= PRIVACY ================= */}
 
-          {/* ================= FOOTER ================= */}
+              {tab === 'Privacy' && (
+                <div className="animate-fade-in">
+                  <Row
+                    title={t('show_activity_classmates')}
+                    desc={t('recent_submissions_comments')}
+                    icon="users"
+                  >
+                    <Toggle
+                      checked={
+                        draft.activity_visible
+                      }
+                      onChange={(value) =>
+                        set(
+                          'activity_visible',
+                          value
+                        )
+                      }
+                    />
+                  </Row>
 
-          <div
-            className="
-              flex
-              flex-col
-              gap-3
-              border-t
-              border-slate-200
-              bg-slate-50
-              px-3
-              py-4
-              sm:flex-row
-              sm:items-center
-              sm:justify-end
-              sm:px-5
-              dark:border-slate-800
-              dark:bg-slate-900
-            "
-          >
-            {saved === 'ok' && (
-              <span
-                className="
-                  text-xs
-                  font-medium
-                  text-emerald-600
-                  sm:mr-auto
-                  dark:text-emerald-400
-                "
-              >
-                {t('changes_saved_successfully')}
-              </span>
-            )}
+                  <Row
+                    title={t('show_progress_leaderboards')}
+                    icon="chart"
+                  >
+                    <Toggle
+                      checked={
+                        draft.show_progress
+                      }
+                      onChange={(value) =>
+                        set(
+                          'show_progress',
+                          value
+                        )
+                      }
+                    />
+                  </Row>
+                </div>
+              )}
 
-            {saved === 'error' && (
-              <span
-                className="
-                  text-xs
-                  font-medium
-                  text-red-600
-                  sm:mr-auto
-                  dark:text-red-400
-                "
-              >
-                {t('failed_to_save_changes')}
-              </span>
-            )}
+              {/* ================= PREFERENCES ================= */}
 
-            <Button
-              variant="outline"
-              onClick={onCancel}
+              {tab === 'Preferences' && (
+                <div className="animate-fade-in">
+                  <Row
+                    title={t('theme')}
+                    desc={t('choose_application_appearance')}
+                    icon="palette"
+                  >
+                    <SettingSelect
+                      value={draft.theme}
+                      width="180px"
+                      onChange={(e) =>
+                        changeTheme(
+                          e.target.value
+                        )
+                      }
+                      className="w-full sm:w-auto"
+                    >
+                      <option value="Light">
+                        {t('light')}
+                      </option>
+
+                      <option value="Dark">
+                        {t('dark')}
+                      </option>
+
+                      <option value="SaaS Blue-White">
+                        SaaS Blue-White
+                      </option>
+                    </SettingSelect>
+                  </Row>
+                </div>
+              )}
+            </div>
+
+            {/* ================= FOOTER ================= */}
+
+            <div
+              className="
+                flex
+                flex-col
+                gap-3
+                border-t
+                border-slate-200/80
+                bg-gradient-to-r
+                from-slate-50
+                via-white
+                to-blue-50/40
+                px-3
+                py-4
+                shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]
+                sm:flex-row
+                sm:items-center
+                sm:justify-end
+                sm:px-5
+                dark:border-slate-800
+                dark:from-slate-900
+                dark:via-slate-900
+                dark:to-blue-950/30
+              "
             >
-              {t('cancel')}
-            </Button>
+              {saved === 'ok' && (
+                <span
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    text-xs
+                    font-semibold
+                    text-emerald-600
+                    sm:mr-auto
+                    dark:text-emerald-400
+                  "
+                >
+                  <span
+                    className="
+                      h-2
+                      w-2
+                      rounded-full
+                      bg-emerald-500
+                      shadow-[0_0_8px_rgba(16,185,129,0.55)]
+                    "
+                  />
+                  {t('changes_saved_successfully')}
+                </span>
+              )}
 
-            <Button onClick={onSave}>
-              {t('save_changes')}
-            </Button>
-          </div>
-        </Card>
+              {saved === 'error' && (
+                <span
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    text-xs
+                    font-semibold
+                    text-red-600
+                    sm:mr-auto
+                    dark:text-red-400
+                  "
+                >
+                  <span
+                    className="
+                      h-2
+                      w-2
+                      rounded-full
+                      bg-red-500
+                      shadow-[0_0_8px_rgba(239,68,68,0.55)]
+                    "
+                  />
+                  {t('failed_to_save_changes')}
+                </span>
+              )}
+
+              <Button
+                variant="outline"
+                onClick={onCancel}
+                className="
+                  border-slate-200
+                  bg-white
+                  font-semibold
+                  transition-all
+                  duration-300
+                  hover:border-slate-300
+                  hover:bg-slate-100
+                  dark:bg-slate-900
+                "
+              >
+                {t('cancel')}
+              </Button>
+
+              <Button
+                onClick={onSave}
+                className="
+                  relative
+                  overflow-hidden
+                  border-0
+                  bg-gradient-to-r
+                  from-blue-600
+                  via-indigo-600
+                  to-violet-600
+                  font-semibold
+                  text-white
+                  shadow-[0_10px_25px_-14px_rgba(79,70,229,0.75)]
+                  transition-all
+                  duration-300
+                  hover:-translate-y-[1px]
+                  hover:from-blue-700
+                  hover:via-indigo-700
+                  hover:to-violet-700
+                  hover:shadow-[0_14px_30px_-14px_rgba(79,70,229,0.85)]
+                "
+              >
+                {t('save_changes')}
+              </Button>
+            </div>
+          </Card>
+        </div>
       </div>
 
       {/* ================= PASSWORD MODAL ================= */}
@@ -1795,10 +2066,10 @@ export default function StudentSettings() {
             items-center
             justify-center
             overflow-y-auto
-            bg-slate-950/60
+            bg-slate-950/65
             px-3
             py-4
-            backdrop-blur-sm
+            backdrop-blur-md
             sm:px-4
             sm:py-6
           "
@@ -1818,15 +2089,16 @@ export default function StudentSettings() {
               max-w-md
               max-h-[calc(100vh-32px)]
               overflow-y-auto
-              rounded-2xl
+              rounded-[24px]
               border
-              border-slate-200
+              border-blue-100/80
               bg-white
               p-4
-              shadow-2xl
+              shadow-[0_30px_90px_-25px_rgba(15,23,42,0.45)]
               sm:p-6
               dark:border-slate-700
               dark:bg-slate-900
+              dark:shadow-[0_30px_90px_-20px_rgba(0,0,0,0.65)]
             "
             role="dialog"
             aria-modal="true"
@@ -1836,13 +2108,59 @@ export default function StudentSettings() {
 
             <div className="mb-5 flex items-start justify-between gap-3">
               <div className="min-w-0">
+                <div
+                  className="
+                    mb-2
+                    inline-flex
+                    items-center
+                    gap-2
+                    rounded-full
+                    border
+                    border-blue-100
+                    bg-gradient-to-r
+                    from-blue-50
+                    to-violet-50
+                    px-2.5
+                    py-1
+                    text-[9px]
+                    font-bold
+                    uppercase
+                    tracking-wider
+                    text-blue-600
+                    dark:border-blue-900/60
+                    dark:from-blue-950
+                    dark:to-violet-950
+                    dark:text-blue-300
+                  "
+                >
+                  <span
+                    className="
+                      h-1.5
+                      w-1.5
+                      rounded-full
+                      bg-gradient-to-r
+                      from-blue-500
+                      to-violet-500
+                    "
+                  />
+                  Security
+                </div>
+
                 <h3
                   id="change-password-title"
                   className="
+                    bg-gradient-to-r
+                    from-slate-950
+                    via-blue-700
+                    to-violet-600
+                    bg-clip-text
                     text-lg
-                    font-bold
-                    text-slate-900
-                    dark:text-white
+                    font-black
+                    tracking-[-0.025em]
+                    text-transparent
+                    dark:from-white
+                    dark:via-blue-300
+                    dark:to-violet-300
                   "
                 >
                   Change Password
@@ -1874,14 +2192,19 @@ export default function StudentSettings() {
                   shrink-0
                   items-center
                   justify-center
-                  rounded-lg
+                  rounded-xl
+                  border
+                  border-transparent
                   text-xl
                   text-slate-400
-                  transition
+                  transition-all
+                  duration-200
+                  hover:border-slate-200
                   hover:bg-slate-100
                   hover:text-slate-700
                   disabled:cursor-not-allowed
                   disabled:opacity-50
+                  dark:hover:border-slate-700
                   dark:hover:bg-slate-800
                   dark:hover:text-slate-200
                 "
@@ -1896,20 +2219,42 @@ export default function StudentSettings() {
               <div
                 className="
                   mb-4
+                  flex
+                  items-center
+                  gap-2
                   rounded-xl
                   border
                   border-emerald-200
-                  bg-emerald-50
+                  bg-gradient-to-r
+                  from-emerald-50
+                  to-teal-50
                   px-4
                   py-3
                   text-sm
-                  font-medium
+                  font-semibold
                   text-emerald-700
                   dark:border-emerald-900
-                  dark:bg-emerald-950
+                  dark:from-emerald-950
+                  dark:to-teal-950
                   dark:text-emerald-300
                 "
               >
+                <span
+                  className="
+                    flex
+                    h-6
+                    w-6
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-emerald-100
+                    text-emerald-600
+                    dark:bg-emerald-900
+                    dark:text-emerald-300
+                  "
+                >
+                  ✓
+                </span>
                 Password changed successfully.
               </div>
             )}
@@ -1923,14 +2268,17 @@ export default function StudentSettings() {
                   rounded-xl
                   border
                   border-red-200
-                  bg-red-50
+                  bg-gradient-to-r
+                  from-red-50
+                  to-rose-50
                   px-4
                   py-3
                   text-sm
                   leading-5
                   text-red-700
                   dark:border-red-900
-                  dark:bg-red-950
+                  dark:from-red-950
+                  dark:to-rose-950
                   dark:text-red-300
                 "
                 role="alert"
@@ -2006,9 +2354,12 @@ export default function StudentSettings() {
                   flex
                   flex-col-reverse
                   gap-3
-                  pt-2
+                  border-t
+                  border-slate-100
+                  pt-4
                   sm:flex-row
                   sm:justify-end
+                  dark:border-slate-800
                 "
               >
                 <Button
@@ -2016,7 +2367,11 @@ export default function StudentSettings() {
                   variant="outline"
                   onClick={closePasswordModal}
                   disabled={passwordLoading}
-                  className="w-full sm:w-auto"
+                  className="
+                    w-full
+                    font-semibold
+                    sm:w-auto
+                  "
                 >
                   Cancel
                 </Button>
@@ -2024,7 +2379,24 @@ export default function StudentSettings() {
                 <Button
                   type="submit"
                   disabled={passwordLoading}
-                  className="w-full sm:w-auto"
+                  className="
+                    w-full
+                    border-0
+                    bg-gradient-to-r
+                    from-blue-600
+                    via-indigo-600
+                    to-violet-600
+                    font-semibold
+                    text-white
+                    shadow-[0_10px_25px_-14px_rgba(79,70,229,0.75)]
+                    transition-all
+                    duration-300
+                    hover:-translate-y-[1px]
+                    hover:from-blue-700
+                    hover:via-indigo-700
+                    hover:to-violet-700
+                    sm:w-auto
+                  "
                 >
                   {passwordLoading
                     ? 'Changing...'
@@ -2038,4 +2410,3 @@ export default function StudentSettings() {
     </>
   );
 }
-

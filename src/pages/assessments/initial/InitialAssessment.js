@@ -7,16 +7,12 @@ import {
   heartbeatInitialQuiz,
   pauseInitialQuiz,
   pauseInitialQuizOnUnload,
-  getMyAssessmentReports,
-  getAssessmentOverview
-
+  submitAssessmentReport
 } from "../../../services/api";
 
 import ProctoringService from "../../../services/proctoringServices";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getInitialCodingAssessmentInfo } from "../../../services/api";
-import AssessmentTerminationReport from "../../../components/AssessmentTerminationReport";
-
 
 // ----------------------------------------------------
 // 1. Fullscreen helper
@@ -42,16 +38,16 @@ const exitAssessmentFullscreen = async () => {
 };
 
 // ----------------------------------------------------
-//  Answer cards component
+// Initial Assessment
 // ----------------------------------------------------
-
-
 const InitialAssessment = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-const isCodingStage = location.state?.phase === "coding";
-const isRestartApproved = location.state?.restartApproved === true;
+  const isCodingStage = location.state?.phase === "coding";
+
+  const isRestartApproved =
+    location.state?.restartApproved === true;
 
   const proctoringRef = useRef(null);
 
@@ -64,10 +60,11 @@ const isRestartApproved = location.state?.restartApproved === true;
     };
   }, []);
 
-  const assessmentActiveRef = useRef(false)
-  const sessionIdRef = useRef(null)
-  const skipAutoPauseRef = useRef(false)
-  const pauseSentRef = useRef(false)
+  const assessmentActiveRef = useRef(false);
+  const sessionIdRef = useRef(null);
+  const skipAutoPauseRef = useRef(false);
+  const pauseSentRef = useRef(false);
+
   const assessmentTerminatedRef = useRef(false);
 
   useEffect(() => {
@@ -78,16 +75,12 @@ const isRestartApproved = location.state?.restartApproved === true;
         },
 
         onStarted: (data) => {
-  console.log("AI proctoring started:", data);
-
-  setStartingProctoring(false);
-  setError("");
-
-  assessmentActiveRef.current = true;
-  setAssessmentActive(true);
-
-  setPage("quiz");
-},
+          console.log("AI proctoring started:", data);
+          setStartingProctoring(false);
+          setError("");
+          setAssessmentActive(true);
+          setPage("quiz");
+        },
 
         onResult: (data) => {
           if (!data?.fraud) return;
@@ -97,18 +90,12 @@ const isRestartApproved = location.state?.restartApproved === true;
           if (fraud.new_violation === true) {
             setProctoringWarning({
               violationType: fraud.violation_type || "PROCTORING",
-              message: fraud.message || "A proctoring violation was detected.",
+              message:
+                fraud.message || "A proctoring violation was detected.",
               violationCount: fraud.violation_count ?? 0,
               action: fraud.action || "WARNING",
             });
           }
-
-          setLastProctoringViolation({
-  violationType: fraud.violation_type,
-  message: fraud.message,
-  violationCount: fraud.violation_count,
-  action: fraud.action,
-});
         },
 
         onWarning: (data) => {
@@ -118,7 +105,8 @@ const isRestartApproved = location.state?.restartApproved === true;
 
           setProctoringWarning({
             violationType: fraud?.violation_type || "PROCTORING",
-            message: fraud?.message || "A proctoring violation was detected.",
+            message:
+              fraud?.message || "A proctoring violation was detected.",
             violationCount: fraud?.violation_count ?? 0,
             action: fraud?.action || "WARNING",
           });
@@ -128,33 +116,24 @@ const isRestartApproved = location.state?.restartApproved === true;
           console.warn("Assessment paused by proctoring:", data);
         },
 
-       onTerminate: async (data) => {
-  console.error("Assessment terminated:", data);
+                onTerminate: async (data) => {
+          console.error("Assessment terminated:", data);
 
-  assessmentTerminatedRef.current = true;
-  skipAutoPauseRef.current = true;
+          assessmentTerminatedRef.current = true;
+          skipAutoPauseRef.current = true;
+          assessmentActiveRef.current = false;
 
-  assessmentActiveRef.current = false;
-setAssessmentActive(false);
+          setAssessmentActive(false);
 
-setLastProctoringViolation({
-    violationType: data?.violation_type || "PROCTORING",
-    message:
-      data?.reason ||
-      data?.message ||
-      "The assessment was terminated.",
-    violationCount: data?.violation_count ?? 2,
-    action: "TERMINATE_EXAM",
-  });
+          await exitAssessmentFullscreen();
 
-  await exitAssessmentFullscreen();
+          if (proctoringRef.current) {
+            proctoringRef.current.cleanup();
+          }
 
-  if (proctoringRef.current) {
-    proctoringRef.current.cleanup();
-  }
-  setShowReportForm(false);
-  setPage("terminated");
-},
+          setShowReportForm(false);
+          setPage("terminated");
+        },
 
         onDisconnected: () => {
           console.log("Proctoring WebSocket disconnected.");
@@ -176,34 +155,29 @@ setLastProctoringViolation({
   // ----------------------------------------------------
   // Page state
   // ----------------------------------------------------
-  const [page, setPage] = useState(
-  isCodingStage || isRestartApproved
-    ? "instructions"
-    : "checking"
-);
+    const [page, setPage] = useState(
+    isCodingStage || isRestartApproved
+      ? "instructions"
+      : "checking"
+  );
   const [loading, setLoading] = useState(false);
   const loadingAssessmentRef = useRef(false);
   const [error, setError] = useState("");
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportEvidence, setReportEvidence] = useState("");
+  const [reportEvidenceFile, setReportEvidenceFile] = useState(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [reportError, setReportError] = useState("");
+  
   const [startingProctoring, setStartingProctoring] = useState(false);
   const [proctoringWarning, setProctoringWarning] = useState(null);
-  const [lastProctoringViolation, setLastProctoringViolation] = useState(null);
-  const [showReportForm, setShowReportForm] = useState(false);
-  const [reportSubmitted, setReportSubmitted] = useState(false);
-  const [, setReportError] = useState("");
-  const [terminationReport, setTerminationReport] = useState(null);
-  const [, setAssessmentStatusLoading] =
-  useState(true);
-
-
 
   const [codingInfo, setCodingInfo] = useState(null);
 
   // ----------------------------------------------------
-  // Tab-switch blocking overlay — purely client-side and instant,
-  // so it doesn't depend on a round trip through the AI proctoring
-  // websocket. ProctoringService still separately reports TAB_SWITCH
-  // to the backend for violation-count escalation (warning/pause/
-  // terminate); this overlay is just the immediate UX block.
+  // Tab-switch blocking overlay
   // ----------------------------------------------------
   const [tabSwitchAlert, setTabSwitchAlert] = useState(false);
   const tabSwitchCountRef = useRef(0);
@@ -220,143 +194,52 @@ setLastProctoringViolation({
   const [assessmentActive, setAssessmentActive] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
- useEffect(() => {
-  let cancelled = false;
-
-  const loadTerminationStatus = async () => {
-    try {
-      const [overview, reports] = await Promise.all([
-        getAssessmentOverview(),
-        getMyAssessmentReports(),
-      ]);
-
-      if (cancelled) return;
-
-      const currentSessionId = isCodingStage
-  ? overview?.codingAssessment?.sessionId
-  : overview?.initialAssessment?.sessionId;
-
-const currentStatus = isCodingStage
-  ? overview?.codingAssessment?.status
-  : overview?.initialAssessment?.status;
-
-const currentReportStage = isCodingStage
-  ? "INITIAL_CODING"
-  : "INITIAL_QUIZ";
-
-const reportsList = Array.isArray(reports)
-  ? reports
-  : [];
-
-const currentReport =
-  reportsList.find(
-    (report) =>
-      Number(report.quiz_session_id) ===
-        Number(currentSessionId) &&
-      report.assessment_stage === currentReportStage
-  ) || null;
-
-      // Keep the current session ID available for
-      // termination reporting / restart flow.
-      if (currentSessionId) {
-        setSessionId(currentSessionId);
-      }
-
-      setTerminationReport(currentReport);
-
-      if (currentReport) {
-        setReportSubmitted(true);
-      }
-
-      /*
-       * TERMINATED SESSION
-       *
-       * The old session must remain visible until the
-       * student has dealt with the termination report.
-       */
-      if (
-  currentStatus === "Terminated" &&
-  !isRestartApproved
-) {
-  setShowReportForm(false);
-  setPage("terminated");
-  return;
-}
-
-      /*
-       * NORMAL INITIAL ASSESSMENT
-       *
-       * There is no terminated session, so show the
-       * normal instructions/start screen.
-       */
-      setPage("instructions");
-    } catch (err) {
-      console.error(
-        "Failed to load assessment status:",
-        err.response?.data || err.message
-      );
-
-      // If status checking itself fails, don't leave the
-      // student permanently stuck on the checking screen.
-      setError(
-        err.response?.data?.error ||
-          "Failed to check assessment status. Please try again."
-      );
-
-      setPage("instructions");
-    } finally {
-      if (!cancelled) {
-        setAssessmentStatusLoading(false);
-      }
-    }
-  };
-
-  loadTerminationStatus();
-
-  return () => {
-    cancelled = true;
-  };
-}, [isRestartApproved, isCodingStage]);
-
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
 
+  useEffect(() => {
+    if (page !== "instructions") return;
 
-useEffect(() => {
-  if (page !== "instructions") return;
+    const loadCodingInfo = async () => {
+      try {
+        const response = await getInitialCodingAssessmentInfo();
+        setCodingInfo(response.data);
+      } catch (error) {
+        console.error(
+          "Failed to load coding assessment info:",
+          error
+        );
+      }
+    };
 
-  const loadCodingInfo = async () => {
-    try {
-      const response = await getInitialCodingAssessmentInfo();
-      setCodingInfo(response.data);
-    } catch (error) {
-      console.error("Failed to load coding assessment info:", error);
-    }
-  };
-
-  loadCodingInfo();
-}, [page]);
-
+    loadCodingInfo();
+  }, [page]);
 
   useEffect(() => {
     assessmentActiveRef.current = assessmentActive;
   }, [assessmentActive]);
 
-  const [quizData, setQuizData] = useState(null)
+  const [quizData, setQuizData] = useState(null);
 
+  // ----------------------------------------------------
   // Load Assessment configuration
+  // ----------------------------------------------------
   const loadAssessment = async () => {
     if (loadingAssessmentRef.current) {
       return;
     }
+
     loadingAssessmentRef.current = true;
+
     try {
       setLoading(true);
       setError("");
 
-      // Request browser permission for both Camera and Microphone upfront
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+      ) {
         setError(
           "Your browser does not support camera and microphone access. Please use Chrome, Edge, or Firefox."
         );
@@ -364,13 +247,19 @@ useEffect(() => {
       }
 
       let testStream = null;
+
       try {
-        testStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
+        testStream =
+          await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
       } catch (mediaErr) {
-        console.error("Camera and Microphone permission denied:", mediaErr);
+        console.error(
+          "Camera and Microphone permission denied:",
+          mediaErr
+        );
+
         if (
           mediaErr.name === "NotAllowedError" ||
           mediaErr.name === "PermissionDeniedError"
@@ -387,38 +276,51 @@ useEffect(() => {
           );
         } else {
           setError(
-            `Camera and microphone access error: ${mediaErr.message || "Permission not granted"}.`
+            `Camera and microphone access error: ${
+              mediaErr.message || "Permission not granted"
+            }.`
           );
         }
+
         return;
       } finally {
         if (testStream) {
-          testStream.getTracks().forEach((track) => track.stop());
+          testStream.getTracks().forEach((track) =>
+            track.stop()
+          );
         }
       }
 
       const response = await startInitialQuiz();
+
       console.log("Initial Quiz Started:", response);
 
       const quiz = response.data;
 
       if (quiz.phase === "coding") {
-  console.log(
-    "Initial quiz completed. Entering/resuming coding assessment."
-  );
+        console.log(
+          "Initial quiz completed. Entering/resuming coding assessment."
+        );
 
-  setSessionId(quiz.session_id);
+        setSessionId(quiz.session_id);
+        setQuizData(quiz);
 
-  setQuizData(quiz);
-  console.log("SETTING CODING QUIZ DATA:", quiz);
+        console.log(
+          "SETTING CODING QUIZ DATA:",
+          quiz
+        );
 
+        setAssessmentActive(false);
 
-  setAssessmentActive(false);
-  console.log("CODING QUIZ DATA BEFORE PAGE:", quiz);
-  setPage("coding");
+        console.log(
+          "CODING QUIZ DATA BEFORE PAGE:",
+          quiz
+        );
 
-  return;
-}
+        setPage("coding");
+
+        return;
+      }
 
       if (quiz.phase === "completed") {
         console.log(
@@ -433,14 +335,15 @@ useEffect(() => {
       }
 
       setSessionId(quiz.session_id);
-      pauseSentRef.current = false; // CRITICAL: Reset so assessment can pause again if resumed
+
+      pauseSentRef.current = false;
 
       const overallAnswered =
         quiz.assessment?.overall_question
           ? Math.max(
-            quiz.assessment.overall_question - 1,
-            0
-          )
+              quiz.assessment.overall_question - 1,
+              0
+            )
           : 0;
 
       setQuizData({
@@ -449,57 +352,32 @@ useEffect(() => {
         question: quiz.question,
         assessment: quiz.assessment,
         questionsAnswered: overallAnswered,
-        skillQuestionsAnswered: overallAnswered % 10,
+        skillQuestionsAnswered:
+          overallAnswered % 10,
       });
+
       setResumed(Boolean(quiz.resumed));
-      setRemainingSeconds(quiz.timer?.remaining_seconds ?? 0);
+      setRemainingSeconds(
+        quiz.timer?.remaining_seconds ?? 0
+      );
 
       setAssessmentActive(false);
       setPage("ready");
-  } catch (err) {
-  console.error("Failed to start initial quiz:", err);
+    } catch (err) {
+      console.error(
+        "Failed to start initial quiz:",
+        err
+      );
 
-  const errorCode = err.response?.data?.code;
-  const errorMessage = err.response?.data?.error || "";
-
-  if (
-    errorCode === "ASSESSMENT_TERMINATED" ||
-    errorMessage.toLowerCase().includes("assessment has been terminated")
-  ) {
-    setAssessmentActive(false);
-
-    setError(
-      errorMessage ||
-        "This assessment has been terminated. Please report the issue to Admin before restarting."
-    );
-
-    setPage("terminated");
-
-    return;
-  }
-
-  if (
-  errorCode === "ASSESSMENT_TIME_EXPIRED" ||
-  errorMessage.toLowerCase().includes("assessment has already expired")
-) {
-  setAssessmentActive(false);
-
-  setError(
-    errorMessage || "This assessment has already expired."
-  );
-
-  return;
-}
-
-  setError(
-    errorMessage || "Failed to start the initial assessment."
-  );
-} finally {
+      setError(
+        err.response?.data?.error ||
+          "Failed to start the initial assessment."
+      );
+    } finally {
       loadingAssessmentRef.current = false;
       setLoading(false);
     }
   };
-
 
   useEffect(() => {
     if (page !== "quiz") return;
@@ -508,12 +386,18 @@ useEffect(() => {
       try {
         await proctoringRef.current?.startCameraPreview();
       } catch (err) {
-        console.error("Failed to start camera preview:", err); // Keep existing console.error
-        setAssessmentActive(false)
-        await exitAssessmentFullscreen()
+        console.error(
+          "Failed to start camera preview:",
+          err
+        );
+
+        setAssessmentActive(false);
+
+        await exitAssessmentFullscreen();
+
         setError(
           err.message ||
-          "Unable to access the camera. Please allow camera permission and try again."
+            "Unable to access the camera. Please allow camera permission and try again."
         );
       }
     };
@@ -522,10 +406,9 @@ useEffect(() => {
   }, [page]);
 
   // ----------------------------------------------------
-  // 2. Start fullscreen from the actual Start button
+  // Start fullscreen
   // ----------------------------------------------------
   const handleStartAssessment = async () => {
-
     if (!sessionId) {
       setError("Assessment session not found.");
       return;
@@ -535,55 +418,54 @@ useEffect(() => {
     setError("");
     setProctoringWarning(null);
 
-    /*
-     * Activate the server-side timer FIRST, before fullscreen/camera.
-     * This is the exact moment the exam clock starts (or resumes) —
-     * not when the "Resume Assessment" screen was loaded, and not
-     * after however long the camera permission dialog takes.
-     *
-     * It also must happen before proctoring connects, since the
-     * proctoring gateway requires the session to already be
-     * "In Progress" server-side.
-     */
     let activatedRemaining = null;
+
     try {
-      console.log("RESUME STEP 1: Activating assessment...");
-      const activateResponse = await activateInitialQuiz(sessionId);
-      console.log("RESUME STEP 2: Assessment activated:", activateResponse);
-      activatedRemaining = activateResponse?.data?.remaining_seconds;
+      const activateResponse =
+        await activateInitialQuiz(sessionId);
+
+      activatedRemaining =
+        activateResponse?.data?.remaining_seconds;
 
       if (typeof activatedRemaining === "number") {
         setRemainingSeconds(activatedRemaining);
       }
     } catch (err) {
       setStartingProctoring(false);
-      console.error("Failed to activate assessment session:", err);
+
+      console.error(
+        "Failed to activate assessment session:",
+        err
+      );
+
       setError(
         err.response?.data?.error ||
-        "Unable to resume the assessment. Please try again."
+          "Unable to resume the assessment. Please try again."
       );
+
       return;
     }
 
     await enterAssessmentFullscreen();
 
     try {
-      console.log("RESUME STEP 3: Starting proctoring...");
       await proctoringRef.current.start(sessionId);
-      console.log("RESUME STEP 4: Proctoring start returned.");
 
-      console.log("Proctoring connection established. Waiting for AI...");
+      console.log(
+        "Proctoring connection established. Waiting for AI..."
+      );
     } catch (err) {
       setStartingProctoring(false);
-      console.error("Failed to start proctoring:", err);
+
+      console.error(
+        "Failed to start proctoring:",
+        err
+      );
+
       setAssessmentActive(false);
 
       await exitAssessmentFullscreen();
 
-      // The timer is already running server-side at this point (we
-      // just activated it above). If proctoring fails to connect
-      // (camera permission denied, etc.), hand the time back instead
-      // of silently burning it while the student retries.
       try {
         await pauseInitialQuiz(sessionId);
       } catch (pauseErr) {
@@ -594,48 +476,135 @@ useEffect(() => {
       }
 
       setError(
-        err.message || // Keep existing error message logic
-        "Unable to start proctoring. The AI service may be starting up. Please wait a few seconds and try again."
+        err.message ||
+          "Unable to start proctoring. The AI service may be starting up. Please wait a few seconds and try again."
       );
     }
   };
 
   // ----------------------------------------------------
-  // Pause the assessment and navigate away
-  // This is the PRIMARY pause mechanism for normal SPA navigation
-  // (button clicks / in-app navigation). It awaits the pause request
-  // before navigating so we don't race the unmount cleanup below.
+  // Pause assessment and navigate
   // ----------------------------------------------------
-  const handleExitAssessmentToDashboard = async () => {
-    const currentSessionId = sessionIdRef.current;
+  const handleExitAssessmentToDashboard =
+    async () => {
+      const currentSessionId =
+        sessionIdRef.current;
 
-    if (!currentSessionId || pauseSentRef.current) {
-      // Already paused or no session - just navigate
-      navigate("/app/dashboard");
-      return;
-    }
+      if (
+        !currentSessionId ||
+        pauseSentRef.current
+      ) {
+        navigate("/app/dashboard");
+        return;
+      }
 
-    if (!assessmentActiveRef.current) {
-      // Assessment not active - just navigate
-      navigate("/app/dashboard");
-      return;
-    }
+      if (!assessmentActiveRef.current) {
+        navigate("/app/dashboard");
+        return;
+      }
 
-    try {
-      pauseSentRef.current = true; // Prevent duplicate pause requests
-      console.log("Pausing assessment before exit...");
-      await pauseInitialQuiz(currentSessionId);
-      console.log("Assessment paused successfully");
-    } catch (err) {
-      console.error("Failed to pause assessment before exit:", err);
-    } finally {
-      // Navigate regardless of pause success/failure
-      navigate("/app/dashboard");
-    }
-  };
+      try {
+        pauseSentRef.current = true;
 
+        console.log(
+          "Pausing assessment before exit..."
+        );
 
+        await pauseInitialQuiz(
+          currentSessionId
+        );
+
+        console.log(
+          "Assessment paused successfully"
+        );
+      } catch (err) {
+        console.error(
+          "Failed to pause assessment before exit:",
+          err
+        );
+      } finally {
+        navigate("/app/dashboard");
+      }
+    };
+
+  // ----------------------------------------------------
+  // Assessment report
+  // ----------------------------------------------------
+  const handleSubmitAssessmentReport =
+    async (e) => {
+      e.preventDefault();
+
+      if (!sessionId) {
+        setReportError(
+          "Assessment session not found."
+        );
+        return;
+      }
+
+      if (!reportReason.trim()) {
+        setReportError(
+          "Please provide a reason for reporting the termination."
+        );
+        return;
+      }
+
+      try {
+        setReportSubmitting(true);
+        setReportError("");
+
+        const formData = new FormData();
+
+        formData.append(
+          "quiz_session_id",
+          sessionId
+        );
+
+        formData.append(
+          "assessment_type",
+          "INITIAL"
+        );
+
+        formData.append(
+          "reason",
+          reportReason.trim()
+        );
+
+        if (reportEvidence.trim()) {
+          formData.append(
+            "additional_evidence",
+            reportEvidence.trim()
+          );
+        }
+
+        if (reportEvidenceFile) {
+          formData.append(
+            "evidence",
+            reportEvidenceFile
+          );
+        }
+
+        await submitAssessmentReport(formData);
+
+        setReportSubmitted(true);
+        setShowReportForm(false);
+      } catch (err) {
+        console.error(
+          "Assessment report submission failed:",
+          err.response?.data || err.message
+        );
+
+        setReportError(
+          err.response?.data?.error ||
+            "Failed to submit the assessment report."
+        );
+      } finally {
+        setReportSubmitting(false);
+      }
+    };
+
+  // ----------------------------------------------------
   // Timer countdown
+  // ----------------------------------------------------
   useEffect(() => {
     if (!assessmentActive) return;
 
@@ -645,6 +614,7 @@ useEffect(() => {
           clearInterval(timer);
           return 0;
         }
+
         return previous - 1;
       });
     }, 1000);
@@ -652,13 +622,23 @@ useEffect(() => {
     return () => clearInterval(timer);
   }, [assessmentActive]);
 
-  // Time's up — act on it immediately client-side instead of waiting
-  // for the next heartbeat or answer submission to come back 409.
+  // ----------------------------------------------------
+  // Time expired
+  // ----------------------------------------------------
   useEffect(() => {
-    if (!assessmentActive || remainingSeconds > 0) return;
+    if (
+      !assessmentActive ||
+      remainingSeconds > 0
+    ) {
+      return;
+    }
 
-    console.warn("Assessment time expired.");
-    skipAutoPauseRef.current = true; // time is genuinely over, nothing to pause
+    console.warn(
+      "Assessment time expired."
+    );
+
+    skipAutoPauseRef.current = true;
+
     setAssessmentActive(false);
 
     (async () => {
@@ -669,96 +649,94 @@ useEffect(() => {
       }
 
       setPage("expired");
-      setError("Your assessment time has expired.");
+
+      setError(
+        "Your assessment time has expired."
+      );
     })();
-  }, [remainingSeconds, assessmentActive]);
+  }, [
+    remainingSeconds,
+    assessmentActive,
+  ]);
 
   // ----------------------------------------------------
   // Fullscreen enforcement
-  // If the student exits fullscreen while the quiz is active,
-  // pause the quiz and return to the resume screen.
   // ----------------------------------------------------
   useEffect(() => {
-    if (page !== "quiz" || !assessmentActive) return;
+    if (
+      page !== "quiz" ||
+      !assessmentActive
+    ) {
+      return;
+    }
 
-    const handleFullscreenChange = async () => {
-      // Still in fullscreen — nothing to do.
-     if (document.fullscreenElement !== null) {
-  return;
-}
+    const handleFullscreenChange =
+      async () => {
+        if (
+          document.fullscreenElement !== null
+        ) {
+          return;
+        }
 
-if (assessmentTerminatedRef.current) {
-  return;
-}
+        if (!assessmentActiveRef.current) {
+          return;
+        }
 
-if (skipAutoPauseRef.current) {
-  return;
-}
-
-if (!assessmentActiveRef.current) {
-  return;
-}
-
-      console.warn(
-        "Fullscreen exited during initial quiz. Pausing assessment."
-      );
-
-      if (pauseSentRef.current) {
-        return;
-      }
-
-      const currentSessionId = sessionIdRef.current;
-
-      if (!currentSessionId) {
-        setAssessmentActive(false);
-        setPage("ready");
-        setResumed(true);
-        setError(
-          "Assessment was interrupted because fullscreen mode was exited."
-        );
-        return;
-      }
-
-      try {
-        pauseSentRef.current = true;
-
-        await pauseInitialQuiz(currentSessionId);
-
-        setAssessmentActive(false);
-        setResumed(true);
-        setPage("ready");
-        setError(
-          "Assessment was interrupted because fullscreen mode was exited. Click Resume to continue."
-        );
-      } catch (err) {
-        console.error(
-          "Failed to pause assessment after fullscreen exit:",
-          err
+        console.warn(
+          "Fullscreen exited during initial quiz. Pausing assessment."
         );
 
-        // Even if the pause request fails, stop the local assessment.
-     if (err.response?.status === 409) {
-  assessmentTerminatedRef.current = true;
-  skipAutoPauseRef.current = true;
+        if (pauseSentRef.current) {
+          return;
+        }
 
-  setAssessmentActive(false);
-  setPage("terminated");
+        const currentSessionId =
+          sessionIdRef.current;
 
-  return;
-}
+        if (!currentSessionId) {
+          setAssessmentActive(false);
+          setPage("ready");
+          setResumed(true);
 
-setAssessmentActive(false);
-setResumed(true);
-setPage("ready");
+          setError(
+            "Assessment was interrupted because fullscreen mode was exited."
+          );
 
-setError(
-  err.response?.data?.error ||
-  "Assessment was interrupted because fullscreen mode was exited."
-);
-      } finally {
-        pauseSentRef.current = false;
-      }
-    };
+          return;
+        }
+
+        try {
+          pauseSentRef.current = true;
+
+          await pauseInitialQuiz(
+            currentSessionId
+          );
+
+          setAssessmentActive(false);
+          setResumed(true);
+          setPage("ready");
+
+          setError(
+            "Assessment was interrupted because fullscreen mode was exited. Click Resume to continue."
+          );
+        } catch (err) {
+          console.error(
+            "Failed to pause assessment after fullscreen exit:",
+            err
+          );
+
+          setAssessmentActive(false);
+          setResumed(true);
+          setPage("ready");
+
+          setError(
+            err.response?.data?.error ||
+              "Assessment was interrupted because fullscreen mode was exited."
+          );
+        } finally {
+          pauseSentRef.current = false;
+        }
+      };
 
     document.addEventListener(
       "fullscreenchange",
@@ -771,25 +749,29 @@ setError(
         handleFullscreenChange
       );
     };
-  }, [page, assessmentActive]);
-  // Tab-switch blocking overlay. Fires the instant the tab is hidden
-  // (switched away from, minimized, etc.) — the overlay is then shown
-  // on top of the quiz until the student explicitly acknowledges it,
-  // blocking further interaction in the meantime. The exam clock
-  // deliberately keeps running through this — pausing it would let
-  // students "stop the clock" by tab-switching, which defeats the
-  // point of a timed test.
+  }, [
+    page,
+    assessmentActive,
+  ]);
+
+  // ----------------------------------------------------
+  // Tab switch blocking overlay
+  // ----------------------------------------------------
   useEffect(() => {
     if (!assessmentActive) return;
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        tabSwitchCountRef.current += 1;
-        setTabSwitchAlert(true);
-      }
-    };
+    const handleVisibilityChange =
+      () => {
+        if (document.hidden) {
+          tabSwitchCountRef.current += 1;
+          setTabSwitchAlert(true);
+        }
+      };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
 
     return () => {
       document.removeEventListener(
@@ -799,808 +781,971 @@ setError(
     };
   }, [assessmentActive]);
 
+  // ----------------------------------------------------
   // Heartbeat
+  // ----------------------------------------------------
   useEffect(() => {
-    if (!assessmentActive || !sessionId) return;
+    if (
+      !assessmentActive ||
+      !sessionId
+    ) {
+      return;
+    }
 
-    const heartbeatTimer = setInterval(async () => {
-      try {
-        const response = await heartbeatInitialQuiz(sessionId);
-        const data = response.data;
+    const heartbeatTimer =
+      setInterval(async () => {
+        try {
+          const response =
+            await heartbeatInitialQuiz(
+              sessionId
+            );
 
-        if (typeof data.remaining_seconds === "number") {
-          setRemainingSeconds(data.remaining_seconds);
+          const data = response.data;
+
+          if (
+            typeof data.remaining_seconds ===
+            "number"
+          ) {
+            setRemainingSeconds(
+              data.remaining_seconds
+            );
+          }
+
+          if (data.active === false) {
+            skipAutoPauseRef.current =
+              true;
+
+            setAssessmentActive(false);
+
+            await exitAssessmentFullscreen();
+
+            if (proctoringRef.current) {
+              proctoringRef.current.cleanup();
+            }
+
+            setPage("expired");
+
+            setError(
+              "Your assessment session is no longer active."
+            );
+          }
+        } catch (err) {
+          console.error(
+            "Assessment heartbeat failed:",
+            err
+          );
+
+          const status =
+            err.response?.status;
+
+          if (
+            status === 409 ||
+            status === 404 ||
+            status === 403
+          ) {
+            skipAutoPauseRef.current =
+              true;
+
+            setAssessmentActive(false);
+
+            await exitAssessmentFullscreen();
+
+            if (proctoringRef.current) {
+              proctoringRef.current.cleanup();
+            }
+
+            setPage("expired");
+
+            setError(
+              err.response?.data?.error ||
+                "Your assessment session has ended."
+            );
+          }
         }
+      }, 10000);
 
-        // Session was flipped away from "In Progress" by something
-        // else server-side (e.g. proctoring auto-terminated it).
-        // Stop the client instead of leaving it ticking uselessly.
-        if (data.active === false) {
-          skipAutoPauseRef.current = true;
-          setAssessmentActive(false);
-          await exitAssessmentFullscreen();
-          if (proctoringRef.current) proctoringRef.current.cleanup();
-          setPage("expired");
-          setError("Your assessment session is no longer active.");
-        }
-      } catch (err) {
-        console.error("Assessment heartbeat failed:", err);
+    return () =>
+      clearInterval(heartbeatTimer);
+  }, [
+    assessmentActive,
+    sessionId,
+  ]);
 
-        const status = err.response?.status;
+  // ----------------------------------------------------
+  // Pagehide fallback
+  // ----------------------------------------------------
+  useEffect(() => {
+    const handlePageHide = () => {
+      const currentSessionId =
+        sessionIdRef.current;
 
-        // The server is authoritative on time. If it says the session
-        // has expired or is gone, stop immediately instead of leaving
-        // the student stuck on a clock that can no longer submit.
-        if (status === 409 || status === 404 || status === 403) {
-          skipAutoPauseRef.current = true;
-          setAssessmentActive(false);
-          await exitAssessmentFullscreen();
-          if (proctoringRef.current) proctoringRef.current.cleanup();
-          setPage("expired");
-          setError(
-            err.response?.data?.error || "Your assessment session has ended."
+      if (
+        !currentSessionId ||
+        !assessmentActiveRef.current ||
+        skipAutoPauseRef.current ||
+        pauseSentRef.current
+      ) {
+        return;
+      }
+
+      console.log(
+        "Page hiding - attempting keepalive pause as fallback"
+      );
+
+      pauseSentRef.current = true;
+
+      pauseInitialQuizOnUnload(
+        currentSessionId
+      );
+
+      if (proctoringRef.current) {
+        proctoringRef.current.cleanup();
+      }
+    };
+
+    window.addEventListener(
+      "pagehide",
+      handlePageHide
+    );
+
+    return () => {
+      window.removeEventListener(
+        "pagehide",
+        handlePageHide
+      );
+    };
+  }, []);
+
+  // ----------------------------------------------------
+  // React unmount cleanup
+  // ----------------------------------------------------
+  useEffect(() => {
+    return () => {
+      const currentSessionId =
+        sessionIdRef.current;
+
+      if (
+        !currentSessionId ||
+        !assessmentActiveRef.current ||
+        skipAutoPauseRef.current ||
+        pauseSentRef.current
+      ) {
+        return;
+      }
+
+      pauseSentRef.current = true;
+
+      pauseInitialQuizOnUnload(
+        currentSessionId
+      );
+
+      if (proctoringRef.current) {
+        proctoringRef.current.cleanup();
+      }
+    };
+  }, []);
+
+  // ----------------------------------------------------
+  // Quiz complete
+  // ----------------------------------------------------
+  const handleQuizComplete =
+    useCallback(async (result) => {
+      console.log(
+        "Initial quiz completed:",
+        result
+      );
+
+      skipAutoPauseRef.current = true;
+
+      setAssessmentActive(false);
+
+      if (proctoringRef.current) {
+        try {
+          await proctoringRef.current.cleanup();
+        } catch (cleanupError) {
+          console.error(
+            "Failed to clean up quiz proctoring before switching to coding assessment:",
+            cleanupError
           );
         }
       }
-    }, 10000);
 
-    return () => clearInterval(heartbeatTimer);
-  }, [assessmentActive, sessionId]);
+      setPage("coding");
+    }, []);
 
-  // Pagehide fallback: Use keepalive for browser refresh/tab close only.
-  // Normal SPA navigation should use handleExitAssessmentToDashboard() instead,
-  // since that can properly await the pause request before navigating.
-  useEffect(() => {
-    const handlePageHide = () => {
-      const currentSessionId = sessionIdRef.current;
+  // ----------------------------------------------------
+  // Instructions Screen
+  // ----------------------------------------------------
+  if (page === "instructions") {
+    const isCodingAssessment =
+      isCodingStage;
 
-      if (
-        !currentSessionId ||
-        !assessmentActiveRef.current ||
-         assessmentTerminatedRef.current ||
-        skipAutoPauseRef.current ||
-        pauseSentRef.current
-      ) {
-        return;
-      }
-
-      // Only use keepalive fetch for unload (browser refresh/tab close).
-      // This is a best-effort fallback and may not complete.
-      console.log("Page hiding - attempting keepalive pause as fallback");
-      pauseSentRef.current = true
-      pauseInitialQuizOnUnload(currentSessionId);
-
-
-      if (proctoringRef.current) {
-        proctoringRef.current.cleanup();
-      }
-    };
-
-    window.addEventListener("pagehide", handlePageHide);
-
-    return () => {
-      window.removeEventListener("pagehide", handlePageHide);
-    };
-  }, []);
-
-  // React unmount cleanup - fallback only.
-  // NOTE: this should NOT be relied upon as the primary pause mechanism,
-  // because we cannot reliably wait for an async API call during unmount.
-  // Uses the keepalive-based request for the same reason as the pagehide
-  // handler above.
-  useEffect(() => {
-    return () => {
-      const currentSessionId = sessionIdRef.current;
-
-      if (
-        !currentSessionId ||
-        !assessmentActiveRef.current ||
-        assessmentTerminatedRef.current ||
-        skipAutoPauseRef.current ||
-        pauseSentRef.current
-      ) {
-        return;
-      }
-      pauseSentRef.current = true
-      pauseInitialQuizOnUnload(currentSessionId);
-
-      if (proctoringRef.current) {
-        proctoringRef.current.cleanup();
-      }
-    };
-  }, []);
-
-  const handleQuizComplete = useCallback(async (result) => {
-    console.log("Initial quiz completed:", result);
-
-    skipAutoPauseRef.current = true;
-    setAssessmentActive(false);
-
-    // Release the quiz's proctoring connection FIRST. The backend keys
-    // active proctoring sessions by session_id alone, and the coding
-    // assessment reuses this same session_id - so the quiz's socket
-    // must be fully closed before the coding assessment tries to open
-    // its own, or the backend will reject it as already active.
-    if (proctoringRef.current) {
-      try {
-        await proctoringRef.current.cleanup();
-      } catch (cleanupError) {
-        console.error(
-          "Failed to clean up quiz proctoring before switching to coding assessment:",
-          cleanupError
-        );
-      }
-    }
-
-    // Quiz is complete.
-    // Move to the coding assessment using the same session ID.
-
-    setPage("coding");
-  }, []);
-
-  // Checking existing assessment status
-if (page === "checking") {
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 text-center">
-        <div className="w-10 h-10 mx-auto mb-4 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin" />
-
-        <h2 className="text-xl font-semibold text-gray-900">
-          Checking Assessment Status
-        </h2>
-
-        <p className="mt-2 text-sm text-gray-500">
-          Please wait while we check your previous assessment status.
-        </p>
-      </div>
-    </div>
-  );
-}
-
- // Instructions Screen
-if (page === "instructions") {
-
-  const isCodingAssessment = isCodingStage;
-
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
-
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-            {isCodingAssessment
-              ? "Initial Assessment — Stage 2: Coding Assessment"
-              : "Initial Assessment — Stage 1: Initial Quiz"}
-          </h1>
-
-          <p className="mt-3 text-gray-500">
-            {isCodingAssessment
-              ? "Complete the coding assessment to evaluate your practical problem-solving skills."
-              : "Complete the initial quiz to evaluate your knowledge and skills."}
-          </p>
-        </div>
-
-        {/* =========================================================
-            CODING ASSESSMENT INSTRUCTIONS
-           ========================================================= */}
-        {isCodingAssessment ? (
-          <>
-            {/* Coding Assessment Overview */}
-            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-
-              {/* Assessment */}
-              <div className="rounded-xl border border-blue-100 bg-blue-50 p-5">
-                <p className="text-sm text-slate-500">Assessment</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  Coding Assessment
-                </p>
-              </div>
-
-              {/* Questions */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm text-slate-500">Questions</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  {codingInfo?.question_count
-                    ? `${codingInfo.question_count} Coding Problems`
-                    : "Coding Problems"}
-                </p>
-              </div>
-
-              {/* Format */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm text-slate-500">Format</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  {codingInfo?.format || "Practical Coding"}
-                </p>
-              </div>
-            </div>
-
-            {/* What to Expect */}
-            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
-              <h2 className="text-base font-semibold text-slate-900">
-                What to expect
-              </h2>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-
-                <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Solve coding problems using the provided coding environment.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Read each problem and its requirements carefully.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Manage your time across the available coding problems.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Your solutions will be evaluated as part of the assessment.
-                  </p>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Before You Begin */}
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
-              <div className="flex gap-3">
-                <span className="font-bold text-amber-600">!</span>
-
-                <div>
-                  <h2 className="font-semibold text-amber-900">
-                    Before you begin
-                  </h2>
-
-                  <p className="mt-1 text-sm leading-6 text-amber-800">
-                    Make sure you are ready to complete the coding assessment.
-                    The assessment rules you accepted earlier will continue to apply.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          /* =========================================================
-             INITIAL QUIZ INSTRUCTIONS
-             ========================================================= */
-          <>
-            {/* Initial Quiz Overview */}
-            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-
-              {/* Assessment */}
-              <div className="rounded-xl border border-blue-100 bg-blue-50 p-5">
-                <p className="text-sm text-slate-500">Assessment</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  Initial Quiz
-                </p>
-              </div>
-
-              {/* Stage */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm text-slate-500">Stage</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  Stage 1
-                </p>
-              </div>
-
-              {/* Format */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm text-slate-500">Format</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  Multiple Choice Quiz
-                </p>
-              </div>
-            </div>
-
-            {/* What to Expect */}
-            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
-              <h2 className="text-base font-semibold text-slate-900">
-                What to expect
-              </h2>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-
-                <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Answer the questions based on your knowledge and skills.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Read each question and all available options carefully.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Manage your time while completing the quiz.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Your responses will be evaluated as part of the assessment.
-                  </p>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Before You Begin */}
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
-              <div className="flex gap-3">
-                <span className="font-bold text-amber-600">!</span>
-
-                <div>
-                  <h2 className="font-semibold text-amber-900">
-                    Before you begin
-                  </h2>
-
-                  <p className="mt-1 text-sm leading-6 text-amber-800">
-                    Make sure you are ready to complete the initial quiz.
-                    The assessment rules you accepted earlier will continue to apply.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* =========================================================
-            START BUTTON
-           ========================================================= */}
-        <div className="mt-8 flex justify-end">
-
-          {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => {
-  if (isCodingAssessment) {
-    setPage("coding");
-    return;
-  }
-
-  loadAssessment();
-}}
-            disabled={loading}
-            className="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading
-              ? isCodingAssessment
-                ? "Starting Coding Assessment..."
-                : "Loading Assessment..."
-              : isCodingAssessment
-              ? "Start Coding Assessment →"
-              : "Start Assessment"}
-          </button>
-
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Coding Assessment
-if (page === "coding") {
-  return (
-    <InitialCodingAssessment
-      sessionId={sessionId}
-      proctoringWarning={proctoringWarning}
-      onComplete={async (result) => {
-        console.log("Coding assessment completed:", result);
-
-        await exitAssessmentFullscreen();
-        setPage("completed");
-      }}
-    />
-  );
-}
-
-// Completed Screen
-if (page === "completed") {
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
-        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
-          ✓
-        </div>
-
-        <h1 className="text-3xl font-bold text-gray-900">
-          Assessment Completed
-        </h1>
-
-        <p className="mt-4 text-gray-600">
-          You have successfully completed your initial skill assessment.
-        </p>
-
-        <button
-          onClick={() => handleExitAssessmentToDashboard()}
-          className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-        >
-          Go to Dashboard
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Terminated Screen
-if (page === "terminated") {
-
-  // Admin approved the termination report
-  if (terminationReport?.status === "Approved") {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
-          <div className="text-center">
+      <div className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-10 sm:px-6 lg:px-8">
+        {/* Ambient gradient */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-32 -top-32 h-80 w-80 rounded-full bg-violet-600/30 blur-3xl" />
+          <div className="absolute right-0 top-20 h-96 w-96 rounded-full bg-cyan-500/20 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-96 w-96 rounded-full bg-blue-600/20 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_35%)]" />
+        </div>
 
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
-              ✓
+        <div className="relative mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl items-center justify-center">
+          <div className="w-full overflow-hidden rounded-[2rem] border border-white/15 bg-white/[0.08] shadow-2xl shadow-black/30 backdrop-blur-2xl">
+            {/* Header */}
+            <div className="border-b border-white/10 bg-gradient-to-r from-violet-500/10 via-transparent to-cyan-500/10 px-6 py-8 text-center sm:px-10">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/15 bg-gradient-to-br from-violet-500 to-blue-600 text-2xl text-white shadow-xl shadow-violet-900/30">
+                {isCodingAssessment ? "Γîÿ" : "Γ£ª"}
+              </div>
+
+              <div className="mb-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
+                {isCodingAssessment
+                  ? "Practical Evaluation"
+                  : "Skill Evaluation"}
+              </div>
+
+              <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                {isCodingAssessment
+                  ? "Coding Assessment"
+                  : "Initial Skill Assessment"}
+              </h1>
+
+              <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
+                {isCodingAssessment
+                  ? "Complete the coding assessment to evaluate your practical problem-solving skills."
+                  : "Complete this assessment to personalize your learning path."}
+              </p>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-900">
-              Assessment Restart Approved
-            </h1>
+            <div className="p-6 sm:p-8 lg:p-10">
+              {/* Overview */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="group rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/15 to-blue-500/10 p-5 shadow-lg shadow-violet-950/10 transition duration-300 hover:-translate-y-1 hover:border-violet-300/30">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20 text-violet-200">
+                    Γ£ª
+                  </div>
 
-            <p className="mt-4 text-gray-600">
-              Admin has approved your assessment termination report.
-            </p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-violet-200/80">
+                    Assessment
+                  </p>
 
-            <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-5 text-left">
-              <p className="text-sm font-semibold text-green-800">
-  {terminationReport?.assessment_stage === "INITIAL_CODING"
-    ? "You can now restart your Coding Assessment."
-    : "You can now restart your Initial Quiz."}
-</p>
+                  <p className="mt-1 text-lg font-bold text-white">
+                    Coding Assessment
+                  </p>
 
-             <p className="mt-2 text-sm text-green-700">
-  {terminationReport?.assessment_stage === "INITIAL_CODING"
-    ? "Your coding assessment termination report was approved by Admin."
-    : "Your initial quiz termination report was approved by Admin."}
-</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Practical evaluation
+                  </p>
+                </div>
+
+                <div className="group rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 p-5 shadow-lg shadow-cyan-950/10 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/30">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-200">
+                    #
+                  </div>
+
+                  <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200/80">
+                    Questions
+                  </p>
+
+                  <p className="mt-1 text-lg font-bold text-white">
+                    {codingInfo?.question_count
+                      ? `${codingInfo.question_count} Coding Problems`
+                      : "Coding Problems"}
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-400">
+                    Solve each problem carefully
+                  </p>
+                </div>
+
+                <div className="group rounded-2xl border border-blue-400/20 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 p-5 shadow-lg shadow-blue-950/10 transition duration-300 hover:-translate-y-1 hover:border-blue-300/30">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-blue-200">
+                    &lt;/&gt;
+                  </div>
+
+                  <p className="text-xs font-semibold uppercase tracking-wider text-blue-200/80">
+                    Format
+                  </p>
+
+                  <p className="mt-1 text-lg font-bold text-white">
+                    {codingInfo?.format ||
+                      "Practical Coding"}
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-400">
+                    Hands-on evaluation
+                  </p>
+                </div>
+              </div>
+
+              {/* What to Expect */}
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+                    Γ£ô
+                  </div>
+
+                  <div>
+                    <h2 className="text-base font-bold text-white">
+                      What to expect
+                    </h2>
+
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      Keep these points in mind before starting
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {[
+                    "Solve coding problems using the provided coding environment.",
+                    "Read each problem and its requirements carefully.",
+                    "Manage your time across the available coding problems.",
+                    "Your solutions will be evaluated as part of the assessment.",
+                  ].map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex gap-3 rounded-xl border border-white/5 bg-white/[0.035] p-4"
+                    >
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-300">
+                        Γ£ô
+                      </span>
+
+                      <p className="text-sm leading-6 text-slate-300">
+                        {item}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Before Begin */}
+              <div className="mt-5 rounded-2xl border border-amber-400/20 bg-gradient-to-r from-amber-500/10 to-orange-500/5 p-5">
+                <div className="flex gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 font-bold text-amber-300">
+                    !
+                  </div>
+
+                  <div>
+                    <h2 className="font-bold text-amber-100">
+                      Before you begin
+                    </h2>
+
+                    <p className="mt-1 text-sm leading-6 text-amber-100/70">
+                      Make sure you are ready to complete the coding assessment. The assessment rules you accepted earlier will continue to apply.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Error + Button */}
+              <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-h-[1px] flex-1">
+                  {error && (
+                    <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm leading-6 text-red-200 shadow-lg shadow-red-950/10">
+                      <div className="flex gap-3">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-500/15 font-bold text-red-300">
+                          !
+                        </span>
+
+                        <span>{error}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={loadAssessment}
+                  disabled={loading}
+                  className="group inline-flex min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 px-7 py-3 text-sm font-bold text-white shadow-xl shadow-blue-950/30 transition duration-300 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-blue-900/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                >
+                  {loading ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                      <span>
+                        {isCodingAssessment
+                          ? "Starting Coding Assessment..."
+                          : "Loading Assessment..."}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span>
+                        {isCodingAssessment
+                          ? "Start Coding Assessment"
+                          : "Start Assessment"}
+                      </span>
+
+                      <span className="text-lg transition-transform duration-300 group-hover:translate-x-1">
+                        ΓåÆ
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                const stage = terminationReport?.assessment_stage;
-
-                // Old terminated session must not be reused
-                setSessionId(null);
-
-                setReportSubmitted(false);
-                setShowReportForm(false);
-                setTerminationReport(null);
-
-                if (stage === "INITIAL_CODING") {
-                  navigate("/app/initial-assessment", {
-                    state: {
-                      phase: "coding",
-                    },
-                  });
-                  return;
-                }
-
-                // INITIAL_QUIZ
-                navigate("/app/initial-assessment", {
-                  state: {
-                    phase: "quiz",
-                  },
-                });
-              }}
-              className="mt-6 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
-            >
-              Restart Assessment →
-            </button>
-
           </div>
         </div>
       </div>
     );
   }
 
-  // Normal terminated state
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
+  // ----------------------------------------------------
+  // Coding Assessment
+  // ----------------------------------------------------
+  if (page === "coding") {
+    return (
+      <InitialCodingAssessment
+        sessionId={sessionId}
+        proctoringWarning={
+          proctoringWarning
+        }
+        onComplete={async (result) => {
+          console.log(
+            "Coding assessment completed:",
+            result
+          );
 
-        <div className="text-center">
+          await exitAssessmentFullscreen();
 
-          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
-            !
+          setPage("completed");
+        }}
+      />
+    );
+  }
+
+  // ----------------------------------------------------
+  // Completed Screen
+  // ----------------------------------------------------
+  if (page === "completed") {
+    return (
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-10">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-1/4 top-0 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 h-96 w-96 rounded-full bg-cyan-500/15 blur-3xl" />
+        </div>
+
+        <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.08] p-8 text-center shadow-2xl shadow-black/30 backdrop-blur-2xl md:p-12">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-emerald-300/20 bg-gradient-to-br from-emerald-400/20 to-cyan-400/10 text-4xl font-bold text-emerald-300 shadow-xl shadow-emerald-950/20">
+            Γ£ô
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900">
-            Assessment Terminated
+          <div className="mb-3 inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-300">
+            Successfully Completed
+          </div>
+
+          <h1 className="text-3xl font-extrabold text-white md:text-4xl">
+            Assessment Completed
           </h1>
 
-          <p className="mt-4 text-gray-600">
-            Your assessment was terminated because a proctoring violation was
-            detected.
-          </p>
-
-          {reportSubmitted ? (
-  <div className="mt-6 rounded-xl border border-yellow-200 bg-yellow-50 p-5 text-left">
-    <p className="text-sm font-semibold text-yellow-800">
-      Report Status: {terminationReport?.status || "Pending"}
-    </p>
-
-    <p className="mt-2 text-sm text-yellow-700">
-      Your termination report has been submitted and is waiting for Admin
-      review.
-    </p>
-  </div>
-) : !showReportForm ? (
-            <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowReportForm(true);
-                  setReportError("");
-                }}
-                className="px-6 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
-              >
-                Report to Admin
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleExitAssessmentToDashboard()}
-                className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-              >
-                Go to Dashboard
-              </button>
-
-            </div>
-          ) : (
-            <AssessmentTerminationReport
-              sessionId={sessionId}
-              assessmentType={isCodingStage ? "CODING" : "INITIAL"}
-              assessmentStage={
-                isCodingStage
-                  ? "INITIAL_CODING"
-                  : "INITIAL_QUIZ"
-              }
-              onCancel={() => {
-                setShowReportForm(false);
-              }}
-             onSubmitted={(report) => {
-  setReportSubmitted(true);
-  setTerminationReport(report);
-  setShowReportForm(false);
-}}
-            />
-          )}
-
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Expired Screen
-if (page === "expired") {
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
-
-        <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
-          !
-        </div>
-
-        <h1 className="text-3xl font-bold text-gray-900">
-          Assessment Time Expired
-        </h1>
-
-        <p className="mt-4 text-gray-600">
-          {error || "Your assessment time has expired."}
-        </p>
-
-        <button
-          onClick={() => handleExitAssessmentToDashboard()}
-          className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-        >
-          Go to Dashboard
-        </button>
-
-      </div>
-    </div>
-  );
-}
-
-
-// Quiz screen
-return (
-  <>
-    {/* Tab-switch blocking overlay */}
-    {tabSwitchAlert && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-2xl">
-
-          <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-            !
-          </div>
-
-          <h2 className="text-xl font-bold text-slate-900">
-            Return to the Assessment
-          </h2>
-
-          <p className="mt-3 text-sm text-slate-600">
-            You switched away from the assessment tab or window. This has
-            been recorded as a proctoring violation. Complete the test
-            first — you must stay on this tab until you finish.
-          </p>
-
-          <p className="mt-2 text-xs text-slate-400">
-            Tab switches detected: {tabSwitchCountRef.current}
+          <p className="mx-auto mt-4 max-w-lg text-sm leading-7 text-slate-300 md:text-base">
+            You have successfully completed your initial skill assessment.
           </p>
 
           <button
-            type="button"
-            onClick={() => setTabSwitchAlert(false)}
-            className="mt-6 w-full rounded-full bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition"
+            onClick={() =>
+              handleExitAssessmentToDashboard()
+            }
+            className="mt-8 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-8 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-950/30 transition duration-300 hover:-translate-y-0.5 hover:shadow-2xl"
           >
-            Return to Assessment
+            Go to Dashboard
+            <span>ΓåÆ</span>
           </button>
-
         </div>
       </div>
-    )}
+    );
+  }
 
-    {/* Assessment Viewport */}
-    <div className="h-[calc(100vh-80px)] overflow-hidden bg-[#f5f7f6]">
+  // ----------------------------------------------------
+  // Terminated Screen
+  // ----------------------------------------------------
+  if (page === "terminated") {
+    return (
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-10">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-0 top-0 h-96 w-96 rounded-full bg-red-600/20 blur-3xl" />
+          <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-orange-500/10 blur-3xl" />
+        </div>
 
-      <div className="fixed bottom-5 left-5 z-40 w-48 overflow-hidden rounded-xl border-2 border-white bg-black shadow-xl">
-        <video
-          id="cameraVideo"
-          autoPlay
-          muted
-          playsInline
-          className="aspect-video w-full object-cover"
-        />
+        <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-red-400/15 bg-white/[0.08] p-8 shadow-2xl shadow-black/30 backdrop-blur-2xl md:p-10">
+          <div className="text-center">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-red-400/20 bg-gradient-to-br from-red-500/20 to-orange-500/10 text-4xl font-bold text-red-300">
+              !
+            </div>
 
-        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <div className="mb-3 inline-flex rounded-full border border-red-400/20 bg-red-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-red-300">
+              Proctoring Action
+            </div>
 
-            <span className="text-[10px] font-medium text-white">
-              Camera & Mic active
-            </span>
+            <h1 className="text-3xl font-extrabold text-white">
+              Assessment Terminated
+            </h1>
+
+            <p className="mt-4 text-sm leading-7 text-slate-300">
+              Your assessment was terminated because a proctoring violation was detected.
+            </p>
+
+            {reportSubmitted ? (
+              <div className="mt-7 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-5 text-left">
+                <div className="flex gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 font-bold text-emerald-300">
+                    Γ£ô
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-emerald-200">
+                      Report submitted successfully
+                    </p>
+
+                    <p className="mt-1 text-sm leading-6 text-emerald-100/70">
+                      An administrator will review your assessment termination.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : !showReportForm ? (
+              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReportForm(true);
+                    setReportError("");
+                  }}
+                  className="rounded-2xl border border-red-400/20 bg-red-500/15 px-6 py-3 font-semibold text-red-200 transition hover:bg-red-500/25"
+                >
+                  Report to Admin
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleExitAssessmentToDashboard()
+                  }
+                  className="rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-950/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+                >
+                  Go to Dashboard
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={
+                  handleSubmitAssessmentReport
+                }
+                className="mt-8 text-left"
+              >
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
+                  <h2 className="text-lg font-bold text-white">
+                    Report Assessment Termination
+                  </h2>
+
+                  <p className="mt-1 text-sm leading-6 text-slate-400">
+                    Explain why you believe the termination was incorrect.
+                  </p>
+
+                  <div className="mt-5">
+                    <label className="block text-sm font-semibold text-slate-200">
+                      Reason{" "}
+                      <span className="text-red-400">
+                        *
+                      </span>
+                    </label>
+
+                    <textarea
+                      value={reportReason}
+                      onChange={(e) =>
+                        setReportReason(
+                          e.target.value
+                        )
+                      }
+                      rows={4}
+                      placeholder="Explain why you are reporting the termination..."
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 transition focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20"
+                      disabled={
+                        reportSubmitting
+                      }
+                    />
+                  </div>
+
+                  <div className="mt-5">
+                    <label className="block text-sm font-semibold text-slate-200">
+                      Additional Evidence / Explanation
+                    </label>
+
+                    <textarea
+                      value={reportEvidence}
+                      onChange={(e) =>
+                        setReportEvidence(
+                          e.target.value
+                        )
+                      }
+                      rows={4}
+                      placeholder="Provide any additional information that may help the administrator review your report..."
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 transition focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20"
+                      disabled={
+                        reportSubmitting
+                      }
+                    />
+
+                    <label className="mt-5 block text-sm font-semibold text-slate-200">
+                      Supporting Evidence
+                    </label>
+
+                    <div className="mt-2 rounded-2xl border border-dashed border-white/15 bg-slate-950/30 p-4">
+                      <input
+                        type="file"
+                        accept=".png,.jpg,.jpeg,.pdf"
+                        onChange={(e) =>
+                          setReportEvidenceFile(
+                            e.target.files?.[0] ||
+                              null
+                          )
+                        }
+                        className="block w-full text-sm text-slate-300 file:mr-4 file:rounded-xl file:border-0 file:bg-violet-500/15 file:px-4 file:py-2 file:font-semibold file:text-violet-200 hover:file:bg-violet-500/25"
+                        disabled={
+                          reportSubmitting
+                        }
+                      />
+
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
+                      </p>
+                    </div>
+                  </div>
+
+                  {reportError && (
+                    <div className="mt-4 rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm leading-6 text-red-200">
+                      {reportError}
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowReportForm(false);
+                        setReportError("");
+                      }}
+                      disabled={
+                        reportSubmitting
+                      }
+                      className="rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-2.5 font-medium text-slate-300 transition hover:bg-white/[0.1] disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={
+                        reportSubmitting
+                      }
+                      className="rounded-2xl bg-gradient-to-r from-red-600 to-orange-500 px-5 py-2.5 font-semibold text-white shadow-lg shadow-red-950/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {reportSubmitting
+                        ? "Submitting..."
+                        : "Submit Report"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
+    );
+  }
 
-      {page === "ready" ? (
+  // ----------------------------------------------------
+  // Expired Screen
+  // ----------------------------------------------------
+  if (page === "expired") {
+    return (
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-10">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-1/4 top-0 h-96 w-96 rounded-full bg-orange-500/15 blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 h-96 w-96 rounded-full bg-red-500/10 blur-3xl" />
+        </div>
 
-        <div className="h-full flex items-center justify-center p-6">
+        <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-orange-400/15 bg-white/[0.08] p-8 text-center shadow-2xl shadow-black/30 backdrop-blur-2xl md:p-12">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-orange-400/20 bg-gradient-to-br from-orange-500/20 to-red-500/10 text-4xl font-bold text-orange-300">
+            !
+          </div>
 
-          <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
+          <div className="mb-3 inline-flex rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-orange-300">
+            Assessment Ended
+          </div>
 
-            <h2 className="text-2xl font-bold text-slate-900">
-              {resumed
-                ? "Resume Skill Assessment"
-                : "Start Skill Assessment"}
+          <h1 className="text-3xl font-extrabold text-white md:text-4xl">
+            Assessment Time Expired
+          </h1>
+
+          <p className="mx-auto mt-4 max-w-lg text-sm leading-7 text-slate-300">
+            {error ||
+              "Your assessment time has expired."}
+          </p>
+
+          <button
+            onClick={() =>
+              handleExitAssessmentToDashboard()
+            }
+            className="mt-8 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-8 py-3.5 font-semibold text-white shadow-xl shadow-blue-950/20 transition hover:-translate-y-0.5 hover:shadow-2xl"
+          >
+            Go to Dashboard
+            <span>ΓåÆ</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // Quiz screen
+  // ----------------------------------------------------
+  return (
+    <>
+      {/* Tab-switch blocking overlay */}
+      {tabSwitchAlert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 px-4 backdrop-blur-xl">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-red-400/20 bg-white/[0.09] p-8 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-orange-500 to-red-500" />
+
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-red-400/20 bg-red-500/10 text-3xl font-bold text-red-300">
+              !
+            </div>
+
+            <div className="mb-2 inline-flex rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-red-300">
+              Proctoring Alert
+            </div>
+
+            <h2 className="text-xl font-bold text-white">
+              Return to the Assessment
             </h2>
 
-            <p className="mt-3 text-sm text-slate-500">
-              {resumed
-                ? "Your previous progress has been saved. You will continue from the same question with the remaining time."
-                : "Your assessment is ready. Click below to enter full-screen mode and launch proctoring."}
+            <p className="mt-3 text-sm leading-6 text-slate-300">
+              You switched away from the assessment tab or window. This has been recorded as a proctoring violation. Complete the test first ΓÇö you must stay on this tab until you finish.
             </p>
 
-            {resumed && lastProctoringViolation && (
-              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-left">
+            <div className="mt-4 rounded-xl border border-white/5 bg-white/[0.04] px-4 py-3">
+              <p className="text-xs text-slate-400">
+                Tab switches detected
+              </p>
 
-                <p className="text-sm font-semibold text-amber-900">
-                  Proctoring Violation{" "}
-                  {lastProctoringViolation.violationCount} of 2
-                </p>
-
-                <p className="mt-1 text-sm text-amber-800">
-                  {lastProctoringViolation.message}
-                </p>
-
-                {lastProctoringViolation.violationCount === 1 && (
-                  <p className="mt-2 text-xs text-amber-700">
-                    This is your first accepted violation. One more accepted
-                    proctoring violation will terminate the assessment.
-                  </p>
-                )}
-
-              </div>
-            )}
-
-            {error && (
-              <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-600">
-                {error}
-              </div>
-            )}
+              <p className="mt-1 text-xl font-bold text-red-300">
+                {tabSwitchCountRef.current}
+              </p>
+            </div>
 
             <button
               type="button"
-              onClick={handleStartAssessment}
-              disabled={startingProctoring}
-              className="mt-6 w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white hover:bg-emerald-800 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              onClick={() =>
+                setTabSwitchAlert(false)
+              }
+              className="mt-6 w-full rounded-2xl bg-gradient-to-r from-red-600 to-orange-500 py-3.5 text-sm font-bold text-white shadow-xl shadow-red-950/30 transition hover:-translate-y-0.5 hover:shadow-2xl"
             >
-              {startingProctoring ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
-                  <span>Connecting Proctoring AI... Please wait...</span>
-                </>
-              ) : resumed ? (
-                "Resume Skill Assessment"
-              ) : (
-                "Start Skill Assessment"
-              )}
+              Return to Assessment
             </button>
+          </div>
+        </div>
+      )}
 
+      {/* Assessment Viewport */}
+      <div className="h-[calc(100vh-80px)] overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
+        {/* Ambient background */}
+        <div className="pointer-events-none fixed inset-0">
+          <div className="absolute -left-40 top-0 h-96 w-96 rounded-full bg-violet-600/10 blur-3xl" />
+          <div className="absolute right-0 top-1/3 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-blue-600/10 blur-3xl" />
+        </div>
+
+        {/* Camera */}
+        <div className="fixed bottom-5 left-5 z-40 w-52 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl shadow-black/50">
+          <div className="relative">
+            <video
+              id="cameraVideo"
+              autoPlay
+              muted
+              playsInline
+              className="aspect-video w-full object-cover"
+            />
+
+            <div className="absolute left-2 top-2 rounded-full border border-white/10 bg-black/50 px-2 py-1 backdrop-blur-md">
+              <div className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+
+                <span className="text-[9px] font-bold uppercase tracking-wider text-white">
+                  Live
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 bg-black/60 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+
+              <span className="text-[10px] font-medium text-white/90">
+                Camera & Mic active
+              </span>
+            </div>
           </div>
         </div>
 
-      ) : quizData ? (
+        {page === "ready" ? (
+          <div className="relative flex h-full items-center justify-center p-6">
+            <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.08] shadow-2xl shadow-black/30 backdrop-blur-2xl">
+              <div className="h-1.5 bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-400" />
 
-        <InitialQuiz
-          sessionId={sessionId}
-          initialDomain={quizData.domain}
-          initialSkill={quizData.skill}
-          initialQuestion={quizData.question}
-          initialAssessment={quizData.assessment}
-          initialQuestionsAnswered={
-            quizData.questionsAnswered
-          }
-          initialSkillQuestionsAnswered={
-            quizData.skillQuestionsAnswered
-          }
-          remainingSeconds={remainingSeconds}
-          assessmentActive={assessmentActive}
-          proctoringWarning={proctoringWarning}
-          tabSwitchAlert={tabSwitchAlert}
-          onQuizComplete={handleQuizComplete}
-          onError={(message) => {
-            setError(message || "");
-          }}
-        />
+              <div className="p-8 text-center sm:p-10">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/10 text-2xl text-cyan-200">
+                  {resumed ? "Γå╗" : "Γû╢"}
+                </div>
 
-      ) : (
+                <div className="mb-3 inline-flex rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">
+                  {resumed
+                    ? "Session Resumption"
+                    : "Ready to Begin"}
+                </div>
 
-        <div className="h-full flex items-center justify-center p-6">
-          <p className="text-slate-500">
-            No question available.
-          </p>
-        </div>
+                <h2 className="text-2xl font-extrabold text-white sm:text-3xl">
+                  {resumed
+                    ? "Resume Skill Assessment"
+                    : "Start Skill Assessment"}
+                </h2>
 
-      )}
+                <p className="mt-3 text-sm leading-7 text-slate-300">
+                  {resumed
+                    ? "Your previous progress has been saved. You will continue from the same question with the remaining time."
+                    : "Your assessment is ready. Click below to enter full-screen mode and launch proctoring."}
+                </p>
 
-    </div>
-  </>
-);
+                {/* Assessment status */}
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      Security
+                    </p>
 
+                    <p className="mt-1 text-sm font-semibold text-emerald-300">
+                      Proctored
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      Mode
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-cyan-300">
+                      Full Screen
+                    </p>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="mt-5 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-left text-xs leading-6 text-red-200">
+                    <div className="flex gap-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-500/15 font-bold text-red-300">
+                        !
+                      </span>
+
+                      <span>{error}</span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={
+                    handleStartAssessment
+                  }
+                  disabled={
+                    startingProctoring
+                  }
+                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 py-3.5 text-sm font-bold text-white shadow-xl shadow-blue-950/30 transition duration-300 hover:-translate-y-0.5 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                >
+                  {startingProctoring ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+
+                      <span>
+                        Connecting Proctoring AI... Please wait...
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span>
+                        {resumed
+                          ? "Resume Skill Assessment"
+                          : "Start Skill Assessment"}
+                      </span>
+
+                      <span className="text-lg">
+                        ΓåÆ
+                      </span>
+                    </>
+                  )}
+                </button>
+
+                <p className="mt-4 text-[11px] leading-5 text-slate-500">
+                  Camera, microphone and fullscreen access are required while the assessment is active.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : quizData ? (
+          <InitialQuiz
+            sessionId={sessionId}
+            initialDomain={
+              quizData.domain
+            }
+            initialSkill={
+              quizData.skill
+            }
+            initialQuestion={
+              quizData.question
+            }
+            initialAssessment={
+              quizData.assessment
+            }
+            initialQuestionsAnswered={
+              quizData.questionsAnswered
+            }
+            initialSkillQuestionsAnswered={
+              quizData.skillQuestionsAnswered
+            }
+            remainingSeconds={
+              remainingSeconds
+            }
+            assessmentActive={
+              assessmentActive
+            }
+            proctoringWarning={
+              proctoringWarning
+            }
+            tabSwitchAlert={
+              tabSwitchAlert
+            }
+            onQuizComplete={
+              handleQuizComplete
+            }
+            onError={(message) => {
+              setError(message || "");
+            }}
+          />
+        ) : (
+          <div className="relative flex h-full items-center justify-center p-6">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-8 py-6 text-center backdrop-blur-xl">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-cyan-400" />
+
+              <p className="text-sm font-medium text-slate-300">
+                No question available.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
 };
-
 
 export default InitialAssessment;
