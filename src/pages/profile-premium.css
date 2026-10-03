@@ -1,0 +1,1173 @@
+/* =========================================================
+   VAYVORA PROFILE — PREMIUM GRADIENT UI
+   VISUAL ONLY — NO FUNCTIONALITY CHANGES
+========================================================= */
+
+.profile-page-premium {
+  position: relative !important;
+  isolation: isolate !important;
+  min-height: 100% !important;
+  overflow: hidden !important;
+
+  background:
+    radial-gradient(
+      circle at 0% 0%,
+      rgba(59, 130, 246, 0.20),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(139, 92, 246, 0.20),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 50% 100%,
+      rgba(6, 182, 212, 0.16),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #f8fbff 0%,
+      #f7f5ff 45%,
+      #f0fdff 100%
+    ) !important;
+}
+
+
+/* =========================================================
+   FLOATING BACKGROUND GLOWS
+========================================================= */
+
+.profile-page-premium::before {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  top: 30px;
+  left: -220px;
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(37, 99, 235, 0.28),
+      rgba(124, 58, 237, 0.15),
+      transparent 70%
+    );
+
+  filter: blur(45px);
+  pointer-events: none;
+  z-index: -1;
+
+  animation: profileFloatOne 12s ease-in-out infinite;
+}
+
+
+.profile-page-premium::after {
+  content: "";
+  position: absolute;
+  width: 550px;
+  height: 550px;
+  right: -250px;
+  bottom: -180px;
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(6, 182, 212, 0.25),
+      rgba(139, 92, 246, 0.18),
+      transparent 70%
+    );
+
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: -1;
+
+  animation: profileFloatTwo 14s ease-in-out infinite;
+}
+
+
+/* =========================================================
+   HERO / HEADER
+========================================================= */
+
+.profile-premium-heading {
+  position: relative !important;
+  overflow: hidden !important;
+
+  border-radius: 30px !important;
+
+  border: 1px solid rgba(255,255,255,0.95) !important;
+
+  background:
+    radial-gradient(
+      circle at 10% 20%,
+      rgba(59,130,246,0.20),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(139,92,246,0.20),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 70% 100%,
+      rgba(6,182,212,0.14),
+      transparent 40%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,0.98),
+      rgba(239,246,255,0.92),
+      rgba(245,243,255,0.95)
+    ) !important;
+
+  box-shadow:
+    0 35px 90px -30px rgba(37,99,235,0.35),
+    0 25px 70px -30px rgba(124,58,237,0.28),
+    0 10px 30px -15px rgba(15,23,42,0.16),
+    inset 0 1px 0 white !important;
+
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+}
+
+
+/* Animated border */
+
+.profile-premium-heading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  border-radius: inherit;
+  padding: 2px;
+
+  background:
+    linear-gradient(
+      120deg,
+      #2563eb,
+      #7c3aed,
+      #06b6d4,
+      #22c55e,
+      #2563eb
+    );
+
+  background-size: 300% 300%;
+
+  animation: profileBorder 6s ease infinite;
+
+  pointer-events: none;
+
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+
+/* =========================================================
+   UNIVERSAL PREMIUM CARDS
+========================================================= */
+
+.profile-glass {
+  position: relative !important;
+  overflow: hidden !important;
+
+  border-radius: 26px !important;
+
+  border: 1px solid rgba(255,255,255,0.95) !important;
+
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(124,58,237,0.10),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 0% 100%,
+      rgba(6,182,212,0.08),
+      transparent 35%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,0.98),
+      rgba(248,250,252,0.92)
+    ) !important;
+
+  box-shadow:
+    0 30px 80px -35px rgba(15,23,42,0.38),
+    0 18px 50px -30px rgba(37,99,235,0.25),
+    inset 0 1px 0 white !important;
+
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+
+  transition:
+    transform 0.35s ease,
+    box-shadow 0.35s ease,
+    border-color 0.35s ease !important;
+}
+
+
+/* top gradient line */
+
+.profile-glass::before {
+  content: "";
+  position: absolute;
+
+  top: 0;
+  left: 6%;
+  right: 6%;
+
+  height: 3px;
+
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #2563eb,
+      #7c3aed,
+      #06b6d4,
+      #22c55e
+    );
+
+  opacity: 0.85;
+
+  pointer-events: none;
+}
+
+
+.profile-glass:hover {
+  transform: translateY(-5px) !important;
+
+  border-color: rgba(99,102,241,0.35) !important;
+
+  box-shadow:
+    0 45px 100px -35px rgba(37,99,235,0.42),
+    0 30px 70px -35px rgba(124,58,237,0.32),
+    inset 0 1px 0 white !important;
+}
+
+
+/* =========================================================
+   GRADIENT TEXT — MAIN
+========================================================= */
+
+.profile-gradient-text,
+.profile-card-title {
+
+  background:
+    linear-gradient(
+      90deg,
+      #020617 0%,
+      #2563eb 25%,
+      #7c3aed 55%,
+      #0891b2 80%,
+      #2563eb 100%
+    ) !important;
+
+  background-size: 300% auto !important;
+
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+
+  -webkit-text-fill-color: transparent !important;
+
+  color: transparent !important;
+
+  font-weight: 900 !important;
+
+  animation:
+    profileGradientText 6s ease infinite;
+}
+
+
+/* =========================================================
+   FORCE GRADIENT ON COMMON HEADINGS INSIDE PROFILE
+========================================================= */
+
+.profile-page-premium h1,
+.profile-page-premium h2 {
+
+  background:
+    linear-gradient(
+      90deg,
+      #0f172a,
+      #2563eb,
+      #7c3aed,
+      #0891b2
+    );
+
+  background-size: 250% auto;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+
+  animation:
+    profileGradientText 7s ease infinite;
+}
+
+
+/* Keep white text on obvious dark/gradient buttons */
+
+.profile-page-premium button.bg-slate-950,
+.profile-page-premium button.bg-blue-600,
+.profile-page-premium a.bg-blue-600,
+.profile-page-premium a.bg-slate-950 {
+  -webkit-text-fill-color: white !important;
+  color: white !important;
+}
+
+
+/* =========================================================
+   PROFILE NAME
+========================================================= */
+
+.profile-name {
+
+  margin-top: 16px !important;
+
+  font-size: 28px !important;
+  line-height: 1.1 !important;
+
+  font-weight: 900 !important;
+
+  letter-spacing: -0.045em !important;
+
+  background:
+    linear-gradient(
+      90deg,
+      #020617,
+      #2563eb,
+      #7c3aed,
+      #06b6d4
+    ) !important;
+
+  background-size: 300% auto !important;
+
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+
+  -webkit-text-fill-color: transparent !important;
+
+  color: transparent !important;
+
+  filter:
+    drop-shadow(
+      0 6px 16px rgba(37,99,235,0.15)
+    );
+
+  animation:
+    profileGradientText 5s ease infinite;
+}
+
+
+/* =========================================================
+   USERNAME
+========================================================= */
+
+.profile-username {
+
+  margin-top: 7px !important;
+
+  font-size: 13px !important;
+
+  font-weight: 800 !important;
+
+  background:
+    linear-gradient(
+      90deg,
+      #2563eb,
+      #7c3aed,
+      #0891b2
+    ) !important;
+
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+
+  -webkit-text-fill-color: transparent !important;
+
+  color: transparent !important;
+}
+
+
+/* =========================================================
+   ROLE BADGE
+========================================================= */
+
+.profile-role {
+
+  display: inline-flex !important;
+  align-items: center;
+  gap: 7px;
+
+  margin-top: 13px;
+
+  padding: 8px 14px;
+
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(59,130,246,0.13),
+      rgba(124,58,237,0.14),
+      rgba(6,182,212,0.12)
+    ) !important;
+
+  border:
+    1px solid rgba(99,102,241,0.25) !important;
+
+  color: #4f46e5 !important;
+
+  font-size: 10px;
+
+  font-weight: 900;
+
+  letter-spacing: 0.1em;
+
+  text-transform: uppercase;
+
+  box-shadow:
+    0 12px 28px -16px rgba(79,70,229,0.65),
+    inset 0 1px 0 white;
+}
+
+
+/* =========================================================
+   AVATAR
+========================================================= */
+
+.profile-avatar-ring {
+
+  position: relative !important;
+
+  width: 120px !important;
+  height: 120px !important;
+
+  padding: 4px !important;
+
+  border-radius: 34px !important;
+
+  background:
+    conic-gradient(
+      from 0deg,
+      #2563eb,
+      #7c3aed,
+      #06b6d4,
+      #22c55e,
+      #2563eb
+    ) !important;
+
+  box-shadow:
+    0 30px 65px -25px rgba(37,99,235,0.65),
+    0 20px 45px -25px rgba(124,58,237,0.50),
+    0 0 0 7px rgba(255,255,255,0.9),
+    0 0 45px rgba(59,130,246,0.18) !important;
+
+  animation:
+    avatarFloat 5s ease-in-out infinite;
+}
+
+
+.profile-avatar-inner {
+
+  width: 100% !important;
+  height: 100% !important;
+
+  overflow: hidden !important;
+
+  border-radius: 30px !important;
+
+  background: white !important;
+
+  border: 3px solid white !important;
+
+  box-shadow:
+    inset 0 0 25px rgba(15,23,42,0.10);
+}
+
+
+.profile-avatar-fallback {
+
+  background:
+    radial-gradient(
+      circle at 25% 15%,
+      rgba(255,255,255,0.5),
+      transparent 25%
+    ),
+    linear-gradient(
+      135deg,
+      #2563eb,
+      #7c3aed 50%,
+      #06b6d4
+    ) !important;
+
+  text-shadow:
+    0 5px 18px rgba(15,23,42,0.25);
+}
+
+
+/* =========================================================
+   STATUS DOT
+========================================================= */
+
+.profile-status-dot {
+
+  width: 20px !important;
+  height: 20px !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      #22c55e,
+      #10b981
+    ) !important;
+
+  box-shadow:
+    0 0 0 4px rgba(34,197,94,0.10),
+    0 8px 22px rgba(34,197,94,0.55) !important;
+}
+
+
+/* =========================================================
+   PROFILE INFO ROWS
+========================================================= */
+
+.profile-info-row {
+
+  position: relative;
+
+  display: flex;
+
+  gap: 12px;
+
+  padding: 13px !important;
+
+  margin-bottom: 7px;
+
+  border-radius: 17px !important;
+
+  border:
+    1px solid rgba(226,232,240,0.65) !important;
+
+  background:
+    linear-gradient(
+      120deg,
+      rgba(255,255,255,0.95),
+      rgba(239,246,255,0.70),
+      rgba(245,243,255,0.72)
+    ) !important;
+
+  box-shadow:
+    0 10px 28px -25px rgba(37,99,235,0.50);
+
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+
+.profile-info-row:hover {
+
+  transform: translateX(5px) !important;
+
+  box-shadow:
+    0 18px 38px -25px rgba(37,99,235,0.42) !important;
+}
+
+
+.profile-info-label {
+
+  color: #94a3b8 !important;
+
+  font-weight: 900 !important;
+}
+
+
+.profile-info-value {
+
+  background:
+    linear-gradient(
+      90deg,
+      #1e293b,
+      #2563eb,
+      #7c3aed
+    ) !important;
+
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+
+  -webkit-text-fill-color: transparent !important;
+
+  color: transparent !important;
+
+  font-weight: 800 !important;
+}
+
+
+/* =========================================================
+   STAT CARDS
+========================================================= */
+
+.profile-stat {
+
+  position: relative;
+
+  overflow: hidden;
+
+  padding: 19px !important;
+
+  border-radius: 22px !important;
+
+  border:
+    1px solid rgba(255,255,255,0.95) !important;
+
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(124,58,237,0.17),
+      transparent 45%
+    ),
+    linear-gradient(
+      135deg,
+      #ffffff,
+      #eff6ff,
+      #f5f3ff
+    ) !important;
+
+  box-shadow:
+    0 25px 55px -30px rgba(15,23,42,0.35),
+    0 12px 30px -20px rgba(37,99,235,0.22),
+    inset 0 1px 0 white !important;
+
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+
+.profile-stat:hover {
+
+  transform:
+    translateY(-6px)
+    scale(1.015) !important;
+
+  box-shadow:
+    0 35px 70px -30px rgba(37,99,235,0.42),
+    0 20px 40px -25px rgba(124,58,237,0.30) !important;
+}
+
+
+.profile-stat-value {
+
+  background:
+    linear-gradient(
+      90deg,
+      #0f172a,
+      #2563eb,
+      #7c3aed
+    ) !important;
+
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+
+  -webkit-text-fill-color: transparent !important;
+
+  color: transparent !important;
+
+  font-size: 28px !important;
+
+  font-weight: 900 !important;
+}
+
+
+/* =========================================================
+   SECTION ICONS
+========================================================= */
+
+.profile-icon {
+
+  width: 46px !important;
+  height: 46px !important;
+
+  border-radius: 15px !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      #2563eb,
+      #7c3aed 55%,
+      #06b6d4
+    ) !important;
+
+  color: white !important;
+
+  box-shadow:
+    0 15px 35px -15px rgba(37,99,235,0.75),
+    0 10px 25px -18px rgba(124,58,237,0.75) !important;
+
+  display: grid !important;
+  place-items: center !important;
+}
+
+
+/* =========================================================
+   QUICK ACTIONS
+========================================================= */
+
+.profile-action {
+
+  position: relative;
+
+  overflow: hidden;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 13px;
+
+  padding: 16px !important;
+
+  border-radius: 20px !important;
+
+  border:
+    1px solid rgba(255,255,255,0.90) !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,0.97),
+      rgba(239,246,255,0.80),
+      rgba(245,243,255,0.84)
+    ) !important;
+
+  box-shadow:
+    0 20px 45px -30px rgba(15,23,42,0.35),
+    0 10px 25px -20px rgba(37,99,235,0.20) !important;
+
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+
+.profile-action:hover {
+
+  transform: translateY(-5px) !important;
+
+  box-shadow:
+    0 30px 60px -30px rgba(37,99,235,0.40),
+    0 20px 40px -25px rgba(124,58,237,0.28) !important;
+}
+
+
+/* =========================================================
+   LIST ITEMS
+========================================================= */
+
+.profile-list-item {
+
+  border-radius: 19px !important;
+
+  border:
+    1px solid rgba(255,255,255,0.90) !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,0.96),
+      rgba(239,246,255,0.72),
+      rgba(245,243,255,0.74)
+    ) !important;
+
+  box-shadow:
+    0 15px 35px -28px rgba(15,23,42,0.30) !important;
+
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+
+.profile-list-item:hover {
+
+  transform: translateX(5px) !important;
+
+  box-shadow:
+    0 25px 50px -28px rgba(37,99,235,0.35) !important;
+}
+
+
+/* =========================================================
+   PROGRESS
+========================================================= */
+
+.profile-progress {
+
+  height: 13px !important;
+
+  border-radius: 999px !important;
+
+  background:
+    linear-gradient(
+      90deg,
+      #e2e8f0,
+      #eef2ff
+    ) !important;
+
+  box-shadow:
+    inset 0 2px 6px rgba(15,23,42,0.10) !important;
+
+  overflow: hidden;
+}
+
+
+.profile-progress-orange {
+
+  background:
+    linear-gradient(
+      90deg,
+      #f97316,
+      #f59e0b,
+      #facc15
+    ) !important;
+
+  box-shadow:
+    0 0 25px rgba(249,115,22,0.45) !important;
+}
+
+
+.profile-progress-green {
+
+  background:
+    linear-gradient(
+      90deg,
+      #10b981,
+      #06b6d4,
+      #3b82f6,
+      #6366f1
+    ) !important;
+
+  box-shadow:
+    0 0 25px rgba(37,99,235,0.40) !important;
+}
+
+
+/* =========================================================
+   ANNOUNCEMENTS
+========================================================= */
+
+.profile-list-item,
+.profile-announcement {
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,0.97),
+      rgba(239,246,255,0.75),
+      rgba(245,243,255,0.80)
+    ) !important;
+
+  border:
+    1px solid rgba(255,255,255,0.95) !important;
+
+  box-shadow:
+    0 18px 45px -30px rgba(37,99,235,0.30) !important;
+}
+
+
+/* =========================================================
+   FORM INPUTS
+========================================================= */
+
+.profile-input {
+
+  border-radius: 17px !important;
+
+  border:
+    1px solid rgba(203,213,225,0.85) !important;
+
+  background:
+    linear-gradient(
+      145deg,
+      #ffffff,
+      #f8fafc
+    ) !important;
+
+  color: #0f172a !important;
+
+  box-shadow:
+    0 8px 20px -18px rgba(15,23,42,0.35) !important;
+}
+
+
+.profile-input:focus {
+
+  border-color:
+    #6366f1 !important;
+
+  box-shadow:
+    0 0 0 4px rgba(99,102,241,0.12),
+    0 15px 30px -20px rgba(79,70,229,0.40) !important;
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+.profile-modal-backdrop {
+
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(59,130,246,0.18),
+      transparent 35%
+    ),
+    rgba(15,23,42,0.76) !important;
+
+  backdrop-filter: blur(20px) !important;
+}
+
+
+.profile-modal {
+
+  border-radius: 30px !important;
+
+  border:
+    1px solid rgba(255,255,255,0.95) !important;
+
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(124,58,237,0.12),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #ffffff,
+      #f8fbff,
+      #f8f5ff
+    ) !important;
+
+  box-shadow:
+    0 60px 130px -35px rgba(15,23,42,0.70),
+    0 30px 70px -30px rgba(37,99,235,0.40) !important;
+}
+
+
+/* =========================================================
+   RESUME
+========================================================= */
+
+.profile-resume {
+
+  border-radius: 22px !important;
+
+  border:
+    1px dashed rgba(99,102,241,0.45) !important;
+
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(124,58,237,0.15),
+      transparent 40%
+    ),
+    linear-gradient(
+      135deg,
+      #eff6ff,
+      #f5f3ff,
+      #ecfeff
+    ) !important;
+
+  box-shadow:
+    0 20px 45px -30px rgba(79,70,229,0.35) !important;
+}
+
+
+/* =========================================================
+   BUTTON ENHANCEMENT
+========================================================= */
+
+.profile-page-premium button {
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    filter 0.25s ease !important;
+}
+
+
+.profile-page-premium button:hover {
+
+  filter: brightness(1.03);
+
+}
+
+
+.profile-page-premium button:not(:disabled):active {
+
+  transform: scale(0.97);
+}
+
+
+/* =========================================================
+   LINKS
+========================================================= */
+
+.profile-page-premium a {
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease,
+    text-shadow 0.2s ease;
+}
+
+
+.profile-page-premium a:hover {
+
+  text-shadow:
+    0 5px 18px rgba(37,99,235,0.20);
+}
+
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
+
+@keyframes profileGradientText {
+
+  0% {
+    background-position: 0% center;
+  }
+
+  50% {
+    background-position: 100% center;
+  }
+
+  100% {
+    background-position: 0% center;
+  }
+}
+
+
+@keyframes profileBorder {
+
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+
+@keyframes avatarFloat {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+
+@keyframes profileFloatOne {
+
+  0%,
+  100% {
+    transform: translate(0,0);
+  }
+
+  50% {
+    transform: translate(90px,50px);
+  }
+}
+
+
+@keyframes profileFloatTwo {
+
+  0%,
+  100% {
+    transform: translate(0,0);
+  }
+
+  50% {
+    transform: translate(-80px,-50px);
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 768px) {
+
+  .profile-glass {
+    border-radius: 22px !important;
+  }
+
+  .profile-premium-heading {
+    border-radius: 23px !important;
+  }
+
+  .profile-avatar-ring {
+    width: 100px !important;
+    height: 100px !important;
+    border-radius: 28px !important;
+  }
+
+  .profile-avatar-inner {
+    border-radius: 24px !important;
+  }
+
+  .profile-name {
+    font-size: 22px !important;
+  }
+
+  .profile-stat {
+    padding: 15px !important;
+  }
+
+  .profile-page-premium h1 {
+    font-size: 1.8rem;
+  }
+
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+
+    animation-duration: 0.01ms !important;
+
+    animation-iteration-count: 1 !important;
+
+    transition-duration: 0.01ms !important;
+  }
+}

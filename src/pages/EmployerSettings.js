@@ -1,17 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 
-const TABS = [
-  'Account',
-  'Notifications',
-  'Privacy',
-  'Preferences',
-];
+const TABS = ['Account', 'Notifications', 'Privacy', 'Preferences'];
 
 const PREFS_KEY = 'edu_user_prefs';
 const LANGUAGE_KEY = 'edu_language';
@@ -29,113 +22,77 @@ const defaults = {
   theme: 'Light',
 };
 
-/* ================= LANGUAGE OPTIONS ================= */
-
 const LANGUAGE_OPTIONS = [
-  { value: 'en-US', label: 'English (US)', nativeLabel: 'English' },
-  { value: 'en-GB', label: 'English (UK)', nativeLabel: 'English' },
-  { value: 'hi-IN', label: 'Hindi', nativeLabel: 'हिन्दी' },
-  { value: 'te-IN', label: 'Telugu', nativeLabel: 'తెలుగు' },
-  { value: 'ta-IN', label: 'Tamil', nativeLabel: 'தமிழ்' },
-  { value: 'kn-IN', label: 'Kannada', nativeLabel: 'ಕನ್ನಡ' },
-  { value: 'ml-IN', label: 'Malayalam', nativeLabel: 'മലയാളം' },
-  { value: 'bn-IN', label: 'Bengali', nativeLabel: 'বাংলা' },
-  { value: 'mr-IN', label: 'Marathi', nativeLabel: 'मराठी' },
-  { value: 'gu-IN', label: 'Gujarati', nativeLabel: 'ગુજરાતી' },
-  { value: 'pa-IN', label: 'Punjabi', nativeLabel: 'ਪੰਜਾਬੀ' },
-  { value: 'or-IN', label: 'Odia', nativeLabel: 'ଓଡ଼ିଆ' },
+  { value: 'en-US', label: 'English (US)', native: 'English' },
+  { value: 'en-GB', label: 'English (UK)', native: 'English' },
+  { value: 'hi-IN', label: 'Hindi', native: 'à¤¹à¤¿à¤¨à¥à¤¦à¥€' },
+  { value: 'te-IN', label: 'Telugu', native: 'à°¤à±†à°²à±à°—à±' },
+  { value: 'ta-IN', label: 'Tamil', native: 'à®¤à®®à®¿à®´à¯' },
+  { value: 'kn-IN', label: 'Kannada', native: 'à²•à²¨à³à²¨à²¡' },
+  { value: 'ml-IN', label: 'Malayalam', native: 'à´®à´²à´¯à´¾à´³à´‚' },
+  { value: 'bn-IN', label: 'Bengali', native: 'à¦¬à¦¾à¦‚à¦²à¦¾' },
+  { value: 'mr-IN', label: 'Marathi', native: 'à¤®à¤°à¤¾à¤ à¥€' },
+  { value: 'gu-IN', label: 'Gujarati', native: 'àª—à«àªœàª°àª¾àª¤à«€' },
+  { value: 'pa-IN', label: 'Punjabi', native: 'à¨ªà©°à¨œà¨¾à¨¬à©€' },
+  { value: 'or-IN', label: 'Odia', native: 'à¬“à¬¡à¬¼à¬¿à¬†' },
 ];
-
-/* ================= TIME ZONE OPTIONS ================= */
 
 const TIME_ZONE_OPTIONS = [
-  { value: 'UTC', label: 'UTC — Coordinated Universal Time' },
-
-  { value: 'Asia/Kolkata', label: 'India — Asia/Kolkata (IST)' },
-  { value: 'Asia/Karachi', label: 'Pakistan — Asia/Karachi (PKT)' },
-  { value: 'Asia/Dhaka', label: 'Bangladesh — Asia/Dhaka (BST)' },
-  { value: 'Asia/Kathmandu', label: 'Nepal — Asia/Kathmandu (NPT)' },
-  { value: 'Asia/Colombo', label: 'Sri Lanka — Asia/Colombo' },
-  { value: 'Asia/Dubai', label: 'UAE — Asia/Dubai (GST)' },
-  { value: 'Asia/Riyadh', label: 'Saudi Arabia — Asia/Riyadh' },
-  { value: 'Asia/Qatar', label: 'Qatar — Asia/Qatar' },
-  { value: 'Asia/Muscat', label: 'Oman — Asia/Muscat' },
-  { value: 'Asia/Bangkok', label: 'Thailand — Asia/Bangkok' },
-  { value: 'Asia/Singapore', label: 'Singapore — Asia/Singapore' },
-  { value: 'Asia/Kuala_Lumpur', label: 'Malaysia — Asia/Kuala_Lumpur' },
-  { value: 'Asia/Jakarta', label: 'Indonesia — Asia/Jakarta' },
-  { value: 'Asia/Manila', label: 'Philippines — Asia/Manila' },
-  { value: 'Asia/Shanghai', label: 'China — Asia/Shanghai' },
-  { value: 'Asia/Hong_Kong', label: 'Hong Kong — Asia/Hong_Kong' },
-  { value: 'Asia/Taipei', label: 'Taiwan — Asia/Taipei' },
-  { value: 'Asia/Tokyo', label: 'Japan — Asia/Tokyo (JST)' },
-  { value: 'Asia/Seoul', label: 'South Korea — Asia/Seoul (KST)' },
-  { value: 'Asia/Almaty', label: 'Kazakhstan — Asia/Almaty' },
-  { value: 'Asia/Tashkent', label: 'Uzbekistan — Asia/Tashkent' },
-  { value: 'Asia/Baku', label: 'Azerbaijan — Asia/Baku' },
-  { value: 'Asia/Tbilisi', label: 'Georgia — Asia/Tbilisi' },
-  { value: 'Asia/Yerevan', label: 'Armenia — Asia/Yerevan' },
-
-  { value: 'Europe/London', label: 'United Kingdom — Europe/London' },
-  { value: 'Europe/Dublin', label: 'Ireland — Europe/Dublin' },
-  { value: 'Europe/Paris', label: 'France — Europe/Paris' },
-  { value: 'Europe/Berlin', label: 'Germany — Europe/Berlin' },
-  { value: 'Europe/Rome', label: 'Italy — Europe/Rome' },
-  { value: 'Europe/Madrid', label: 'Spain — Europe/Madrid' },
-  { value: 'Europe/Amsterdam', label: 'Netherlands — Europe/Amsterdam' },
-  { value: 'Europe/Brussels', label: 'Belgium — Europe/Brussels' },
-  { value: 'Europe/Zurich', label: 'Switzerland — Europe/Zurich' },
-  { value: 'Europe/Vienna', label: 'Austria — Europe/Vienna' },
-  { value: 'Europe/Stockholm', label: 'Sweden — Europe/Stockholm' },
-  { value: 'Europe/Oslo', label: 'Norway — Europe/Oslo' },
-  { value: 'Europe/Copenhagen', label: 'Denmark — Europe/Copenhagen' },
-  { value: 'Europe/Helsinki', label: 'Finland — Europe/Helsinki' },
-  { value: 'Europe/Warsaw', label: 'Poland — Europe/Warsaw' },
-  { value: 'Europe/Athens', label: 'Greece — Europe/Athens' },
-  { value: 'Europe/Istanbul', label: 'Turkey — Europe/Istanbul' },
-  { value: 'Europe/Moscow', label: 'Russia — Europe/Moscow' },
-
-  { value: 'Africa/Cairo', label: 'Egypt — Africa/Cairo' },
-  { value: 'Africa/Johannesburg', label: 'South Africa — Africa/Johannesburg' },
-  { value: 'Africa/Nairobi', label: 'Kenya — Africa/Nairobi' },
-  { value: 'Africa/Lagos', label: 'Nigeria — Africa/Lagos' },
-
-  { value: 'America/New_York', label: 'US Eastern — America/New_York' },
-  { value: 'America/Chicago', label: 'US Central — America/Chicago' },
-  { value: 'America/Denver', label: 'US Mountain — America/Denver' },
-  { value: 'America/Los_Angeles', label: 'US Pacific — America/Los_Angeles' },
-  { value: 'America/Anchorage', label: 'US Alaska — America/Anchorage' },
-  { value: 'Pacific/Honolulu', label: 'US Hawaii — Pacific/Honolulu' },
-  { value: 'America/Toronto', label: 'Canada Eastern — America/Toronto' },
-  { value: 'America/Vancouver', label: 'Canada Pacific — America/Vancouver' },
-  { value: 'America/Mexico_City', label: 'Mexico — America/Mexico_City' },
-
-  { value: 'America/Sao_Paulo', label: 'Brazil — America/Sao_Paulo' },
-  {
-    value: 'America/Argentina/Buenos_Aires',
-    label: 'Argentina — America/Argentina/Buenos_Aires',
-  },
-
-  { value: 'Australia/Sydney', label: 'Australia Eastern — Australia/Sydney' },
-  { value: 'Australia/Melbourne', label: 'Australia Melbourne — Australia/Melbourne' },
-  { value: 'Australia/Brisbane', label: 'Australia Brisbane — Australia/Brisbane' },
-  { value: 'Australia/Perth', label: 'Australia Western — Australia/Perth' },
-  { value: 'Pacific/Auckland', label: 'New Zealand — Pacific/Auckland' },
+  { value: 'UTC', label: 'UTC â€” Coordinated Universal Time' },
+  { value: 'Asia/Kolkata', label: 'India â€” Asia/Kolkata' },
+  { value: 'Asia/Dubai', label: 'UAE â€” Asia/Dubai' },
+  { value: 'Asia/Singapore', label: 'Singapore â€” Asia/Singapore' },
+  { value: 'Asia/Tokyo', label: 'Japan â€” Asia/Tokyo' },
+  { value: 'Asia/Shanghai', label: 'China â€” Asia/Shanghai' },
+  { value: 'Asia/Seoul', label: 'South Korea â€” Asia/Seoul' },
+  { value: 'Europe/London', label: 'UK â€” Europe/London' },
+  { value: 'Europe/Paris', label: 'France â€” Europe/Paris' },
+  { value: 'Europe/Berlin', label: 'Germany â€” Europe/Berlin' },
+  { value: 'Africa/Cairo', label: 'Egypt â€” Africa/Cairo' },
+  { value: 'America/New_York', label: 'US East â€” America/New_York' },
+  { value: 'America/Chicago', label: 'US Central â€” America/Chicago' },
+  { value: 'America/Denver', label: 'US Mountain â€” America/Denver' },
+  { value: 'America/Los_Angeles', label: 'US Pacific â€” America/Los_Angeles' },
+  { value: 'Australia/Sydney', label: 'Australia â€” Australia/Sydney' },
 ];
 
-/* ================= ICONS ================= */
+const TAB_META = {
+  Account: {
+    icon: 'user',
+    small: 'ACCOUNT',
+    title: 'Account',
+    description: 'Profile, security and personal workspace controls',
+  },
+  Notifications: {
+    icon: 'bell',
+    small: 'ALERTS',
+    title: 'Notifications',
+    description: 'Manage the updates and reminders you receive',
+  },
+  Privacy: {
+    icon: 'shield',
+    small: 'PRIVACY',
+    title: 'Privacy',
+    description: 'Control activity and progress visibility',
+  },
+  Preferences: {
+    icon: 'palette',
+    small: 'STYLE',
+    title: 'Preferences',
+    description: 'Personalize your workspace appearance',
+  },
+};
 
-function Icon({ name, size = 19 }) {
+function Icon({ name, size = 20, strokeWidth = 1.8 }) {
   const common = {
     width: size,
     height: size,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
-    strokeWidth: 1.8,
+    strokeWidth,
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
-    'aria-hidden': true,
   };
 
   switch (name) {
@@ -143,7 +100,7 @@ function Icon({ name, size = 19 }) {
       return (
         <svg {...common}>
           <circle cx="12" cy="8" r="3.5" />
-          <path d="M5 20c.8-3.4 3.2-5.2 7-5.2s6.2 1.8 7 5.2" />
+          <path d="M5 20c.7-3.4 3.2-5.2 7-5.2s6.3 1.8 7 5.2" />
         </svg>
       );
 
@@ -160,14 +117,14 @@ function Icon({ name, size = 19 }) {
         <svg {...common}>
           <rect x="5" y="10" width="14" height="10" rx="2" />
           <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-          <path d="M12 14v2" />
+          <circle cx="12" cy="15" r="1" />
         </svg>
       );
 
     case 'moon':
       return (
         <svg {...common}>
-          <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5Z" />
+          <path d="M20 15.5A8 8 0 0 1 8.5 4 8.2 8.2 0 1 0 20 15.5Z" />
         </svg>
       );
 
@@ -184,8 +141,8 @@ function Icon({ name, size = 19 }) {
         <svg {...common}>
           <circle cx="12" cy="12" r="9" />
           <path d="M3 12h18" />
-          <path d="M12 3a14 14 0 0 1 0 18" />
-          <path d="M12 3a14 14 0 0 0 0 18" />
+          <path d="M12 3c2.2 2.5 3.3 5.5 3.3 9S14.2 18.5 12 21" />
+          <path d="M12 3c-2.2 2.5-3.3 5.5-3.3 9S9.8 18.5 12 21" />
         </svg>
       );
 
@@ -193,17 +150,17 @@ function Icon({ name, size = 19 }) {
       return (
         <svg {...common}>
           <circle cx="12" cy="12" r="9" />
-          <path d="M12 7v5l3 2" />
+          <path d="M12 7v5l3.5 2" />
         </svg>
       );
 
     case 'users':
       return (
         <svg {...common}>
-          <path d="M16 21v-1.5a4.5 4.5 0 0 0-4.5-4.5h-5A4.5 4.5 0 0 0 2 19.5V21" />
-          <circle cx="9" cy="7" r="3.5" />
-          <path d="M16 3.5a3.5 3.5 0 0 1 0 7" />
-          <path d="M17 15.2a4.5 4.5 0 0 1 5 4.3V21" />
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3 20c.5-3.2 2.5-5 6-5s5.5 1.8 6 5" />
+          <path d="M16 5.5a3 3 0 0 1 0 5.7" />
+          <path d="M18 15c2 .5 3 2 3 4" />
         </svg>
       );
 
@@ -212,19 +169,50 @@ function Icon({ name, size = 19 }) {
         <svg {...common}>
           <path d="M4 19V5" />
           <path d="M4 19h16" />
-          <rect x="7" y="12" width="2.5" height="5" rx=".5" />
-          <rect x="11" y="9" width="2.5" height="8" rx=".5" />
-          <rect x="15" y="6" width="2.5" height="11" rx=".5" />
+          <path d="m7 15 3-4 3 2 5-6" />
         </svg>
       );
 
     case 'palette':
       return (
         <svg {...common}>
-          <path d="M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h2.5A6.5 6.5 0 0 0 21 6.5 9 9 0 0 0 12 3Z" />
-          <circle cx="7.5" cy="9" r="1" fill="currentColor" stroke="none" />
-          <circle cx="10" cy="6.5" r="1" fill="currentColor" stroke="none" />
-          <circle cx="14" cy="6.5" r="1" fill="currentColor" stroke="none" />
+          <path d="M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h3a6 6 0 0 0 0-12Z" />
+          <circle cx="7.5" cy="10" r=".8" fill="currentColor" />
+          <circle cx="9" cy="6.5" r=".8" fill="currentColor" />
+          <circle cx="14" cy="6.5" r=".8" fill="currentColor" />
+        </svg>
+      );
+
+    case 'shield':
+      return (
+        <svg {...common}>
+          <path d="M12 3 19 6v5c0 4.5-2.7 7.8-7 10-4.3-2.2-7-5.5-7-10V6l7-3Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      );
+
+    case 'building':
+      return (
+        <svg {...common}>
+          <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+          <path d="M16 9h3a1 1 0 0 1 1 1v11" />
+          <path d="M8 7h3M8 11h3M8 15h3M8 19h3" />
+          <path d="M2 21h20" />
+        </svg>
+      );
+
+    case 'check':
+      return (
+        <svg {...common}>
+          <path d="m5 12 4 4L19 6" />
+        </svg>
+      );
+
+    case 'arrow':
+      return (
+        <svg {...common}>
+          <path d="M5 12h14" />
+          <path d="m13 6 6 6-6 6" />
         </svg>
       );
 
@@ -233,7 +221,13 @@ function Icon({ name, size = 19 }) {
   }
 }
 
-/* ================= TOGGLE ================= */
+function GradientIcon({ name, size = 20 }) {
+  return (
+    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-indigo-500 to-cyan-400 text-white shadow-lg shadow-indigo-500/20 transition-all duration-300 group-hover:scale-110 group-hover:rotate-1 group-hover:shadow-indigo-500/30">
+      <Icon name={name} size={size} />
+    </div>
+  );
+}
 
 function Toggle({ checked, onChange }) {
   return (
@@ -242,56 +236,59 @@ function Toggle({ checked, onChange }) {
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`
-        relative
-        h-7
-        w-12
-        shrink-0
-        rounded-full
-        border
-        transition-all
-        duration-300
-        ${
-          checked
-            ? `
-              border-blue-500/70
-              bg-blue-600
-              shadow-[0_0_16px_rgba(59,130,246,0.28)]
-            `
-            : `
-              border-slate-300
-              bg-slate-200
-              dark:border-slate-600
-              dark:bg-slate-700
-            `
-        }
-        focus:outline-none
-        focus:ring-2
-        focus:ring-blue-500/30
-      `}
+      className={[
+        'relative h-7 w-12 shrink-0 rounded-full p-1 transition-all duration-300',
+        'focus:outline-none focus:ring-4 focus:ring-violet-500/10',
+        checked
+          ? 'bg-gradient-to-r from-violet-500 via-indigo-500 to-cyan-400 shadow-lg shadow-indigo-500/25'
+          : 'bg-slate-300 dark:bg-slate-700',
+      ].join(' ')}
     >
       <span
-        className={`
-          absolute
-          top-1/2
-          h-5
-          w-5
-          -translate-y-1/2
-          rounded-full
-          bg-white
-          shadow-sm
-          transition-all
-          duration-300
-          ${checked ? 'left-[24px]' : 'left-[2px]'}
-        `}
+        className={[
+          'block h-5 w-5 rounded-full bg-white shadow-md transition-all duration-300',
+          checked ? 'translate-x-5' : 'translate-x-0',
+        ].join(' ')}
       />
     </button>
   );
 }
 
-/* ================= SETTING ROW ================= */
+function SettingSelect({
+  value,
+  onChange,
+  children,
+  width = '200px',
+  className = '',
+}) {
+  const widthClass =
+    width === '180px'
+      ? 'w-full sm:w-[180px]'
+      : width === '190px'
+        ? 'w-full sm:w-[190px]'
+        : 'w-full sm:w-[200px]';
 
-function Row({
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={[
+        widthClass,
+        'rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800',
+        'outline-none transition-all duration-200',
+        'hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-500/5',
+        'focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10',
+        'dark:border-slate-700 dark:bg-slate-900 dark:text-white',
+        'dark:hover:border-indigo-600 dark:focus:border-violet-500',
+        className,
+      ].join(' ')}
+    >
+      {children}
+    </select>
+  );
+}
+
+function GlassRow({
   title,
   desc,
   icon,
@@ -299,128 +296,45 @@ function Row({
   compactControl = false,
 }) {
   return (
-    <div className="group relative py-1">
-      <div
-        className="
-          pointer-events-none
-          absolute
-          -inset-x-1
-          -inset-y-1
-          rounded-2xl
-          opacity-0
-          blur-xl
-          transition-all
-          duration-300
-          group-hover:opacity-100
-          group-hover:bg-blue-500/[0.07]
-          dark:group-hover:bg-blue-400/[0.08]
-        "
-      />
+    <div
+      className={[
+        'group relative overflow-hidden rounded-[22px]',
+        'border border-white/70 bg-white/70 backdrop-blur-xl',
+        'shadow-[0_10px_35px_rgba(30,41,59,0.05)]',
+        'transition-all duration-300',
+        'hover:-translate-y-1 hover:border-indigo-200 hover:bg-white',
+        'hover:shadow-[0_18px_45px_rgba(79,70,229,0.10)]',
+        'dark:border-slate-800/80 dark:bg-slate-900/60',
+        'dark:hover:border-indigo-800 dark:hover:bg-slate-900',
+      ].join(' ')}
+    >
+      <div className="pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full bg-violet-400/10 blur-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+      <div className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r from-violet-500 via-indigo-500 to-cyan-400 transition-all duration-500 group-hover:w-full" />
 
       <div
-        className={`
-          relative
-          grid
-          gap-4
-          rounded-2xl
-          border
-          border-transparent
-          px-3
-          py-4
-          transition-all
-          duration-300
-          sm:grid-cols-[minmax(0,1fr)_auto]
-          sm:items-center
-          sm:gap-5
-          sm:px-4
-          ${
-            compactControl
-              ? 'grid-cols-[minmax(0,1fr)_auto] items-center'
-              : 'grid-cols-1'
-          }
-          group-hover:border-slate-200
-          group-hover:bg-slate-50/80
-          dark:group-hover:border-slate-700
-          dark:group-hover:bg-slate-800/70
-        `}
+        className={[
+          'relative flex gap-4 p-4 sm:p-5',
+          compactControl
+            ? 'flex-col sm:flex-row sm:items-center sm:justify-between'
+            : 'flex-col lg:flex-row lg:items-center lg:justify-between',
+        ].join(' ')}
       >
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-          <div
-            className="
-              flex
-              h-10
-              w-10
-              shrink-0
-              items-center
-              justify-center
-              rounded-xl
-              border
-              border-slate-200
-              bg-slate-50
-              text-slate-500
-              transition-all
-              duration-300
-              group-hover:border-blue-200
-              group-hover:bg-blue-50
-              group-hover:text-blue-600
-              dark:border-slate-700
-              dark:bg-slate-800
-              dark:text-slate-400
-              dark:group-hover:border-slate-600
-              dark:group-hover:bg-slate-700
-              dark:group-hover:text-blue-400
-            "
-          >
-            <Icon name={icon} />
-          </div>
+        <div className="flex min-w-0 items-start gap-4">
+          <GradientIcon name={icon} />
 
-          <div className="min-w-0 flex-1">
-            <div
-              className="
-                break-words
-                text-sm
-                font-semibold
-                text-slate-800
-                transition-colors
-                duration-300
-                group-hover:text-blue-700
-                dark:text-slate-100
-                dark:group-hover:text-blue-300
-              "
-            >
+          <div className="min-w-0 pt-0.5">
+            <div className="text-sm font-black text-slate-900 dark:text-white">
               {title}
             </div>
 
-            {desc && (
-              <div
-                className="
-                  mt-1
-                  max-w-2xl
-                  break-words
-                  text-xs
-                  leading-5
-                  text-slate-500
-                  dark:text-slate-400
-                "
-              >
-                {desc}
-              </div>
-            )}
+            <div className="mt-1 max-w-2xl text-xs leading-5 text-slate-500 dark:text-slate-400">
+              {desc}
+            </div>
           </div>
         </div>
 
-        <div
-          className={`
-            flex
-            min-w-0
-            items-center
-            ${
-              compactControl
-                ? 'w-auto shrink-0 justify-end'
-                : 'w-full justify-start sm:w-auto sm:justify-end'
-            }
-          `}
-        >
+        <div className="relative shrink-0">
           {children}
         </div>
       </div>
@@ -428,64 +342,59 @@ function Row({
   );
 }
 
-/* ================= SELECT ================= */
-
-function SettingSelect({
-  value,
-  onChange,
-  children,
-  width = '190px',
-  className = '',
-}) {
-  const widthClass =
-    width === '200px'
-      ? 'sm:min-w-[200px]'
-      : width === '180px'
-        ? 'sm:min-w-[180px]'
-        : 'sm:min-w-[190px]';
-
+function SectionTitle({ eyebrow, title, description }) {
   return (
-    <select
-      value={value}
-      onChange={onChange}
-      className={`
-        w-full
-        max-w-full
-        ${widthClass}
-        cursor-pointer
-        rounded-xl
-        border
-        border-slate-300
-        bg-white
-        px-3
-        py-2.5
-        text-sm
-        font-medium
-        text-slate-700
-        outline-none
-        transition-all
-        duration-300
-        hover:border-blue-300
-        hover:bg-slate-50
-        focus:border-blue-500
-        focus:ring-2
-        focus:ring-blue-500/20
-        dark:border-slate-600
-        dark:bg-slate-800
-        dark:text-slate-100
-        dark:hover:border-slate-500
-        dark:hover:bg-slate-700
-        dark:focus:border-blue-500
-        dark:focus:ring-blue-500/20
-        ${className}
-      `}
-    >
-      {children}
-    </select>
+    <div className="mb-6">
+      <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50/70 px-3 py-1 text-[10px] font-black tracking-[0.18em] text-indigo-600 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300">
+        <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" />
+        {eyebrow}
+      </div>
+
+      <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+        {title}
+      </h2>
+
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+        {description}
+      </p>
+    </div>
   );
 }
 
-/* ================= LOAD ================= */
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  show,
+  setShow,
+}) {
+  return (
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={[
+          'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-14',
+          'text-sm text-slate-900 outline-none transition-all',
+          'placeholder:text-slate-400',
+          'focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10',
+          'dark:border-slate-700 dark:bg-slate-900 dark:text-white',
+          'dark:focus:border-indigo-500 dark:focus:bg-slate-950',
+        ].join(' ')}
+      />
+
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-400 transition hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950/40 dark:hover:text-violet-300"
+      >
+        {show ? 'Hide' : 'Show'}
+      </button>
+    </div>
+  );
+}
 
 function loadPrefs() {
   try {
@@ -497,6 +406,10 @@ function loadPrefs() {
 
     const parsed = JSON.parse(raw);
 
+    if (!parsed || typeof parsed !== 'object') {
+      return { ...defaults };
+    }
+
     return {
       ...defaults,
       ...parsed,
@@ -506,34 +419,26 @@ function loadPrefs() {
   }
 }
 
-/* ================= LANGUAGE HELPERS ================= */
-
-function getLanguageName(language) {
-  const selected = LANGUAGE_OPTIONS.find(
-    (item) => item.value === language
+function getLanguageName(value) {
+  return (
+    LANGUAGE_OPTIONS.find((item) => item.value === value)?.label ||
+    'English (US)'
   );
-
-  return selected?.label || 'English (US)';
 }
 
-function getNativeLanguageName(language) {
-  const selected = LANGUAGE_OPTIONS.find(
-    (item) => item.value === language
+function getNativeLanguageName(value) {
+  return (
+    LANGUAGE_OPTIONS.find((item) => item.value === value)?.native ||
+    'English'
   );
-
-  return selected?.nativeLabel || 'English';
 }
 
-/* ================= TIME ZONE HELPERS ================= */
-
-function isValidTimeZone(timeZone) {
-  if (!timeZone) {
-    return false;
-  }
+function isValidTimeZone(value) {
+  if (!value) return false;
 
   try {
-    Intl.DateTimeFormat('en-US', {
-      timeZone,
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: value,
     }).format();
 
     return true;
@@ -544,97 +449,120 @@ function isValidTimeZone(timeZone) {
 
 function getBrowserTimeZone() {
   try {
-    const browserTimeZone =
-      Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const value = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    if (
-      browserTimeZone &&
-      isValidTimeZone(browserTimeZone)
-    ) {
-      return browserTimeZone;
+    if (isValidTimeZone(value)) {
+      return value;
     }
-
-    return 'Asia/Kolkata';
   } catch {
-    return 'Asia/Kolkata';
+    // Ignore.
   }
+
+  return 'Asia/Kolkata';
 }
 
-function getInitialTimeZone(storedPrefs) {
-  const savedTimeZone =
-    localStorage.getItem(TIME_ZONE_KEY);
+function getInitialTimeZone() {
+  const stored = localStorage.getItem(TIME_ZONE_KEY);
 
-  if (
-    savedTimeZone &&
-    isValidTimeZone(savedTimeZone)
-  ) {
-    return savedTimeZone;
+  if (stored && isValidTimeZone(stored)) {
+    return stored;
   }
 
-  if (
-    storedPrefs?.time_zone &&
-    isValidTimeZone(storedPrefs.time_zone)
-  ) {
-    return storedPrefs.time_zone;
+  const prefs = loadPrefs();
+
+  if (prefs.time_zone && isValidTimeZone(prefs.time_zone)) {
+    return prefs.time_zone;
   }
 
   return getBrowserTimeZone();
 }
 
-function getTimeZoneLabel(timeZone) {
+function getTimeZoneLabel(value) {
   const selected = TIME_ZONE_OPTIONS.find(
-    (item) => item.value === timeZone
+    (item) => item.value === value
   );
 
-  const countryName =
-    selected?.label?.split(' — ')[0] ||
-    'UTC';
-
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      timeZoneName: 'longOffset',
-    }).formatToParts(new Date());
-
-    const offset = parts.find(
-      (part) => part.type === 'timeZoneName'
-    )?.value;
-
-    if (!offset || offset === 'GMT') {
-      return `${countryName} — UTC+0:00`;
-    }
-
-    const match = offset.match(
-      /^GMT([+-])(\d{1,2})(?::(\d{2}))?$/
-    );
-
-    if (!match) {
-      return `${countryName} — ${offset.replace(
-        'GMT',
-        'UTC'
-      )}`;
-    }
-
-    const [, sign, hours, minutes = '00'] = match;
-
-    return `${countryName} — UTC${sign}${Number(
-      hours
-    )}:${minutes}`;
-  } catch {
-    return `${countryName} — UTC+0:00`;
-  }
+  return selected?.label || value || 'Asia/Kolkata';
 }
 
-/* ================= APPLY LANGUAGE ================= */
+function EmployerSettings() {
+  const { user, changePassword } = useAuth();
+  const { t } = useTranslation();
 
-async function applyLanguage(language) {
-  try {
-    await i18n.changeLanguage(language);
+  const [activeTab, setActiveTab] = useState('Account');
 
-    localStorage.setItem(
-      LANGUAGE_KEY,
-      language
-    );
+  const [draft, setDraft] = useState(() => {
+    const prefs = loadPrefs();
+
+    const savedLanguage =
+      localStorage.getItem(LANGUAGE_KEY) ||
+      prefs.language ||
+      'en-US';
+
+    const savedTimeZone = getInitialTimeZone();
+
+    return {
+      ...prefs,
+      language: savedLanguage,
+      time_zone: savedTimeZone,
+      dark_mode:
+        document.documentElement.classList.contains('dark') ||
+        Boolean(prefs.dark_mode),
+      email: user?.email || '',
+    };
+  });
+
+  const [savedStatus, setSavedStatus] = useState(null);
+
+  const [passwordModal, setPasswordModal] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const [passwordStatus, setPasswordStatus] = useState(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.email) {
+      setDraft((prev) => ({
+        ...prev,
+        email: user.email,
+      }));
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
+    const currentLanguage =
+      localStorage.getItem(LANGUAGE_KEY) ||
+      draft.language ||
+      'en-US';
+
+    if (currentLanguage && i18n.language !== currentLanguage) {
+      try {
+        i18n.changeLanguage(currentLanguage);
+      } catch {
+        // Ignore.
+      }
+    }
+
+    document.documentElement.lang = currentLanguage;
+  }, [draft.language]);
+
+  const applyLanguage = (language) => {
+    if (!language) return;
+
+    try {
+      i18n.changeLanguage(language);
+    } catch {
+      // Ignore.
+    }
+
+    localStorage.setItem(LANGUAGE_KEY, language);
 
     const currentPrefs = loadPrefs();
 
@@ -650,225 +578,34 @@ async function applyLanguage(language) {
 
     window.dispatchEvent(
       new CustomEvent('languageChanged', {
-        detail: {
-          language,
-        },
+        detail: language,
       })
     );
-  } catch (error) {
-    console.error(
-      'Failed to apply language:',
-      error
+  };
+
+  const applyTimeZone = (timeZone) => {
+    if (!timeZone || !isValidTimeZone(timeZone)) {
+      return;
+    }
+
+    localStorage.setItem(TIME_ZONE_KEY, timeZone);
+
+    const currentPrefs = loadPrefs();
+
+    localStorage.setItem(
+      PREFS_KEY,
+      JSON.stringify({
+        ...currentPrefs,
+        time_zone: timeZone,
+      })
     );
-  }
-}
 
-/* ================= APPLY TIME ZONE ================= */
-
-function applyTimeZone(timeZone) {
-  if (!isValidTimeZone(timeZone)) {
-    return;
-  }
-
-  localStorage.setItem(
-    TIME_ZONE_KEY,
-    timeZone
-  );
-
-  const currentPrefs = loadPrefs();
-
-  localStorage.setItem(
-    PREFS_KEY,
-    JSON.stringify({
-      ...currentPrefs,
-      time_zone: timeZone,
-    })
-  );
-
-  window.dispatchEvent(
-    new CustomEvent('timeZoneChanged', {
-      detail: {
-        timeZone,
-      },
-    })
-  );
-}
-
-/* ================= PASSWORD INPUT ================= */
-
-function PasswordInput({
-  label,
-  value,
-  onChange,
-  show,
-  onToggle,
-  placeholder,
-  autoComplete,
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-        {label}
-      </label>
-
-      <div className="relative">
-        <input
-          type={show ? 'text' : 'password'}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          className="
-            w-full
-            rounded-xl
-            border
-            border-slate-300
-            bg-white
-            px-3
-            py-3
-            pr-20
-            text-sm
-            text-slate-800
-            outline-none
-            transition
-            placeholder:text-slate-400
-            focus:border-blue-500
-            focus:ring-2
-            focus:ring-blue-500/20
-            dark:border-slate-600
-            dark:bg-slate-800
-            dark:text-slate-100
-            dark:placeholder:text-slate-500
-          "
-        />
-
-        <button
-          type="button"
-          onClick={onToggle}
-          className="
-            absolute
-            right-2
-            top-1/2
-            -translate-y-1/2
-            rounded-lg
-            px-2.5
-            py-1.5
-            text-xs
-            font-medium
-            text-slate-500
-            transition
-            hover:bg-slate-100
-            hover:text-slate-700
-            dark:text-slate-400
-            dark:hover:bg-slate-700
-            dark:hover:text-slate-200
-          "
-        >
-          {show ? 'Hide' : 'Show'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ================= MAIN ================= */
-
-export default function EmployerSettings() {
-  const { user, changePassword } = useAuth();
-  const { t } = useTranslation();
-
-  const [tab, setTab] = useState('Account');
-
-  const [draft, setDraft] = useState(() => {
-    const stored = loadPrefs();
-
-    const savedLanguage =
-      localStorage.getItem(LANGUAGE_KEY) ||
-      stored.language ||
-      'en-US';
-
-    const savedTimeZone =
-      getInitialTimeZone(stored);
-
-    return {
-      ...stored,
-      language: savedLanguage,
-      time_zone: savedTimeZone,
-      dark_mode:
-        document.documentElement.classList.contains(
-          'dark'
-        ),
-      email: user?.email || '',
-    };
-  });
-
-  const [saved, setSaved] = useState(null);
-
-  /* ================= PASSWORD STATE ================= */
-
-  const [passwordOpen, setPasswordOpen] = useState(false);
-
-  const [currentPassword, setCurrentPassword] =
-    useState('');
-
-  const [newPassword, setNewPassword] =
-    useState('');
-
-  const [confirmPassword, setConfirmPassword] =
-    useState('');
-
-  const [showCurrentPassword, setShowCurrentPassword] =
-    useState(false);
-
-  const [showNewPassword, setShowNewPassword] =
-    useState(false);
-
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState(false);
-
-  const [passwordLoading, setPasswordLoading] =
-    useState(false);
-
-  const [passwordError, setPasswordError] =
-    useState('');
-
-  const [passwordSuccess, setPasswordSuccess] =
-    useState(false);
-
-  /* ================= LANGUAGE SYNC ================= */
-
-  useEffect(() => {
-    const currentLanguage =
-      i18n.language ||
-      localStorage.getItem(LANGUAGE_KEY) ||
-      'en-US';
-
-    document.documentElement.lang =
-      currentLanguage;
-
-    setDraft((prev) => ({
-      ...prev,
-      language: currentLanguage,
-    }));
-  }, []);
-
-  /* ================= TIME ZONE SYNC ================= */
-
-  useEffect(() => {
-    const stored = loadPrefs();
-
-    const currentTimeZone =
-      getInitialTimeZone(stored);
-
-    setDraft((prev) => ({
-      ...prev,
-      time_zone: currentTimeZone,
-    }));
-
-    applyTimeZone(currentTimeZone);
-  }, []);
-
-  /* ================= SET ================= */
+    window.dispatchEvent(
+      new CustomEvent('timeZoneChanged', {
+        detail: timeZone,
+      })
+    );
+  };
 
   const set = (key, value) => {
     setDraft((prev) => ({
@@ -879,7 +616,7 @@ export default function EmployerSettings() {
     if (key === 'dark_mode') {
       document.documentElement.classList.toggle(
         'dark',
-        !!value
+        Boolean(value)
       );
     }
 
@@ -892,15 +629,18 @@ export default function EmployerSettings() {
     }
   };
 
-  /* ================= SAVE ================= */
-
   const onSave = () => {
     try {
-      const { email, ...prefs } = draft;
+      const finalPrefs = {
+        ...loadPrefs(),
+        ...draft,
+      };
+
+      delete finalPrefs.email;
 
       localStorage.setItem(
         PREFS_KEY,
-        JSON.stringify(prefs)
+        JSON.stringify(finalPrefs)
       );
 
       if (draft.language) {
@@ -909,8 +649,19 @@ export default function EmployerSettings() {
           draft.language
         );
 
-        document.documentElement.lang =
-          draft.language;
+        try {
+          i18n.changeLanguage(draft.language);
+        } catch {
+          // Ignore.
+        }
+
+        document.documentElement.lang = draft.language;
+
+        window.dispatchEvent(
+          new CustomEvent('languageChanged', {
+            detail: draft.language,
+          })
+        );
       }
 
       if (
@@ -924,61 +675,80 @@ export default function EmployerSettings() {
 
         window.dispatchEvent(
           new CustomEvent('timeZoneChanged', {
-            detail: {
-              timeZone: draft.time_zone,
-            },
+            detail: draft.time_zone,
           })
         );
       }
 
-      window.dispatchEvent(
-        new CustomEvent('languageChanged', {
-          detail: {
-            language: draft.language,
-          },
-        })
+      document.documentElement.classList.toggle(
+        'dark',
+        Boolean(draft.dark_mode)
       );
 
-      setSaved('ok');
+      setSavedStatus({
+        type: 'success',
+        message: 'Settings saved successfully.',
+      });
 
-      setTimeout(() => {
-        setSaved(null);
+      window.setTimeout(() => {
+        setSavedStatus(null);
       }, 2500);
     } catch {
-      setSaved('error');
+      setSavedStatus({
+        type: 'error',
+        message: 'Unable to save settings. Please try again.',
+      });
     }
   };
 
-  /* ================= CANCEL ================= */
-
   const onCancel = () => {
-    const stored = loadPrefs();
+    const storedPrefs = loadPrefs();
 
-    const language =
+    const savedLanguage =
       localStorage.getItem(LANGUAGE_KEY) ||
-      stored.language ||
+      storedPrefs.language ||
       'en-US';
 
-    const timeZone =
-      getInitialTimeZone(stored);
+    const savedTimeZone =
+      localStorage.getItem(TIME_ZONE_KEY) ||
+      storedPrefs.time_zone ||
+      'Asia/Kolkata';
 
-    setDraft({
-      ...stored,
-      language,
-      time_zone: timeZone,
+    const restored = {
+      ...defaults,
+      ...storedPrefs,
+      language: savedLanguage,
+      time_zone: savedTimeZone,
+      dark_mode:
+        document.documentElement.classList.contains('dark') ||
+        Boolean(storedPrefs.dark_mode),
       email: user?.email || '',
-    });
+    };
+
+    setDraft(restored);
 
     document.documentElement.classList.toggle(
       'dark',
-      !!stored.dark_mode
+      Boolean(restored.dark_mode)
     );
 
-    applyLanguage(language);
-    applyTimeZone(timeZone);
-  };
+    try {
+      i18n.changeLanguage(savedLanguage);
+    } catch {
+      // Ignore.
+    }
 
-  /* ================= THEME ================= */
+    document.documentElement.lang = savedLanguage;
+
+    setSavedStatus({
+      type: 'success',
+      message: 'Changes discarded.',
+    });
+
+    window.setTimeout(() => {
+      setSavedStatus(null);
+    }, 1800);
+  };
 
   const changeTheme = (value) => {
     set('theme', value);
@@ -990,100 +760,86 @@ export default function EmployerSettings() {
     }
   };
 
-  /* ================= LANGUAGE CHANGE ================= */
-
-  const changeLanguage = (language) => {
-    set('language', language);
+  const changeLanguage = (value) => {
+    set('language', value);
   };
 
-  /* ================= TIME ZONE CHANGE ================= */
+  const changeTimeZone = (value) => {
+    if (!isValidTimeZone(value)) return;
 
-  const changeTimeZone = (timeZone) => {
-    if (!isValidTimeZone(timeZone)) {
-      return;
-    }
-
-    set('time_zone', timeZone);
+    set('time_zone', value);
   };
-
-  /* ================= OPEN PASSWORD ================= */
 
   const openPasswordModal = () => {
+    setPasswordStatus(null);
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
-    setPasswordError('');
-    setPasswordSuccess(false);
-
-    setShowCurrentPassword(false);
-    setShowNewPassword(false);
-    setShowConfirmPassword(false);
-
-    setPasswordOpen(true);
+    setShowCurrent(false);
+    setShowNew(false);
+    setShowConfirm(false);
+    setPasswordModal(true);
   };
-
-  /* ================= CLOSE PASSWORD ================= */
 
   const closePasswordModal = () => {
-    if (passwordLoading) {
-      return;
-    }
+    if (passwordLoading) return;
 
-    setPasswordOpen(false);
-    setPasswordError('');
-    setPasswordSuccess(false);
+    setPasswordModal(false);
+    setPasswordStatus(null);
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
   };
 
-  /* ================= CHANGE PASSWORD ================= */
+  const handlePasswordChange = async () => {
+    setPasswordStatus(null);
 
-  const handlePasswordChange = async (event) => {
-    event.preventDefault();
-
-    setPasswordError('');
-    setPasswordSuccess(false);
-
-    if (!currentPassword.trim()) {
-      setPasswordError(
-        'Please enter your current password.'
-      );
+    if (!currentPassword) {
+      setPasswordStatus({
+        type: 'error',
+        message: 'Please enter your current password.',
+      });
       return;
     }
 
-    if (!newPassword.trim()) {
-      setPasswordError(
-        'Please enter your new password.'
-      );
+    if (!newPassword) {
+      setPasswordStatus({
+        type: 'error',
+        message: 'Please enter a new password.',
+      });
       return;
     }
 
-    if (!confirmPassword.trim()) {
-      setPasswordError(
-        'Please confirm your new password.'
-      );
+    if (newPassword.length < 8) {
+      setPasswordStatus({
+        type: 'error',
+        message: 'New password must be at least 8 characters.',
+      });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError(
-        'New password and confirm password do not match.'
-      );
+      setPasswordStatus({
+        type: 'error',
+        message: 'New passwords do not match.',
+      });
       return;
     }
 
     if (currentPassword === newPassword) {
-      setPasswordError(
-        'New password must be different from your current password.'
-      );
+      setPasswordStatus({
+        type: 'error',
+        message:
+          'New password must be different from your current password.',
+      });
       return;
     }
 
     if (typeof changePassword !== 'function') {
-      setPasswordError(
-        'Password change is not available. Please check the authentication configuration.'
-      );
+      setPasswordStatus({
+        type: 'error',
+        message: 'Password change is not available right now.',
+      });
       return;
     }
 
@@ -1095,947 +851,1052 @@ export default function EmployerSettings() {
         newPassword,
       });
 
-      setPasswordSuccess(true);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      setPasswordStatus({
+        type: 'success',
+        message: 'Password changed successfully.',
+      });
 
-      setTimeout(() => {
-        setPasswordOpen(false);
-        setPasswordSuccess(false);
+      window.setTimeout(() => {
+        setPasswordModal(false);
+        setPasswordStatus(null);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
       }, 1800);
     } catch (error) {
-      console.error(
-        'Password change failed:',
-        error
-      );
-
       let message =
-        'Unable to change your password. Please check your current password and try again.';
+        'Unable to change password. Please check your current password.';
 
-      if (
-        error?.errors?.[0]?.longMessage
-      ) {
-        message =
-          error.errors[0].longMessage;
-      } else if (
-        error?.errors?.[0]?.message
-      ) {
-        message =
-          error.errors[0].message;
+      if (typeof error === 'string') {
+        message = error;
       } else if (error?.message) {
         message = error.message;
+      } else if (
+        error?.errors &&
+        Array.isArray(error.errors) &&
+        error.errors[0]?.message
+      ) {
+        message = error.errors[0].message;
+      } else if (error?.response?.data?.message) {
+        message = error.response.data.message;
       }
 
-      setPasswordError(message);
+      setPasswordStatus({
+        type: 'error',
+        message,
+      });
     } finally {
       setPasswordLoading(false);
     }
   };
 
-  return (
-    <>
-      <div
-        className="
-          w-full
-          max-w-full
-          space-y-6
-        "
-      >
-        {/* ================= HEADER ================= */}
+  const renderAccount = () => (
+    <div className="space-y-5">
+      <SectionTitle
+        eyebrow="ACCOUNT SETTINGS"
+        title="Your account, your control."
+        description="Manage your profile visibility, account security and everyday workspace preferences."
+      />
 
-        <div>
-          <h2
-            className="
-              text-2xl
-              font-bold
-              text-slate-900
-              dark:text-slate-50
-            "
-          >
-            {t('settings')}
-          </h2>
+      {/* Profile hero */}
+      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 p-[1px] shadow-[0_20px_60px_rgba(79,70,229,0.18)]">
+        <div className="relative overflow-hidden rounded-[27px] bg-white/95 p-5 dark:bg-slate-950/90 sm:p-6">
+          <div className="absolute -right-20 -top-20 h-52 w-52 rounded-full bg-violet-400/15 blur-3xl" />
+          <div className="absolute -bottom-20 right-20 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
 
-          <p
-            className="
-              mt-1
-              text-sm
-              text-slate-500
-              dark:text-slate-400
-            "
-          >
-            {t('manage_account_description')}
-          </p>
-        </div>
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] bg-gradient-to-br from-violet-500 via-indigo-500 to-cyan-400 text-white shadow-xl shadow-indigo-500/25">
+                <Icon name="building" size={28} />
 
-        {/* ================= CARD ================= */}
-
-        <Card
-          className="
-            !w-full
-            !max-w-full
-            !overflow-hidden
-            !p-0
-            !border
-            !border-slate-200
-            !bg-white
-            !shadow-[0_8px_30px_rgba(15,23,42,0.05)]
-            dark:!border-slate-800
-            dark:!bg-slate-950
-            dark:!shadow-[0_10px_40px_rgba(0,0,0,0.30)]
-          "
-        >
-          {/* ================= TABS ================= */}
-
-          <div
-            className="
-              flex
-              overflow-x-auto
-              border-b
-              border-slate-200
-              bg-slate-50
-              px-3
-              sm:px-5
-              dark:border-slate-800
-              dark:bg-slate-900
-            "
-          >
-            {TABS.map((item) => {
-              const tabKey = item.toLowerCase();
-
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setTab(item)}
-                  className={`
-                    relative
-                    shrink-0
-                    px-4
-                    py-4
-                    text-sm
-                    font-medium
-                    transition-all
-                    duration-300
-
-                    ${
-                      tab === item
-                        ? `
-                          text-blue-600
-                          dark:text-blue-400
-                        `
-                        : `
-                          text-slate-500
-                          hover:text-slate-800
-                          dark:text-slate-400
-                          dark:hover:text-slate-200
-                        `
-                    }
-                  `}
-                >
-                  {t(tabKey)}
-
-                  {tab === item && (
-                    <span
-                      className="
-                        absolute
-                        bottom-0
-                        left-3
-                        right-3
-                        h-0.5
-                        rounded-full
-                        bg-blue-500
-                        dark:bg-blue-400
-                      "
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* ================= CONTENT ================= */}
-
-          <div
-            className="
-              px-3
-              py-4
-              sm:px-5
-              sm:py-5
-              dark:bg-slate-950
-            "
-          >
-            {/* ================= ACCOUNT ================= */}
-
-            {tab === 'Account' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('profile_visibility')}
-                  icon="user"
-                >
-                  <SettingSelect
-                    value={draft.profile_visibility}
-                    onChange={(e) =>
-                      set(
-                        'profile_visibility',
-                        e.target.value
-                      )
-                    }
-                    className="w-full sm:w-64"
-                  >
-                    <option value="classmates">
-                      {t('visible_to_all_classmates')}
-                    </option>
-
-                    <option value="private">
-                      {t('private')}
-                    </option>
-
-                    <option value="public">
-                      {t('public')}
-                    </option>
-                  </SettingSelect>
-                </Row>
-
-                <Row
-                  title={t('email_address')}
-                  desc={t('email_read_only')}
-                  icon="mail"
-                >
-                  <input
-                    value={draft.email}
-                    readOnly
-                    className="
-                      w-full
-                      rounded-xl
-                      border
-                      border-slate-200
-                      bg-slate-50
-                      px-3
-                      py-2.5
-                      text-sm
-                      text-slate-600
-                      outline-none
-                      sm:w-64
-                      dark:border-slate-700
-                      dark:bg-slate-800
-                      dark:text-slate-300
-                    "
-                  />
-                </Row>
-
-                {/* ================= CHANGE PASSWORD ================= */}
-
-                <Row
-                  title={t('change_password')}
-                  desc="Update your account password securely."
-                  icon="lock"
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={openPasswordModal}
-                    className="
-                      w-full
-                      sm:w-auto
-                      sm:min-w-[110px]
-                    "
-                  >
-                    {t('change')}
-                  </Button>
-                </Row>
-
-                <Row
-                  title={t('enable_dark_mode')}
-                  desc={t('dark_mode_description')}
-                  icon="moon"
-                >
-                  <Toggle
-                    checked={draft.dark_mode}
-                    onChange={(value) =>
-                      set(
-                        'dark_mode',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                {/* ================= RESPONSIVE LEARNING REMINDER ================= */}
-
-                <Row
-                  title={t('learning_reminders')}
-                  desc={t('receive_task_reminders')}
-                  icon="bell"
-                  compactControl
-                >
-                  <Toggle
-                    checked={
-                      draft.learning_reminders
-                    }
-                    onChange={(value) =>
-                      set(
-                        'learning_reminders',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                {/* ================= LANGUAGE ================= */}
-
-                <Row
-                  title={t('language')}
-                  desc={t('choose_preferred_language')}
-                  icon="globe"
-                >
-                  <div
-                    className="
-                      flex
-                      w-full
-                      min-w-0
-                      flex-col
-                      gap-3
-                      sm:w-auto
-                      sm:flex-row
-                      sm:items-center
-                    "
-                  >
-                    <SettingSelect
-                      value={draft.language}
-                      onChange={(e) =>
-                        changeLanguage(
-                          e.target.value
-                        )
-                      }
-                      className="
-                        w-full
-                        sm:w-64
-                        max-w-full
-                      "
-                    >
-                      {LANGUAGE_OPTIONS.map(
-                        (language) => (
-                          <option
-                            key={language.value}
-                            value={language.value}
-                          >
-                            {language.label}
-                          </option>
-                        )
-                      )}
-                    </SettingSelect>
-
-                    <div
-                      className="
-                        flex
-                        min-h-[52px]
-                        w-full
-                        min-w-0
-                        flex-col
-                        items-center
-                        justify-center
-                        rounded-xl
-                        border
-                        border-blue-200
-                        bg-blue-50
-                        px-4
-                        py-2
-                        text-center
-                        transition-all
-                        duration-300
-                        sm:w-52
-                        dark:border-blue-900
-                        dark:bg-blue-950
-                      "
-                    >
-                      <span
-                        className="
-                          text-[10px]
-                          font-medium
-                          uppercase
-                          tracking-wider
-                          text-blue-500
-                          dark:text-blue-400
-                        "
-                      >
-                        {t('selected_language')}
-                      </span>
-
-                      <span
-                        className="
-                          mt-0.5
-                          max-w-full
-                          truncate
-                          text-sm
-                          font-semibold
-                          text-blue-700
-                          dark:text-blue-300
-                        "
-                      >
-                        {getNativeLanguageName(
-                          draft.language
-                        )}
-                      </span>
-
-                      <span
-                        className="
-                          max-w-full
-                          truncate
-                          text-[11px]
-                          text-blue-600/80
-                          dark:text-blue-300/80
-                        "
-                      >
-                        {getLanguageName(
-                          draft.language
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </Row>
-
-                {/* ================= TIME ZONE ================= */}
-
-                <Row
-                  title={t('time_zone')}
-                  desc={
-                    t('choose_time_zone') !==
-                    'choose_time_zone'
-                      ? t('choose_time_zone')
-                      : 'Choose the time zone used for dates and times.'
-                  }
-                  icon="clock"
-                >
-                  <div
-                    className="
-                      flex
-                      w-full
-                      min-w-0
-                      flex-col
-                      gap-3
-                      sm:w-auto
-                      sm:flex-row
-                      sm:items-center
-                    "
-                  >
-                    <SettingSelect
-                      value={draft.time_zone}
-                      onChange={(e) =>
-                        changeTimeZone(
-                          e.target.value
-                        )
-                      }
-                      className="
-                        w-full
-                        sm:w-[260px]
-                        max-w-full
-                      "
-                    >
-                      {TIME_ZONE_OPTIONS.map(
-                        (timeZone) => (
-                          <option
-                            key={timeZone.value}
-                            value={timeZone.value}
-                          >
-                            {timeZone.label}
-                          </option>
-                        )
-                      )}
-                    </SettingSelect>
-
-                    <div
-                      className="
-                        flex
-                        min-h-[52px]
-                        w-full
-                        min-w-0
-                        flex-col
-                        items-center
-                        justify-center
-                        rounded-xl
-                        border
-                        border-blue-200
-                        bg-blue-50
-                        px-4
-                        py-2
-                        text-center
-                        transition-all
-                        duration-300
-                        sm:w-[180px]
-                        dark:border-blue-900
-                        dark:bg-blue-950
-                      "
-                    >
-                      <span
-                        className="
-                          text-[10px]
-                          font-medium
-                          uppercase
-                          tracking-wider
-                          text-blue-500
-                          dark:text-blue-400
-                        "
-                      >
-                        Selected Time Zone
-                      </span>
-
-                      <span
-                        className="
-                          mt-0.5
-                          text-base
-                          font-bold
-                          text-blue-700
-                          dark:text-blue-300
-                        "
-                      >
-                        {getTimeZoneLabel(
-                          draft.time_zone
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </Row>
-              </div>
-            )}
-
-            {/* ================= NOTIFICATIONS ================= */}
-
-            {tab === 'Notifications' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('weekly_digest_email')}
-                  desc={t('progress_recommendations')}
-                  icon="mail"
-                >
-                  <Toggle
-                    checked={
-                      draft.weekly_digest
-                    }
-                    onChange={(value) =>
-                      set(
-                        'weekly_digest',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                {/* ================= RESPONSIVE LEARNING REMINDER ================= */}
-
-                <Row
-                  title={t('learning_reminders')}
-                  desc={t('upcoming_task_notifications')}
-                  icon="bell"
-                  compactControl
-                >
-                  <Toggle
-                    checked={
-                      draft.learning_reminders
-                    }
-                    onChange={(value) =>
-                      set(
-                        'learning_reminders',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-              </div>
-            )}
-
-            {/* ================= PRIVACY ================= */}
-
-            {tab === 'Privacy' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('show_activity_classmates')}
-                  desc={t('recent_submissions_comments')}
-                  icon="users"
-                >
-                  <Toggle
-                    checked={
-                      draft.activity_visible
-                    }
-                    onChange={(value) =>
-                      set(
-                        'activity_visible',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-
-                <Row
-                  title={t('show_progress_leaderboards')}
-                  icon="chart"
-                >
-                  <Toggle
-                    checked={
-                      draft.show_progress
-                    }
-                    onChange={(value) =>
-                      set(
-                        'show_progress',
-                        value
-                      )
-                    }
-                  />
-                </Row>
-              </div>
-            )}
-
-            {/* ================= PREFERENCES ================= */}
-
-            {tab === 'Preferences' && (
-              <div className="animate-fade-in">
-                <Row
-                  title={t('theme')}
-                  desc={t('choose_application_appearance')}
-                  icon="palette"
-                >
-                  <SettingSelect
-                    value={draft.theme}
-                    width="180px"
-                    onChange={(e) =>
-                      changeTheme(
-                        e.target.value
-                      )
-                    }
-                    className="w-full sm:w-auto"
-                  >
-                    <option value="Light">
-                      {t('light')}
-                    </option>
-
-                    <option value="Dark">
-                      {t('dark')}
-                    </option>
-
-                    <option value="SaaS Blue-White">
-                      SaaS Blue-White
-                    </option>
-                  </SettingSelect>
-                </Row>
-              </div>
-            )}
-          </div>
-
-          {/* ================= FOOTER ================= */}
-
-          <div
-            className="
-              flex
-              flex-col
-              gap-3
-              border-t
-              border-slate-200
-              bg-slate-50
-              px-3
-              py-4
-              sm:flex-row
-              sm:items-center
-              sm:justify-end
-              sm:px-5
-              dark:border-slate-800
-              dark:bg-slate-900
-            "
-          >
-            {saved === 'ok' && (
-              <span
-                className="
-                  text-xs
-                  font-medium
-                  text-emerald-600
-                  sm:mr-auto
-                  dark:text-emerald-400
-                "
-              >
-                {t('changes_saved_successfully')}
-              </span>
-            )}
-
-            {saved === 'error' && (
-              <span
-                className="
-                  text-xs
-                  font-medium
-                  text-red-600
-                  sm:mr-auto
-                  dark:text-red-400
-                "
-              >
-                {t('failed_to_save_changes')}
-              </span>
-            )}
-
-            <Button
-              variant="outline"
-              onClick={onCancel}
-            >
-              {t('cancel')}
-            </Button>
-
-            <Button onClick={onSave}>
-              {t('save_changes')}
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* ================= PASSWORD MODAL ================= */}
-
-      {passwordOpen && (
-        <div
-          className="
-            fixed
-            inset-0
-            z-[100]
-            flex
-            items-center
-            justify-center
-            overflow-y-auto
-            bg-slate-950/60
-            px-3
-            py-4
-            backdrop-blur-sm
-            sm:px-4
-            sm:py-6
-          "
-          onMouseDown={(event) => {
-            if (
-              event.target === event.currentTarget &&
-              !passwordLoading
-            ) {
-              closePasswordModal();
-            }
-          }}
-        >
-          <div
-            className="
-              my-auto
-              w-full
-              max-w-md
-              max-h-[calc(100vh-32px)]
-              overflow-y-auto
-              rounded-2xl
-              border
-              border-slate-200
-              bg-white
-              p-4
-              shadow-2xl
-              sm:p-6
-              dark:border-slate-700
-              dark:bg-slate-900
-            "
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="change-password-title"
-          >
-            {/* MODAL HEADER */}
-
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3
-                  id="change-password-title"
-                  className="
-                    text-lg
-                    font-bold
-                    text-slate-900
-                    dark:text-white
-                  "
-                >
-                  Change Password
-                </h3>
-
-                <p
-                  className="
-                    mt-1
-                    text-xs
-                    leading-5
-                    text-slate-500
-                    dark:text-slate-400
-                  "
-                >
-                  Enter your current password and choose
-                  a new password for your account.
-                </p>
+                <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-[3px] border-white bg-cyan-400 text-white dark:border-slate-950">
+                  <Icon name="check" size={10} strokeWidth={2.5} />
+                </span>
               </div>
 
-              <button
-                type="button"
-                onClick={closePasswordModal}
-                disabled={passwordLoading}
-                aria-label="Close"
-                className="
-                  flex
-                  h-9
-                  w-9
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-lg
-                  text-xl
-                  text-slate-400
-                  transition
-                  hover:bg-slate-100
-                  hover:text-slate-700
-                  disabled:cursor-not-allowed
-                  disabled:opacity-50
-                  dark:hover:bg-slate-800
-                  dark:hover:text-slate-200
-                "
-              >
-                ×
-              </button>
+              <div>
+                <div className="text-[10px] font-black tracking-[0.2em] text-indigo-500 dark:text-indigo-300">
+                  EMPLOYER WORKSPACE
+                </div>
+
+                <div className="mt-1 text-lg font-black text-slate-900 dark:text-white">
+                  Workspace identity
+                </div>
+
+                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Keep your account and workspace preferences up to date.
+                </div>
+              </div>
             </div>
 
-            {/* SUCCESS */}
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300">
+              <span className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
+              Account active
+            </div>
+          </div>
+        </div>
+      </div>
 
-            {passwordSuccess && (
-              <div
-                className="
-                  mb-4
-                  rounded-xl
-                  border
-                  border-emerald-200
-                  bg-emerald-50
-                  px-4
-                  py-3
-                  text-sm
-                  font-medium
-                  text-emerald-700
-                  dark:border-emerald-900
-                  dark:bg-emerald-950
-                  dark:text-emerald-300
-                "
-              >
-                Password changed successfully.
+      <div className="space-y-4">
+        <GlassRow
+          title="Profile visibility"
+          desc="Choose who can discover and view your profile."
+          icon="users"
+          compactControl
+        >
+          <SettingSelect
+            value={draft.profile_visibility}
+            onChange={(value) =>
+              set('profile_visibility', value)
+            }
+          >
+            <option value="public">Public</option>
+            <option value="classmates">Classmates</option>
+            <option value="private">Private</option>
+          </SettingSelect>
+        </GlassRow>
+
+        <GlassRow
+          title="Email address"
+          desc="Your account email is used for important account communication."
+          icon="mail"
+        >
+          <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 sm:min-w-[245px]">
+            {user?.email || draft.email || 'Not available'}
+          </div>
+        </GlassRow>
+
+        <GlassRow
+          title="Account password"
+          desc="Change your password to keep your account protected."
+          icon="lock"
+          compactControl
+        >
+          <button
+            type="button"
+            onClick={openPasswordModal}
+            className="group/password inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 via-indigo-500 to-cyan-400 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-indigo-500/30"
+          >
+            Change password
+            <span className="transition-transform duration-200 group-hover/password:translate-x-1">
+              <Icon name="arrow" size={15} />
+            </span>
+          </button>
+        </GlassRow>
+
+        <GlassRow
+          title="Dark mode"
+          desc="Use a darker visual experience throughout the application."
+          icon="moon"
+          compactControl
+        >
+          <Toggle
+            checked={Boolean(draft.dark_mode)}
+            onChange={(value) => set('dark_mode', value)}
+          />
+        </GlassRow>
+
+        <GlassRow
+          title="Learning reminders"
+          desc="Receive reminders related to learning and platform activity."
+          icon="bell"
+          compactControl
+        >
+          <Toggle
+            checked={Boolean(draft.learning_reminders)}
+            onChange={(value) =>
+              set('learning_reminders', value)
+            }
+          />
+        </GlassRow>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="group relative overflow-hidden rounded-[24px] border border-white/80 bg-white/75 p-5 shadow-lg shadow-indigo-500/5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-violet-500/10 dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-violet-400/15 blur-3xl transition-all group-hover:bg-violet-400/25" />
+
+          <div className="relative">
+            <div className="mb-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <GradientIcon name="globe" size={18} />
+
+                <div>
+                  <div className="text-sm font-black text-slate-900 dark:text-white">
+                    Language
+                  </div>
+
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    Interface language
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* ERROR */}
+              <span className="rounded-full bg-gradient-to-r from-violet-50 to-cyan-50 px-2.5 py-1 text-[10px] font-black text-indigo-600 dark:from-violet-950/50 dark:to-cyan-950/50 dark:text-indigo-300">
+                {getNativeLanguageName(draft.language)}
+              </span>
+            </div>
 
-            {passwordError && (
-              <div
-                className="
-                  mb-4
-                  rounded-xl
-                  border
-                  border-red-200
-                  bg-red-50
-                  px-4
-                  py-3
-                  text-sm
-                  leading-5
-                  text-red-700
-                  dark:border-red-900
-                  dark:bg-red-950
-                  dark:text-red-300
-                "
-                role="alert"
-              >
-                {passwordError}
-              </div>
-            )}
-
-            {/* FORM */}
-
-            <form
-              onSubmit={handlePasswordChange}
-              className="space-y-4"
+            <SettingSelect
+              value={draft.language}
+              onChange={changeLanguage}
+              width="200px"
+              className="sm:w-full"
             >
-              <PasswordInput
-                label="Current password"
-                value={currentPassword}
-                onChange={(e) =>
-                  setCurrentPassword(
-                    e.target.value
-                  )
-                }
-                show={showCurrentPassword}
-                onToggle={() =>
-                  setShowCurrentPassword(
-                    (value) => !value
-                  )
-                }
-                placeholder="Enter current password"
-                autoComplete="current-password"
-              />
+              {LANGUAGE_OPTIONS.map((option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                >
+                  {option.label} â€” {option.native}
+                </option>
+              ))}
+            </SettingSelect>
 
-              <PasswordInput
-                label="New password"
-                value={newPassword}
-                onChange={(e) =>
-                  setNewPassword(
-                    e.target.value
-                  )
-                }
-                show={showNewPassword}
-                onToggle={() =>
-                  setShowNewPassword(
-                    (value) => !value
-                  )
-                }
-                placeholder="Enter new password"
-                autoComplete="new-password"
-              />
+            <div className="mt-4 rounded-xl border border-indigo-100 bg-gradient-to-r from-violet-50/80 to-cyan-50/80 px-3 py-2.5 text-xs text-slate-500 dark:border-indigo-900 dark:from-violet-950/30 dark:to-cyan-950/30 dark:text-slate-400">
+              Selected:{' '}
+              <span className="font-black text-indigo-600 dark:text-indigo-300">
+                {getLanguageName(draft.language)}
+              </span>
+            </div>
+          </div>
+        </div>
 
-              <PasswordInput
-                label="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) =>
-                  setConfirmPassword(
-                    e.target.value
-                  )
-                }
-                show={showConfirmPassword}
-                onToggle={() =>
-                  setShowConfirmPassword(
-                    (value) => !value
-                  )
-                }
-                placeholder="Confirm new password"
-                autoComplete="new-password"
-              />
+        <div className="group relative overflow-hidden rounded-[24px] border border-white/80 bg-white/75 p-5 shadow-lg shadow-cyan-500/5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-cyan-500/10 dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-cyan-400/15 blur-3xl transition-all group-hover:bg-cyan-400/25" />
 
-              {/* ACTIONS */}
+          <div className="relative">
+            <div className="mb-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <GradientIcon name="clock" size={18} />
 
-              <div
-                className="
-                  flex
-                  flex-col-reverse
-                  gap-3
-                  pt-2
-                  sm:flex-row
-                  sm:justify-end
-                "
-              >
+                <div>
+                  <div className="text-sm font-black text-slate-900 dark:text-white">
+                    Time zone
+                  </div>
+
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    Dates and notifications
+                  </div>
+                </div>
+              </div>
+
+              <span className="rounded-full bg-gradient-to-r from-cyan-50 to-indigo-50 px-2.5 py-1 text-[10px] font-black text-cyan-700 dark:from-cyan-950/50 dark:to-indigo-950/50 dark:text-cyan-300">
+                LOCAL
+              </span>
+            </div>
+
+            <SettingSelect
+              value={draft.time_zone}
+              onChange={changeTimeZone}
+              width="200px"
+              className="sm:w-full"
+            >
+              {TIME_ZONE_OPTIONS.map((option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                >
+                  {option.label}
+                </option>
+              ))}
+            </SettingSelect>
+
+            <div className="mt-4 rounded-xl border border-cyan-100 bg-gradient-to-r from-cyan-50/80 to-indigo-50/80 px-3 py-2.5 text-xs text-slate-500 dark:border-cyan-900 dark:from-cyan-950/30 dark:to-indigo-950/30 dark:text-slate-400">
+              Current:{' '}
+              <span className="font-black text-cyan-700 dark:text-cyan-300">
+                {getTimeZoneLabel(draft.time_zone)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderNotifications = () => (
+    <div className="space-y-5">
+      <SectionTitle
+        eyebrow="NOTIFICATION CENTER"
+        title="Stay informed without the noise."
+        description="Choose the updates that matter to you and keep unnecessary notifications out of your workspace."
+      />
+
+      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 p-[1px] shadow-xl shadow-indigo-500/15">
+        <div className="relative overflow-hidden rounded-[27px] bg-slate-950 p-6 text-white sm:p-7">
+          <div className="absolute -right-20 -top-28 h-64 w-64 rounded-full bg-violet-500/25 blur-3xl" />
+          <div className="absolute -bottom-28 left-20 h-64 w-64 rounded-full bg-cyan-400/15 blur-3xl" />
+
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-cyan-300 ring-1 ring-white/10 backdrop-blur-md">
+                <Icon name="bell" size={25} />
+              </div>
+
+              <div>
+                <div className="text-[10px] font-black tracking-[0.2em] text-cyan-300">
+                  SMART NOTIFICATIONS
+                </div>
+
+                <div className="mt-1 text-lg font-black">
+                  Your notification rhythm
+                </div>
+
+                <div className="mt-1 text-sm text-slate-400">
+                  Keep the information you need and reduce distractions.
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                Active preferences
+              </div>
+
+              <div className="mt-1 text-sm font-black text-white">
+                {
+                  [
+                    draft.weekly_digest,
+                    draft.learning_reminders,
+                  ].filter(Boolean).length
+                } of 2 enabled
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4">
+        <GlassRow
+          title="Weekly digest"
+          desc="Receive a weekly summary of important activity and updates."
+          icon="chart"
+          compactControl
+        >
+          <Toggle
+            checked={Boolean(draft.weekly_digest)}
+            onChange={(value) =>
+              set('weekly_digest', value)
+            }
+          />
+        </GlassRow>
+
+        <GlassRow
+          title="Learning reminders"
+          desc="Receive reminders about learning activities and platform engagement."
+          icon="bell"
+          compactControl
+        >
+          <Toggle
+            checked={Boolean(draft.learning_reminders)}
+            onChange={(value) =>
+              set('learning_reminders', value)
+            }
+          />
+        </GlassRow>
+      </div>
+
+      <div className="rounded-[24px] border border-indigo-100 bg-gradient-to-br from-violet-50 via-white to-cyan-50 p-5 dark:border-indigo-900 dark:from-violet-950/30 dark:via-slate-950 dark:to-cyan-950/20">
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 text-white shadow-lg">
+            <Icon name="check" size={18} />
+          </div>
+
+          <div>
+            <div className="text-sm font-black text-slate-900 dark:text-white">
+              Notification settings are account-specific
+            </div>
+
+            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              Your selections only affect the notifications delivered to
+              your account.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPrivacy = () => (
+    <div className="space-y-5">
+      <SectionTitle
+        eyebrow="PRIVACY CENTER"
+        title="You decide what others can see."
+        description="Control your activity and progress visibility while keeping the rest of your account private."
+      />
+
+      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 p-6 text-white shadow-2xl shadow-violet-500/15 sm:p-7">
+        <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -bottom-28 left-10 h-60 w-60 rounded-full bg-cyan-300/10 blur-3xl" />
+
+        <div className="relative">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md">
+            <Icon name="shield" size={23} />
+          </div>
+
+          <div className="mt-5 text-2xl font-black">
+            Privacy at your fingertips.
+          </div>
+
+          <p className="mt-2 max-w-xl text-sm leading-6 text-white/75">
+            Adjust visibility settings whenever you want. Your
+            preferences can be changed without affecting your other
+            account settings.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <GlassRow
+          title="Activity visibility"
+          desc="Allow your activity to be visible where supported by the platform."
+          icon="users"
+          compactControl
+        >
+          <Toggle
+            checked={Boolean(draft.activity_visible)}
+            onChange={(value) =>
+              set('activity_visible', value)
+            }
+          />
+        </GlassRow>
+
+        <GlassRow
+          title="Progress & leaderboards"
+          desc="Allow your progress information to appear in supported progress and leaderboard views."
+          icon="chart"
+          compactControl
+        >
+          <Toggle
+            checked={Boolean(draft.show_progress)}
+            onChange={(value) =>
+              set('show_progress', value)
+            }
+          />
+        </GlassRow>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="group rounded-[22px] border border-white/80 bg-white/70 p-5 shadow-lg shadow-violet-500/5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center gap-3">
+            <GradientIcon name="shield" size={18} />
+
+            <div>
+              <div className="text-sm font-black text-slate-900 dark:text-white">
+                Privacy protection
+              </div>
+
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Visibility controls available
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 flex items-center gap-2 text-xs font-bold text-violet-600 dark:text-violet-300">
+            <Icon name="check" size={14} />
+            Controls enabled
+          </div>
+        </div>
+
+        <div className="group rounded-[22px] border border-white/80 bg-white/70 p-5 shadow-lg shadow-cyan-500/5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center gap-3">
+            <GradientIcon name="users" size={18} />
+
+            <div>
+              <div className="text-sm font-black text-slate-900 dark:text-white">
+                Profile visibility
+              </div>
+
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Current visibility preference
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 text-xs font-bold text-slate-600 dark:text-slate-300">
+            Mode:{' '}
+            <span className="bg-gradient-to-r from-violet-500 to-cyan-500 bg-clip-text font-black text-transparent">
+              {draft.profile_visibility}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPreferences = () => (
+    <div className="space-y-5">
+      <SectionTitle
+        eyebrow="VISUAL EXPERIENCE"
+        title="Make the workspace feel like yours."
+        description="Choose the appearance that works best for your daily employer workspace."
+      />
+
+      <div className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-fuchsia-600 via-violet-600 to-cyan-500 p-[1px] shadow-2xl shadow-violet-500/15">
+        <div className="relative overflow-hidden rounded-[29px] bg-white/95 p-6 dark:bg-slate-950/95 sm:p-7">
+          <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-fuchsia-400/10 blur-3xl" />
+          <div className="absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
+
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-500 to-cyan-400 text-white shadow-xl shadow-violet-500/20">
+                <Icon name="palette" size={25} />
+              </div>
+
+              <div>
+                <div className="text-[10px] font-black tracking-[0.2em] text-violet-600 dark:text-violet-300">
+                  THEME
+                </div>
+
+                <div className="mt-1 text-lg font-black text-slate-900 dark:text-white">
+                  Workspace appearance
+                </div>
+
+                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Current theme: {draft.theme}
+                </div>
+              </div>
+            </div>
+
+            <SettingSelect
+              value={draft.theme}
+              onChange={changeTheme}
+              width="200px"
+            >
+              <option value="Light">Light</option>
+              <option value="Dark">Dark</option>
+              <option value="SaaS Blue-White">
+                SaaS Blue-White
+              </option>
+            </SettingSelect>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Light */}
+        <button
+          type="button"
+          onClick={() => changeTheme('Light')}
+          className={[
+            'group relative overflow-hidden rounded-[24px] border p-4 text-left transition-all duration-300',
+            draft.theme === 'Light'
+              ? 'border-violet-400 bg-gradient-to-br from-violet-50 to-cyan-50 shadow-xl shadow-violet-500/10'
+              : 'border-slate-200 bg-white/70 hover:-translate-y-1 hover:border-violet-300 hover:shadow-xl',
+            'dark:border-slate-800 dark:bg-slate-900/60',
+          ].join(' ')}
+        >
+          <div className="absolute right-[-30px] top-[-30px] h-24 w-24 rounded-full bg-violet-300/20 blur-2xl opacity-0 transition group-hover:opacity-100" />
+
+          <div className="relative mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+            <div className="flex h-20 gap-2">
+              <div className="w-1/4 rounded-lg bg-gradient-to-b from-violet-100 to-cyan-50" />
+
+              <div className="flex-1 space-y-2">
+                <div className="h-2 w-2/3 rounded-full bg-slate-200" />
+                <div className="h-8 rounded-xl bg-gradient-to-r from-violet-50 to-cyan-50" />
+                <div className="h-3 rounded-full bg-slate-100" />
+              </div>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="text-sm font-black text-slate-900 dark:text-white">
+              Light
+            </div>
+
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Bright and clean
+            </div>
+          </div>
+        </button>
+
+        {/* Dark */}
+        <button
+          type="button"
+          onClick={() => changeTheme('Dark')}
+          className={[
+            'group relative overflow-hidden rounded-[24px] border p-4 text-left transition-all duration-300',
+            draft.theme === 'Dark'
+              ? 'border-indigo-400 bg-gradient-to-br from-indigo-950/60 to-violet-950/50 shadow-xl shadow-indigo-500/10'
+              : 'border-slate-200 bg-white/70 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-xl',
+            'dark:border-slate-800 dark:bg-slate-900/60',
+          ].join(' ')}
+        >
+          <div className="absolute right-[-30px] top-[-30px] h-24 w-24 rounded-full bg-indigo-400/20 blur-2xl opacity-0 transition group-hover:opacity-100" />
+
+          <div className="relative mb-4 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 p-2 shadow-sm">
+            <div className="flex h-20 gap-2">
+              <div className="w-1/4 rounded-lg bg-gradient-to-b from-indigo-950 to-violet-950" />
+
+              <div className="flex-1 space-y-2">
+                <div className="h-2 w-2/3 rounded-full bg-slate-700" />
+                <div className="h-8 rounded-xl bg-gradient-to-r from-indigo-950 to-violet-950" />
+                <div className="h-3 rounded-full bg-slate-800" />
+              </div>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="text-sm font-black text-slate-900 dark:text-white">
+              Dark
+            </div>
+
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Deep and immersive
+            </div>
+          </div>
+        </button>
+
+        {/* SaaS */}
+        <button
+          type="button"
+          onClick={() => changeTheme('SaaS Blue-White')}
+          className={[
+            'group relative overflow-hidden rounded-[24px] border p-4 text-left transition-all duration-300',
+            draft.theme === 'SaaS Blue-White'
+              ? 'border-cyan-400 bg-gradient-to-br from-cyan-50 to-indigo-50 shadow-xl shadow-cyan-500/10'
+              : 'border-slate-200 bg-white/70 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-xl',
+            'dark:border-slate-800 dark:bg-slate-900/60',
+          ].join(' ')}
+        >
+          <div className="absolute right-[-30px] top-[-30px] h-24 w-24 rounded-full bg-cyan-400/20 blur-2xl opacity-0 transition group-hover:opacity-100" />
+
+          <div className="relative mb-4 overflow-hidden rounded-2xl border border-cyan-100 bg-white p-2 shadow-sm">
+            <div className="flex h-20 gap-2">
+              <div className="w-1/4 rounded-lg bg-gradient-to-b from-cyan-100 to-indigo-50" />
+
+              <div className="flex-1 space-y-2">
+                <div className="h-2 w-2/3 rounded-full bg-cyan-200" />
+                <div className="h-8 rounded-xl bg-gradient-to-r from-cyan-50 to-indigo-50" />
+                <div className="h-3 rounded-full bg-cyan-100" />
+              </div>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="text-sm font-black text-slate-900 dark:text-white">
+              SaaS Blue-White
+            </div>
+
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Crisp SaaS style
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-400 p-[1px]">
+        <div className="rounded-[23px] bg-white/95 p-5 dark:bg-slate-950/95">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 text-white">
+              <Icon name="palette" size={18} />
+            </div>
+
+            <div>
+              <div className="text-sm font-black text-slate-900 dark:text-white">
+                Theme preview
+              </div>
+
+              <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                Your selected appearance is applied immediately and
+                can be saved using the Save Changes button below.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'Notifications':
+        return renderNotifications();
+
+      case 'Privacy':
+        return renderPrivacy();
+
+      case 'Preferences':
+        return renderPreferences();
+
+      case 'Account':
+      default:
+        return renderAccount();
+    }
+  };
+
+  const activeMeta = TAB_META[activeTab];
+
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-[#f7f7fb] px-3 py-4 text-slate-900 dark:bg-[#070711] dark:text-white sm:px-5 sm:py-6 lg:px-8">
+      {/* ============================= */}
+      {/* AURORA BACKGROUND */}
+      {/* ============================= */}
+
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-violet-400/20 blur-[120px] dark:bg-violet-600/10" />
+
+        <div className="absolute right-[-180px] top-[10%] h-[550px] w-[550px] rounded-full bg-cyan-400/15 blur-[130px] dark:bg-cyan-500/10" />
+
+        <div className="absolute bottom-[-220px] left-[25%] h-[500px] w-[500px] rounded-full bg-fuchsia-400/10 blur-[130px] dark:bg-fuchsia-600/10" />
+
+        <div className="absolute left-[45%] top-[35%] h-[300px] w-[300px] rounded-full bg-indigo-400/10 blur-[100px]" />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl">
+        {/* ============================= */}
+        {/* GRADIENT HERO */}
+        {/* ============================= */}
+
+        <div className="relative mb-6 overflow-hidden rounded-[32px] bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 p-[1px] shadow-[0_25px_80px_rgba(79,70,229,0.20)]">
+          <div className="relative overflow-hidden rounded-[31px] bg-slate-950">
+            {/* Glow effects */}
+            <div className="absolute -left-20 -top-32 h-80 w-80 rounded-full bg-fuchsia-500/25 blur-[100px]" />
+
+            <div className="absolute right-[-80px] top-[-100px] h-80 w-80 rounded-full bg-cyan-400/20 blur-[100px]" />
+
+            <div className="absolute bottom-[-150px] left-[35%] h-80 w-80 rounded-full bg-violet-500/20 blur-[100px]" />
+
+            <div className="relative px-5 py-7 sm:px-8 sm:py-9 lg:px-10">
+              <div className="flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border border-white/10 bg-white/10 text-white shadow-2xl backdrop-blur-md">
+                    <Icon name="building" size={29} />
+
+                    <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-[3px] border-slate-950 bg-gradient-to-r from-cyan-300 to-fuchsia-400 shadow-lg" />
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-black tracking-[0.3em] text-cyan-300">
+                      VAYVORA â€¢ EMPLOYER SPACE
+                    </div>
+
+                    <h1 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
+                      Settings
+                    </h1>
+
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                      Shape your workspace exactly the way you want it.
+                      Manage account, notifications, privacy and
+                      appearance from one beautiful control center.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 self-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
+                  <div className="relative">
+                    <span className="block h-3 w-3 rounded-full bg-gradient-to-r from-cyan-300 to-violet-400 shadow-[0_0_14px_rgba(34,211,238,0.8)]" />
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                      Workspace
+                    </div>
+
+                    <div className="text-xs font-bold text-white">
+                      All systems ready
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ============================= */}
+              {/* GRADIENT TABS */}
+              {/* ============================= */}
+
+              <div className="mt-8 overflow-x-auto pb-1">
+                <div className="flex min-w-max gap-2 rounded-2xl border border-white/10 bg-white/5 p-1.5 backdrop-blur-md">
+                  {TABS.map((tab) => {
+                    const meta = TAB_META[tab];
+                    const active = activeTab === tab;
+
+                    return (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setActiveTab(tab)}
+                        className={[
+                          'group relative flex items-center gap-2.5 rounded-xl px-4 py-3 text-left transition-all duration-300',
+                          active
+                            ? 'bg-gradient-to-r from-violet-500 via-indigo-500 to-cyan-400 text-white shadow-lg shadow-indigo-900/30'
+                            : 'text-slate-400 hover:bg-white/10 hover:text-white',
+                        ].join(' ')}
+                      >
+                        <span
+                          className={[
+                            'flex h-8 w-8 items-center justify-center rounded-lg transition-all',
+                            active
+                              ? 'bg-white/15 text-white'
+                              : 'bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-cyan-300',
+                          ].join(' ')}
+                        >
+                          <Icon name={meta.icon} size={17} />
+                        </span>
+
+                        <span>
+                          <span className="block text-xs font-black">
+                            {t(tab)}
+                          </span>
+
+                          <span
+                            className={[
+                              'mt-0.5 block text-[9px] font-bold tracking-wider',
+                              active
+                                ? 'text-white/65'
+                                : 'text-slate-600',
+                            ].join(' ')}
+                          >
+                            {meta.small}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================= */}
+        {/* CONTENT */}
+        {/* ============================= */}
+
+        <div className="relative overflow-hidden rounded-[32px] border border-white/80 bg-white/60 shadow-[0_25px_80px_rgba(30,41,59,0.08)] backdrop-blur-2xl dark:border-slate-800 dark:bg-slate-950/60">
+          {/* Content glow */}
+          <div className="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full bg-violet-400/5 blur-[100px]" />
+          <div className="pointer-events-none absolute -bottom-32 left-20 h-80 w-80 rounded-full bg-cyan-400/5 blur-[100px]" />
+
+          {/* Section header */}
+          <div className="relative border-b border-slate-200/60 px-5 py-5 dark:border-slate-800 sm:px-8">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-[10px] font-black tracking-[0.2em] text-indigo-500 dark:text-indigo-300">
+                  {activeMeta.small}
+                </div>
+
+                <div className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                  {activeMeta.title}
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-400">
+                {activeMeta.description}
+              </div>
+            </div>
+          </div>
+
+          {/* Actual tab content */}
+          <div className="relative p-5 sm:p-8 lg:p-9">
+            {renderContent()}
+          </div>
+
+          {/* ============================= */}
+          {/* ACTION FOOTER */}
+          {/* ============================= */}
+
+          <div className="relative border-t border-slate-200/60 bg-white/40 px-5 py-5 dark:border-slate-800 dark:bg-slate-950/30 sm:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-h-[32px]">
+                {savedStatus && (
+                  <div
+                    className={[
+                      'inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-bold',
+                      savedStatus.type === 'success'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300'
+                        : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300',
+                    ].join(' ')}
+                  >
+                    <span
+                      className={[
+                        'h-2 w-2 rounded-full',
+                        savedStatus.type === 'success'
+                          ? 'bg-emerald-500'
+                          : 'bg-red-500',
+                      ].join(' ')}
+                    />
+
+                    {savedStatus.message}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={closePasswordModal}
-                  disabled={passwordLoading}
-                  className="w-full sm:w-auto"
+                  variant="secondary"
+                  onClick={onCancel}
+                  className="w-full rounded-xl sm:w-auto"
                 >
                   Cancel
                 </Button>
 
                 <Button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="w-full sm:w-auto"
+                  type="button"
+                  onClick={onSave}
+                  className="w-full !border-0 !bg-gradient-to-r !from-violet-500 !via-indigo-500 !to-cyan-400 !text-white !shadow-lg !shadow-indigo-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:!from-violet-600 hover:!via-indigo-600 hover:!to-cyan-500 hover:!shadow-xl hover:!shadow-indigo-500/30 sm:w-auto"
                 >
-                  {passwordLoading
-                    ? 'Changing...'
-                    : 'Change Password'}
+                  Save Changes
                 </Button>
               </div>
-            </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ============================= */}
+      {/* PASSWORD MODAL */}
+      {/* ============================= */}
+
+      {passwordModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-xl">
+          <div
+            className="absolute inset-0"
+            onClick={closePasswordModal}
+          />
+
+          <div className="relative w-full max-w-lg overflow-hidden rounded-[30px] bg-gradient-to-br from-violet-500 via-indigo-500 to-cyan-400 p-[1px] shadow-[0_30px_100px_rgba(79,70,229,0.35)]">
+            <div className="relative overflow-hidden rounded-[29px] bg-white dark:bg-slate-950">
+              {/* Modal top */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 px-6 py-7 text-white sm:px-7">
+                <div className="absolute -right-16 -top-20 h-52 w-52 rounded-full bg-fuchsia-400/20 blur-3xl" />
+                <div className="absolute -bottom-24 left-20 h-52 w-52 rounded-full bg-cyan-300/15 blur-3xl" />
+
+                <div className="relative flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-13 w-13 h-[52px] w-[52px] items-center justify-center rounded-2xl bg-white/15 shadow-inner backdrop-blur-md">
+                      <Icon name="lock" size={23} />
+                    </div>
+
+                    <div>
+                      <div className="text-xl font-black">
+                        Change password
+                      </div>
+
+                      <div className="mt-1 text-xs leading-5 text-white/70">
+                        Update your account security credentials.
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={closePasswordModal}
+                    disabled={passwordLoading}
+                    className="rounded-xl bg-white/10 px-3 py-2 text-sm font-black text-white transition hover:bg-white/20 disabled:opacity-50"
+                  >
+                    âœ•
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal content */}
+              <div className="p-6 sm:p-7">
+                {passwordStatus && (
+                  <div
+                    className={[
+                      'mb-5 rounded-2xl border px-4 py-3 text-sm font-semibold',
+                      passwordStatus.type === 'success'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300'
+                        : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300',
+                    ].join(' ')}
+                  >
+                    {passwordStatus.message}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                      Current password
+                    </label>
+
+                    <PasswordInput
+                      value={currentPassword}
+                      onChange={(e) =>
+                        setCurrentPassword(e.target.value)
+                      }
+                      placeholder="Enter current password"
+                      show={showCurrent}
+                      setShow={setShowCurrent}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                      New password
+                    </label>
+
+                    <PasswordInput
+                      value={newPassword}
+                      onChange={(e) =>
+                        setNewPassword(e.target.value)
+                      }
+                      placeholder="Minimum 8 characters"
+                      show={showNew}
+                      setShow={setShowNew}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                      Confirm new password
+                    </label>
+
+                    <PasswordInput
+                      value={confirmPassword}
+                      onChange={(e) =>
+                        setConfirmPassword(e.target.value)
+                      }
+                      placeholder="Re-enter new password"
+                      show={showConfirm}
+                      setShow={setShowConfirm}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-indigo-100 bg-gradient-to-r from-violet-50 to-cyan-50 p-4 dark:border-indigo-900 dark:from-violet-950/30 dark:to-cyan-950/20">
+                  <div className="flex gap-3">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-cyan-400 text-white">
+                      <Icon name="shield" size={14} />
+                    </div>
+
+                    <div className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+                      Use at least 8 characters and choose a password
+                      that you do not use elsewhere.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={closePasswordModal}
+                    disabled={passwordLoading}
+                    className="w-full rounded-xl sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={handlePasswordChange}
+                    disabled={passwordLoading}
+                    className="w-full !border-0 !bg-gradient-to-r !from-violet-500 !via-indigo-500 !to-cyan-400 !text-white !shadow-lg !shadow-indigo-500/20 transition-all duration-300 hover:-translate-y-0.5 sm:w-auto"
+                  >
+                    {passwordLoading
+                      ? 'Changing...'
+                      : 'Change password'}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
+export default EmployerSettings;

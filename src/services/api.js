@@ -1,10 +1,12 @@
-
 import axios from "axios";
 
 // ---------------------------------------------------------
 // Environment & Constants
 // ---------------------------------------------------------
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5000";
+
+const API_BASE =
+  process.env.REACT_APP_API_BASE || "http://localhost:5000";
+
 const TOKEN_KEY = "edu_token";
 const REFRESH_KEY = "edu_refresh";
 const USER_KEY = "edu_user";
@@ -12,13 +14,18 @@ const USER_KEY = "edu_user";
 // ---------------------------------------------------------
 // Axios Configuration & Interceptors
 // ---------------------------------------------------------
+
 const api = axios.create({
   baseURL: API_BASE,
 });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   return config;
 });
 
@@ -26,30 +33,45 @@ let refreshPromise = null;
 
 async function attemptRefresh() {
   const refreshToken = localStorage.getItem(REFRESH_KEY);
-  if (!refreshToken) throw new Error("no refresh token");
+
+  if (!refreshToken) {
+    throw new Error("no refresh token");
+  }
 
   if (!refreshPromise) {
     const token = localStorage.getItem(TOKEN_KEY);
+
     refreshPromise = axios
       .post(
         `${API_BASE}/api/auth/refresh`,
         { refreshToken },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       )
       .then((res) => {
         localStorage.setItem(TOKEN_KEY, res.data.accessToken);
+
         if (res.data.refreshToken) {
           localStorage.setItem(REFRESH_KEY, res.data.refreshToken);
         }
+
         if (res.data.user) {
-          localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
+          localStorage.setItem(
+            USER_KEY,
+            JSON.stringify(res.data.user)
+          );
         }
+
         return res.data.accessToken;
       })
       .finally(() => {
         refreshPromise = null;
       });
   }
+
   return refreshPromise;
 }
 
@@ -61,11 +83,18 @@ api.interceptors.response.use(
     const url = original?.url || "";
     const isAuthEndpoint = url.includes("/api/auth/");
 
-    if (status === 401 && !original._retried && !isAuthEndpoint) {
+    if (
+      status === 401 &&
+      !original?._retried &&
+      !isAuthEndpoint
+    ) {
       try {
         const newToken = await attemptRefresh();
+
         original._retried = true;
+
         original.headers.Authorization = `Bearer ${newToken}`;
+
         return api(original);
       } catch (_) {
         localStorage.removeItem(TOKEN_KEY);
@@ -73,6 +102,7 @@ api.interceptors.response.use(
         localStorage.removeItem(USER_KEY);
       }
     }
+
     return Promise.reject(err);
   }
 );
@@ -80,9 +110,12 @@ api.interceptors.response.use(
 // ---------------------------------------------------------
 // Storage Helpers
 // ---------------------------------------------------------
+
 export const tokenStore = {
   get: () => localStorage.getItem(TOKEN_KEY),
+
   set: (t) => localStorage.setItem(TOKEN_KEY, t),
+
   clear: () => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
@@ -92,64 +125,129 @@ export const tokenStore = {
 
 export const refreshStore = {
   get: () => localStorage.getItem(REFRESH_KEY),
+
   set: (t) => localStorage.setItem(REFRESH_KEY, t),
 };
 
 export const userStore = {
   get: () => {
     const raw = localStorage.getItem(USER_KEY);
+
     return raw ? JSON.parse(raw) : null;
   },
-  set: (u) => localStorage.setItem(USER_KEY, JSON.stringify(u)),
-  clear: () => localStorage.removeItem(USER_KEY),
+
+  set: (u) =>
+    localStorage.setItem(USER_KEY, JSON.stringify(u)),
+
+  clear: () =>
+    localStorage.removeItem(USER_KEY),
 };
 
 // ---------------------------------------------------------
 // Authentication API
 // ---------------------------------------------------------
-export const loginUser = (credentials) => api.post("/api/auth/login", credentials).then((r) => r.data);
-export const registerUser = (data) => api.post("/api/auth/register", data).then((r) => r.data);
-export const fetchMe = () => api.get("/api/auth/me").then((r) => r.data);
-export const forgotPassword = (email) => api.post("/api/auth/forgot-password", { email }).then((r) => r.data);
-export const verifyOtp = (data) => api.post("/api/auth/verify-otp", data).then((r) => r.data);
-export const resetPassword = (data) => api.post("/api/auth/reset-password", data).then((r) => r.data);
+
+export const loginUser = (credentials) =>
+  api
+    .post("/api/auth/login", credentials)
+    .then((r) => r.data);
+
+export const registerUser = (data) =>
+  api
+    .post("/api/auth/register", data)
+    .then((r) => r.data);
+
+export const fetchMe = () =>
+  api
+    .get("/api/auth/me")
+    .then((r) => r.data);
+
+export const forgotPassword = (email) =>
+  api
+    .post("/api/auth/forgot-password", { email })
+    .then((r) => r.data);
+
+export const verifyOtp = (data) =>
+  api
+    .post("/api/auth/verify-otp", data)
+    .then((r) => r.data);
+
+export const resetPassword = (data) =>
+  api
+    .post("/api/auth/reset-password", data)
+    .then((r) => r.data);
 
 // ---------------------------------------------------------
 // User & Role API
 // ---------------------------------------------------------
+
 export const getDomainRoles = async () => {
   const res = await api.get("/api/domain-roles");
+
   return res.data.data;
 };
+
 export const getUserProfile = (id) => {
-  const targetId = (!id || id === "undefined" || id === "null") ? "me" : id;
-  return api.get(`/api/users/${targetId}`).then((r) => r.data);
+  const targetId =
+    !id ||
+    id === "undefined" ||
+    id === "null"
+      ? "me"
+      : id;
+
+  return api
+    .get(`/api/users/${targetId}`)
+    .then((r) => r.data);
 };
+
 export const updateUserName = (id, name) =>
-  api.patch(`/api/users/${id}`, { name }).then((r) => r.data);
+  api
+    .patch(`/api/users/${id}`, { name })
+    .then((r) => r.data);
+
 export const saveUserProfile = (id, data) =>
-  api.put(`/api/users/${id}/profile`, data).then((r) => r.data);
+  api
+    .put(`/api/users/${id}/profile`, data)
+    .then((r) => r.data);
 
 export const uploadProfileAvatar = (id, imageFile) => {
   const formData = new FormData();
+
   formData.append("avatar", imageFile);
+
   return api
     .post(`/api/users/${id}/avatar`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     })
     .then((r) => r.data);
 };
 
 export const deleteProfileAvatar = (id) =>
-  api.delete(`/api/users/${id}/avatar`).then((r) => r.data);
+  api
+    .delete(`/api/users/${id}/avatar`)
+    .then((r) => r.data);
 
 export const resolveAssetUrl = (url) => {
-  if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+  if (!url) return "";
+
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("blob:") ||
+    url.startsWith("data:")
+  ) {
     return url;
   }
-  const base = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
-  return `${base.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+
+  const base =
+    process.env.REACT_APP_API_BASE ||
+    "http://localhost:5000";
+
+  return `${base.replace(/\/$/, "")}${
+    url.startsWith("/") ? "" : "/"
+  }${url}`;
 };
 
 export const uploadProfileResume = (id, resumeFile) => {
@@ -158,49 +256,131 @@ export const uploadProfileResume = (id, resumeFile) => {
   formData.append("resume", resumeFile);
 
   return api
-    .post(`/api/users/${id}/profile/resume`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
+    .post(
+      `/api/users/${id}/profile/resume`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    )
     .then((r) => r.data);
 };
+
 export const getStudentCandidates = () =>
-  api.get("/api/users/students/candidates").then((r) => r.data);
+  api
+    .get("/api/users/students/candidates")
+    .then((r) => r.data);
 
 // ---------------------------------------------------------
 // Assessments & Gap Report API
 // ---------------------------------------------------------
-export const submitAssessment = (data) => api.post("/api/assessments", data).then((r) => r.data);
-export const getAssessmentResults = (id) => api.get(`/api/assessments/${id}/results`).then((r) => r.data);
-export const getAssessmentOverview = () => api.get("/api/assessments/overview").then((r) => r.data);
-export const fetchGapReport = (userId) => api.get(`/api/gap-report/${userId}`).then((r) => r.data);
-export const getSkillGapAnalysis = (userId) => api.get(`/api/skill-gap-analysis/${userId}`).then((r) => r.data);
+
+export const submitAssessment = (data) =>
+  api
+    .post("/api/assessments", data)
+    .then((r) => r.data);
+
+export const getAssessmentResults = (id) =>
+  api
+    .get(`/api/assessments/${id}/results`)
+    .then((r) => r.data);
+
+export const getAssessmentOverview = () =>
+  api
+    .get("/api/assessments/overview")
+    .then((r) => r.data);
+
+export const fetchGapReport = (userId) =>
+  api
+    .get(`/api/gap-report/${userId}`)
+    .then((r) => r.data);
+
+export const getSkillGapAnalysis = (userId) =>
+  api
+    .get(`/api/skill-gap-analysis/${userId}`)
+    .then((r) => r.data);
+
+// ---------------------------------------------------------
 // Initial Adaptive Skill Assessment
-export const startInitialQuiz = () => api.post("/api/assessments/initial-quiz/start").then((r) => r.data);
-export const submitInitialQuizAnswer = ({ sessionId, questionId, answer }) =>
-  api.post("/api/assessments/initial-quiz/answer", { session_id: sessionId, question_id: questionId, answer }).then((r) => r.data);
+// ---------------------------------------------------------
+
+export const startInitialQuiz = () =>
+  api
+    .post("/api/assessments/initial-quiz/start")
+    .then((r) => r.data);
+
+export const submitInitialQuizAnswer = ({
+  sessionId,
+  questionId,
+  answer,
+}) =>
+  api
+    .post(
+      "/api/assessments/initial-quiz/answer",
+      {
+        session_id: sessionId,
+        question_id: questionId,
+        answer,
+      }
+    )
+    .then((r) => r.data);
+
 export const activateInitialQuiz = (sessionId) =>
-  api.post("/api/assessments/initial-quiz/activate", { session_id: sessionId }).then((r) => r.data);
+  api
+    .post(
+      "/api/assessments/initial-quiz/activate",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
+
 export const heartbeatInitialQuiz = (sessionId) =>
-  api.post("/api/assessments/initial-quiz/heartbeat", { session_id: sessionId }).then((r) => r.data);
+  api
+    .post(
+      "/api/assessments/initial-quiz/heartbeat",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
+
 export const pauseInitialQuiz = (sessionId) =>
-  api.post("/api/assessments/initial-quiz/pause", { session_id: sessionId }).then((r) => r.data);
+  api
+    .post(
+      "/api/assessments/initial-quiz/pause",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
 
 export const pauseInitialQuizOnUnload = (sessionId) => {
   if (!sessionId) return;
+
   const token = localStorage.getItem(TOKEN_KEY);
+
   if (!token) return;
 
-  fetch(`${API_BASE}/api/assessments/initial-quiz/pause`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ session_id: sessionId }),
-    keepalive: true,
-  }).catch(() => { });
+  fetch(
+    `${API_BASE}/api/assessments/initial-quiz/pause`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+
+      body: JSON.stringify({
+        session_id: sessionId,
+      }),
+
+      keepalive: true,
+    }
+  ).catch(() => {});
 };
 
 export const getInitialCodingAssessmentInfo = () =>
@@ -208,13 +388,16 @@ export const getInitialCodingAssessmentInfo = () =>
     .get("/api/assessments/initial-coding/info")
     .then((r) => r.data);
 
-// assessmnent report when student got terminated
+// Assessment report when student got terminated
+
 export const submitAssessmentReport = async (data) => {
-  const res = await api.post("/api/assessment-reports", data);
+  const res = await api.post(
+    "/api/assessment-reports",
+    data
+  );
+
   return res.data;
 };
-
-
 export const getMyAssessmentReports = async () => {
   const res = await api.get("/api/assessment-reports");
   return res.data;
@@ -234,69 +417,211 @@ export const getAssessmentReportEvidence = async (reportId) => {
   };
 };
 
+// ---------------------------------------------------------
 // Initial Coding Assessment
-export const startInitialCodingAssessment = (sessionId) =>
-  api.post("/api/assessments/initial-coding/start", { session_id: sessionId }).then((r) => r.data);
-export const runInitialCodingCode = (data) => api.post("/api/assessments/initial-coding/run", data).then((r) => r.data);
-export const submitInitialCodingAnswer = (data) => api.post("/api/assessments/initial-coding/submit", data).then((r) => r.data);
-export const completeInitialCodingAssessment = (sessionId) =>
-  api.post("/api/assessments/initial-coding/complete", { session_id: sessionId }).then((r) => r.data);
-export const activateInitialCodingAssessment = (sessionId) =>
-  api.post("/api/assessments/initial-coding/activate", { session_id: sessionId }).then((r) => r.data);
-export const heartbeatInitialCodingAssessment = (sessionId) =>
-  api.post("/api/assessments/initial-coding/heartbeat", { session_id: sessionId }).then((r) => r.data);
-export const pauseInitialCodingAssessment = (sessionId) =>
-  api.post("/api/assessments/initial-coding/pause", { session_id: sessionId }).then((r) => r.data);
+// ---------------------------------------------------------
 
-export const pauseInitialCodingAssessmentOnUnload = (sessionId) => {
+export const startInitialCodingAssessment = (
+  sessionId
+) =>
+  api
+    .post(
+      "/api/assessments/initial-coding/start",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
+
+export const runInitialCodingCode = (data) =>
+  api
+    .post(
+      "/api/assessments/initial-coding/run",
+      data
+    )
+    .then((r) => r.data);
+
+export const submitInitialCodingAnswer = (data) =>
+  api
+    .post(
+      "/api/assessments/initial-coding/submit",
+      data
+    )
+    .then((r) => r.data);
+
+export const completeInitialCodingAssessment = (
+  sessionId
+) =>
+  api
+    .post(
+      "/api/assessments/initial-coding/complete",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
+
+export const activateInitialCodingAssessment = (
+  sessionId
+) =>
+  api
+    .post(
+      "/api/assessments/initial-coding/activate",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
+
+export const heartbeatInitialCodingAssessment = (
+  sessionId
+) =>
+  api
+    .post(
+      "/api/assessments/initial-coding/heartbeat",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
+
+export const pauseInitialCodingAssessment = (
+  sessionId
+) =>
+  api
+    .post(
+      "/api/assessments/initial-coding/pause",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
+
+export const pauseInitialCodingAssessmentOnUnload = (
+  sessionId
+) => {
   if (!sessionId) return;
+
   const token = localStorage.getItem(TOKEN_KEY);
+
   if (!token) return;
 
-  fetch(`${API_BASE}/api/assessments/initial-coding/pause`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ session_id: sessionId }),
-    keepalive: true,
-  }).catch(() => { });
+  fetch(
+    `${API_BASE}/api/assessments/initial-coding/pause`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+
+      body: JSON.stringify({
+        session_id: sessionId,
+      }),
+
+      keepalive: true,
+    }
+  ).catch(() => {});
 };
 
+// ---------------------------------------------------------
 // Final Adaptive Skill Assessment
-export const startFinalQuiz = () => api.post("/api/assessments/final-quiz/start").then((r) => r.data);
-export const submitFinalQuizAnswer = ({ sessionId, questionId, answer }) =>
-  api.post("/api/assessments/final-quiz/answer", { session_id: sessionId, question_id: questionId, answer }).then((r) => r.data);
+// ---------------------------------------------------------
+
+export const startFinalQuiz = () =>
+  api
+    .post("/api/assessments/final-quiz/start")
+    .then((r) => r.data);
+
+export const submitFinalQuizAnswer = ({
+  sessionId,
+  questionId,
+  answer,
+}) =>
+  api
+    .post(
+      "/api/assessments/final-quiz/answer",
+      {
+        session_id: sessionId,
+        question_id: questionId,
+        answer,
+      }
+    )
+    .then((r) => r.data);
+
 export const activateFinalQuiz = (sessionId) =>
-  api.post("/api/assessments/final-quiz/activate", { session_id: sessionId }).then((r) => r.data);
+  api
+    .post(
+      "/api/assessments/final-quiz/activate",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
+
 export const heartbeatFinalQuiz = (sessionId) =>
-  api.post("/api/assessments/final-quiz/heartbeat", { session_id: sessionId }).then((r) => r.data);
+  api
+    .post(
+      "/api/assessments/final-quiz/heartbeat",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
+
 export const pauseFinalQuiz = (sessionId) =>
-  api.post("/api/assessments/final-quiz/pause", { session_id: sessionId }).then((r) => r.data);
+  api
+    .post(
+      "/api/assessments/final-quiz/pause",
+      {
+        session_id: sessionId,
+      }
+    )
+    .then((r) => r.data);
 
 export const pauseFinalQuizOnUnload = (sessionId) => {
   if (!sessionId) return;
+
   const token = localStorage.getItem(TOKEN_KEY);
+
   if (!token) return;
 
-  fetch(`${API_BASE}/api/assessments/final-quiz/pause`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ session_id: sessionId }),
-    keepalive: true,
-  }).catch(() => { });
+  fetch(
+    `${API_BASE}/api/assessments/final-quiz/pause`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+
+      body: JSON.stringify({
+        session_id: sessionId,
+      }),
+
+      keepalive: true,
+    }
+  ).catch(() => {});
 };
 
-//Mini Project APIs (Final Assessment)
-export const getCurrentMiniProject = () => api.get("/api/mini-projects/current").then((r) => r.data);
+// ---------------------------------------------------------
+// Mini Project APIs (Final Assessment)
+// ---------------------------------------------------------
 
-export const getMiniProjectSubmissions = (assignmentId) =>
+export const getCurrentMiniProject = () =>
   api
-    .get(`/api/mini-projects/${assignmentId}/submissions`)
+    .get("/api/mini-projects/current")
+    .then((r) => r.data);
+
+export const getMiniProjectSubmissions = (
+  assignmentId
+) =>
+  api
+    .get(
+      `/api/mini-projects/${assignmentId}/submissions`
+    )
     .then((r) => r.data);
 
 export const submitMiniProject = (
@@ -305,100 +630,206 @@ export const submitMiniProject = (
   branch = "main"
 ) =>
   api
-    .post(`/api/mini-projects/${assignmentId}/submissions`, {
-      repository_url: repositoryUrl,
-      branch,
-    })
+    .post(
+      `/api/mini-projects/${assignmentId}/submissions`,
+      {
+        repository_url: repositoryUrl,
+        branch,
+      }
+    )
     .then((r) => r.data);
 
-export const getMyMiniProjects = () => api.get("/api/mini-projects").then((r) => r.data);
-
-export const createMiniProject = (data) => api.post("/api/mini-projects", data).then((r) => r.data);
-
-export const publishMiniProject = (assignmentId, due_at) =>
+export const getMyMiniProjects = () =>
   api
-    .post(`/api/mini-projects/${assignmentId}/publish`, {
-      due_at,
-    })
+    .get("/api/mini-projects")
+    .then((r) => r.data);
+
+export const createMiniProject = (data) =>
+  api
+    .post("/api/mini-projects", data)
+    .then((r) => r.data);
+
+export const publishMiniProject = (
+  assignmentId,
+  due_at
+) =>
+  api
+    .post(
+      `/api/mini-projects/${assignmentId}/publish`,
+      {
+        due_at,
+      }
+    )
     .then((r) => r.data);
 
 // ---------------------------------------------------------
 // Courses & Lessons API
 // ---------------------------------------------------------
+
 export const getCourses = (params = {}) =>
-  api.get("/api/courses", { params }).then((r) => r.data?.data ?? r.data);
-export const getCourse = (id) => api.get(`/api/courses/${id}`).then((r) => r.data?.data ?? r.data);
-export const createCourse = (data) => api.post("/api/courses", data).then((r) => r.data);
-export const updateCourse = (id, data) => api.patch(`/api/courses/${id}`, data).then((r) => r.data);
-export const deleteCourse = (id) => api.delete(`/api/courses/${id}`).then((r) => r.data);
+  api
+    .get("/api/courses", { params })
+    .then((r) => r.data?.data ?? r.data);
 
+export const getCourse = (id) =>
+  api
+    .get(`/api/courses/${id}`)
+    .then((r) => r.data?.data ?? r.data);
+
+export const createCourse = (data) =>
+  api
+    .post("/api/courses", data)
+    .then((r) => r.data);
+
+export const updateCourse = (id, data) =>
+  api
+    .patch(`/api/courses/${id}`, data)
+    .then((r) => r.data);
+
+export const deleteCourse = (id) =>
+  api
+    .delete(`/api/courses/${id}`)
+    .then((r) => r.data);
+
+// ---------------------------------------------------------
 // Course Ratings & Feedback
+// ---------------------------------------------------------
+
 export const rateCourse = (courseId, data) =>
-  api.post(`/api/courses/${courseId}/ratings`, data).then((r) => r.data);
+  api
+    .post(`/api/courses/${courseId}/ratings`, data)
+    .then((r) => r.data);
+
 export const getMyCourseRating = (courseId) =>
-  api.get(`/api/courses/${courseId}/ratings/me`).then((r) => r.data);
+  api
+    .get(`/api/courses/${courseId}/ratings/me`)
+    .then((r) => r.data);
+
 export const getCourseRatings = (courseId) =>
-  api.get(`/api/courses/${courseId}/ratings`).then((r) => r.data);
+  api
+    .get(`/api/courses/${courseId}/ratings`)
+    .then((r) => r.data);
+
 export const getEducatorCourseFeedback = () =>
-  api.get(`/api/courses/educator/reviews`).then((r) => r.data);
+  api
+    .get("/api/courses/educator/reviews")
+    .then((r) => r.data);
 
+// ---------------------------------------------------------
 // Lessons
+// ---------------------------------------------------------
+
 export const getLessonsForCourse = (courseId) =>
-  api.get(`/api/courses/${courseId}/lessons`).then((r) => r.data);
+  api
+    .get(`/api/courses/${courseId}/lessons`)
+    .then((r) => r.data);
+
 export const createLesson = (courseId, data) =>
-  api.post(`/api/courses/${courseId}/lessons`, data).then((r) => r.data);
+  api
+    .post(`/api/courses/${courseId}/lessons`, data)
+    .then((r) => r.data);
+
 export const updateLesson = (id, data) =>
-  api.patch(`/api/lessons/lesson/${id}`, data).then((r) => r.data);
+  api
+    .patch(`/api/lessons/lesson/${id}`, data)
+    .then((r) => r.data);
+
 export const getLesson = (lessonId) =>
-  api.get(`/api/lessons/lesson/${lessonId}`).then((r) => r.data);
+  api
+    .get(`/api/lessons/lesson/${lessonId}`)
+    .then((r) => r.data);
+
 export const deleteLesson = (lessonId) =>
-  api.delete(`/api/lessons/lesson/${lessonId}`).then((r) => r.data);
-
-
+  api
+    .delete(`/api/lessons/lesson/${lessonId}`)
+    .then((r) => r.data);
 
 // ---------------------------------------------------------
 // Progress & Enrollments API
 // ---------------------------------------------------------
-export const getMyProgress = () => api.get("/api/progress").then((r) => r.data?.data ?? r.data);
+
+export const getMyProgress = () =>
+  api
+    .get("/api/progress")
+    .then((r) => r.data?.data ?? r.data);
+
 export const updateProgress = (lessonId, patch) =>
-  api.patch(`/api/progress/${lessonId}`, patch).then((r) => r.data);
+  api
+    .patch(`/api/progress/${lessonId}`, patch)
+    .then((r) => r.data);
+
 export const submitQuiz = (lessonId, answers) =>
-  api.post(`/api/progress/${lessonId}/submit-quiz`, { answers }).then((r) => r.data);
+  api
+    .post(
+      `/api/progress/${lessonId}/submit-quiz`,
+      { answers }
+    )
+    .then((r) => r.data);
 
 // Enrollments
+
 export const enrollCourse = (courseId) =>
-  api.post("/api/enrollments", { course_id: courseId }).then((r) => r.data);
+  api
+    .post("/api/enrollments", {
+      course_id: courseId,
+    })
+    .then((r) => r.data);
+
 export const getMyEnrollments = () =>
-  api.get("/api/enrollments").then((r) => r.data?.data ?? r.data);
+  api
+    .get("/api/enrollments")
+    .then((r) => r.data?.data ?? r.data);
 
 export const getMyCourseProficiency = async () => {
   const [courses, enrollments] = await Promise.all([
     getCourses(),
     getMyEnrollments(),
   ]);
-  return { courses, enrollments };
+
+  return {
+    courses,
+    enrollments,
+  };
 };
 
 // ---------------------------------------------------------
 // Jobs & Assignments API
 // ---------------------------------------------------------
-export const getJobs = (params = {}) => api.get("/api/jobs", { params }).then((r) => r.data);
 
-export const getJobById = (id) =>
-  api.get(`/api/jobs/${id}`).then((r) => r.data);
-
-export const createJob = (data) => api.post("/api/jobs", data).then((r) => r.data);
-
-export const updateJob = (id, data) =>
-  api.patch(`/api/jobs/${id}`, data).then((r) => r.data);
-
-export const deleteJob = (id) => api.delete(`/api/jobs/${id}`).then((r) => r.data);
-
-export const getApplicationVideoUrl = (jobId, applicationId) =>
+export const getJobs = (params = {}) =>
   api
-    .get(`/api/jobs/${jobId}/applications/${applicationId}/video`)
+    .get("/api/jobs", { params })
     .then((r) => r.data);
 
+export const getJobById = (id) =>
+  api
+    .get(`/api/jobs/${id}`)
+    .then((r) => r.data);
+
+export const createJob = (data) =>
+  api
+    .post("/api/jobs", data)
+    .then((r) => r.data);
+
+export const updateJob = (id, data) =>
+  api
+    .patch(`/api/jobs/${id}`, data)
+    .then((r) => r.data);
+
+export const deleteJob = (id) =>
+  api
+    .delete(`/api/jobs/${id}`)
+    .then((r) => r.data);
+
+export const getApplicationVideoUrl = (
+  jobId,
+  applicationId
+) =>
+  api
+    .get(
+      `/api/jobs/${jobId}/applications/${applicationId}/video`
+    )
+    .then((r) => r.data);
 
 export const getApplicationVideoUploadUrl = (
   jobId,
@@ -407,12 +838,15 @@ export const getApplicationVideoUploadUrl = (
   fileSize
 ) =>
   api
-    .post(`/api/jobs/${jobId}/application-video-upload-url`, {
-      file_name: fileName,
-      file_type: fileType,
-      file_size: fileSize,
- })
-.then((r) => r.data);
+    .post(
+      `/api/jobs/${jobId}/application-video-upload-url`,
+      {
+        file_name: fileName,
+        file_type: fileType,
+        file_size: fileSize,
+      }
+    )
+    .then((r) => r.data);
 
 export const applyJob = (
   jobId,
@@ -431,37 +865,88 @@ export const applyJob = (
   }
 
   return api
-    .post(`/api/jobs/${jobId}/apply`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
+    .post(
+      `/api/jobs/${jobId}/apply`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    )
     .then((r) => r.data);
 };
 
-export const inviteCandidate = (jobId, studentId, message) =>
-  api.post(`/api/jobs/${jobId}/invite`, { candidate_id: studentId, message }).then((r) => r.data);
+export const inviteCandidate = (
+  jobId,
+  studentId,
+  message
+) =>
+  api
+    .post(
+      `/api/jobs/${jobId}/invite`,
+      {
+        candidate_id: studentId,
+        message,
+      }
+    )
+    .then((r) => r.data);
 
 // Course assignments (educator → student)
-export const assignCourse = (courseId,{userId,due_date,note,}) =>
-    api.post(`/api/courses/${courseId}/assign`, {userId,due_date,note,}).then((r) => r.data);
+
+export const assignCourse = (
+  courseId,
+  {
+    userId,
+    due_date,
+    note,
+  }
+) =>
+  api
+    .post(
+      `/api/courses/${courseId}/assign`,
+      {
+        userId,
+        due_date,
+        note,
+      }
+    )
+    .then((r) => r.data);
+
 export const getMyAssignments = () =>
-  api.get('/api/tasks').then((r) => r.data).catch(() => []);
+  api
+    .get("/api/tasks")
+    .then((r) => r.data)
+    .catch(() => []);
 
 export const getCourseAssignments = (courseId) =>
-  api.get(`/api/courses/${courseId}/assignments`).then((r) => r.data);
+  api
+    .get(`/api/courses/${courseId}/assignments`)
+    .then((r) => r.data);
 
 export const cancelAssignment = (assignmentId) =>
-  api.post(`/api/assignments/${assignmentId}/cancel`).then((r) => r.data);
+  api
+    .post(
+      `/api/assignments/${assignmentId}/cancel`
+    )
+    .then((r) => r.data);
 
 export const getJobApplications = (jobId) =>
-  api.get(`/api/jobs/${jobId}/applications`).then((r) => r.data);
+  api
+    .get(`/api/jobs/${jobId}/applications`)
+    .then((r) => r.data);
 
 export const getMyJobApplications = () =>
-  api.get("/api/jobs/my-applications").then((r) => r.data);
+  api
+    .get("/api/jobs/my-applications")
+    .then((r) => r.data);
 
 export const updateReport = async (id, data) => {
-  const res = await api.patch(`/api/reports/${id}`, data);
+  const res = await api.patch(
+    `/api/reports/${id}`,
+    data
+  );
+
   return res.data;
 };
 
@@ -473,10 +958,11 @@ export const updateApplicationStatus = (
   api
     .patch(
       `/api/jobs/${jobId}/applications/${applicationId}/status`,
-      { status }
+      {
+        status,
+      }
     )
     .then((r) => r.data);
-
 
 export async function scheduleInterview(
   jobId,
@@ -490,7 +976,6 @@ export async function scheduleInterview(
 
   return response.data;
 }
-
 
 export async function getInterview(
   jobId,
@@ -510,7 +995,6 @@ export async function getMyInterview(jobId) {
 
   return response.data;
 }
-
 
 export async function updateInterview(
   jobId,
@@ -536,7 +1020,6 @@ export async function cancelInterview(
   return response.data;
 }
 
-
 export async function sendApplicantEmail(
   jobId,
   applicationId,
@@ -550,181 +1033,660 @@ export async function sendApplicantEmail(
   return response.data;
 }
 
-
 export const getEligibleStudents = (jobId) =>
-  api.get(`/api/jobs/${jobId}/eligible-students`).then((r) => r.data);
+  api
+    .get(
+      `/api/jobs/${jobId}/eligible-students`
+    )
+    .then((r) => r.data);
 
+// ---------------------------------------------------------
 // Notifications
-export const getNotifications = () => api.get("/api/notifications").then((r) => r.data);
-export const markNotificationRead = (id) => api.patch(`/api/notifications/${id}/read`).then((r) => r.data);
-export const markAllNotificationsRead = () => api.patch("/api/notifications/read-all").then((r) => r.data);
-export const markAnnouncementNotificationsRead = (announcementId) =>
-  api.patch("/api/notifications/read-announcements", { announcementId }).then((r) => r.data).catch(() => ({}));
+// ---------------------------------------------------------
 
+export const getNotifications = () =>
+  api
+    .get("/api/notifications")
+    .then((r) => r.data);
+
+export const markNotificationRead = (id) =>
+  api
+    .patch(`/api/notifications/${id}/read`)
+    .then((r) => r.data);
+
+export const markAllNotificationsRead = () =>
+  api
+    .patch("/api/notifications/read-all")
+    .then((r) => r.data);
+
+export const markAnnouncementNotificationsRead = (
+  announcementId
+) =>
+  api
+    .patch(
+      "/api/notifications/read-announcements",
+      {
+        announcementId,
+      }
+    )
+    .then((r) => r.data)
+    .catch(() => ({}));
+
+// ---------------------------------------------------------
 // Admin
-export const getAllUsers = (params = {}) =>
-  api.get("/api/admin/users", { params }).then((r) => r.data);
-export const updateUser = (id, data) =>
-  api.patch(`/api/admin/users/${id}`, data).then((r) => r.data);
-export const deleteUser = (id) =>
-  api.delete(`/api/admin/users/${id}`).then((r) => r.data);
-export const getInsights = () => api.get("/api/admin/insights").then((r) => r.data);
+// ---------------------------------------------------------
 
- export const getAdminRecentActivity = (limit = 10) =>
+export const getAllUsers = (params = {}) =>
+  api
+    .get("/api/admin/users", { params })
+    .then((r) => r.data);
+
+export const updateUser = (id, data) =>
+  api
+    .patch(`/api/admin/users/${id}`, data)
+    .then((r) => r.data);
+
+export const deleteUser = (id) =>
+  api
+    .delete(`/api/admin/users/${id}`)
+    .then((r) => r.data);
+
+export const getInsights = () =>
+  api
+    .get("/api/admin/insights")
+    .then((r) => r.data);
+
+export const getAdminRecentActivity = (
+  limit = 10
+) =>
   api
     .get("/api/admin/recent-activity", {
-      params: { limit },
+      params: {
+        limit,
+      },
     })
     .then((r) => r.data);
 
-export const getAssessmentReports = (status = '') =>
+export const getAssessmentReports = (
+  status = ""
+) =>
   api
-    .get('/api/admin/assessment-reports', {
+    .get("/api/admin/assessment-reports", {
       params: status ? { status } : {},
     })
     .then((r) => r.data);
 
 export const getAssessmentReport = (id) =>
-  api.get(`/api/admin/assessment-reports/${id}`).then((r) => r.data);
-
-export const updateAssessmentReport = (id, data) =>
   api
-    .patch(`/api/admin/assessment-reports/${id}`, data)
+    .get(`/api/admin/assessment-reports/${id}`)
     .then((r) => r.data);
 
-export const getReportsSummary = () => api.get("/api/reports/summary").then((r) => r.data);
+export const updateAssessmentReport = (
+  id,
+  data
+) =>
+  api
+    .patch(
+      `/api/admin/assessment-reports/${id}`,
+      data
+    )
+    .then((r) => r.data);
+
+export const getReportsSummary = () =>
+  api
+    .get("/api/reports/summary")
+    .then((r) => r.data);
 
 export const getPlatformHealth = () =>
-  api.get("/api/health").then((r) => r.data);
+  api
+    .get("/api/health")
+    .then((r) => r.data);
 
-export const getTopReports = () => api.get("/api/reports").then((r) => r.data);
-export const getExportHistory = () => api.get("/api/reports/exports").then((r) => r.data);
-export const generateReport = (type = "Course Performance") =>
-  api.post("/api/reports/generate", { type }).then((r) => r.data);
+export const getTopReports = () =>
+  api
+    .get("/api/reports")
+    .then((r) => r.data);
 
-export const getSettings = () => api.get("/api/settings").then((r) => r.data);
-export const updateSettings = (patch) => api.patch("/api/settings", patch).then((r) => r.data);
+export const getExportHistory = () =>
+  api
+    .get("/api/reports/exports")
+    .then((r) => r.data);
+
+export const generateReport = (
+  type = "Course Performance"
+) =>
+  api
+    .post("/api/reports/generate", { type })
+    .then((r) => r.data);
+
+export const getSettings = () =>
+  api
+    .get("/api/settings")
+    .then((r) => r.data);
+
+export const updateSettings = (patch) =>
+  api
+    .patch("/api/settings", patch)
+    .then((r) => r.data);
 
 // ---------------------------------------------------------
 // Platform Services API
 // ---------------------------------------------------------
 
-export const updateSubscription = (data) => api.post("/api/subscriptions", data).then((r) => r.data);
-export const getMySubscription = () => api.get("/api/subscriptions").then((r) => r.data);
-
-export const getAdminSubscriptions = () =>
-  api.get("/api/admin/subscriptions").then((r) => r.data);
-
-export const getAdminSubscriptionSummary = () =>
-  api.get("/api/admin/subscriptions/summary").then((r) => r.data);
-
-export const updateAdminSubscriptionPlan = (id, plan_type) =>
+export const updateSubscription = (data) =>
   api
-    .patch(`/api/admin/subscriptions/${id}/plan`, { plan_type })
+    .post("/api/subscriptions", data)
     .then((r) => r.data);
 
-export const extendAdminSubscription = (id, months) =>
+export const getMySubscription = () =>
   api
-    .patch(`/api/admin/subscriptions/${id}/extend`, { months })
+    .get("/api/subscriptions")
+    .then((r) => r.data);
+
+export const getAdminSubscriptions = () =>
+  api
+    .get("/api/admin/subscriptions")
+    .then((r) => r.data);
+
+export const getAdminSubscriptionSummary = () =>
+  api
+    .get("/api/admin/subscriptions/summary")
+    .then((r) => r.data);
+
+export const updateAdminSubscriptionPlan = (
+  id,
+  plan_type
+) =>
+  api
+    .patch(
+      `/api/admin/subscriptions/${id}/plan`,
+      {
+        plan_type,
+      }
+    )
+    .then((r) => r.data);
+
+export const extendAdminSubscription = (
+  id,
+  months
+) =>
+  api
+    .patch(
+      `/api/admin/subscriptions/${id}/extend`,
+      {
+        months,
+      }
+    )
     .then((r) => r.data);
 
 export const getSubscriptionPlans = () =>
-  api.get("/api/subscription-plans").then((r) => r.data);
+  api
+    .get("/api/subscription-plans")
+    .then((r) => r.data);
 
-export const getMyTasks = (params = {}) => api.get("/api/tasks", { params }).then((r) => r.data);
-export const createTask = (data) => api.post("/api/tasks", data).then((r) => r.data);
-export const updateTask = (id, data) => api.patch(`/api/tasks/${id}`, data).then((r) => r.data);
-export const deleteTask = (id) => api.delete(`/api/tasks/${id}`).then((r) => r.data);
+export const getMyTasks = (params = {}) =>
+  api
+    .get("/api/tasks", { params })
+    .then((r) => r.data);
 
-export const getMyAchievements = () => api.get("/api/achievements").then((r) => r.data);
-export const getMyCertificates = () => api.get("/api/certificates").then((r) => r.data);
-export const getMyRecommendations = () => api.get("/api/recommendations").then((r) => r.data);
+export const createTask = (data) =>
+  api
+    .post("/api/tasks", data)
+    .then((r) => r.data);
 
-export const getAnnouncements = () => api.get("/api/announcements").then((r) => r.data);
-export const sendAnnouncement = (data) => api.post("/api/announcements", data).then((r) => r.data);
+export const updateTask = (id, data) =>
+  api
+    .patch(`/api/tasks/${id}`, data)
+    .then((r) => r.data);
+
+export const deleteTask = (id) =>
+  api
+    .delete(`/api/tasks/${id}`)
+    .then((r) => r.data);
+
+export const getMyAchievements = () =>
+  api
+    .get("/api/achievements")
+    .then((r) => r.data);
+
+export const getMyCertificates = () =>
+  api
+    .get("/api/certificates")
+    .then((r) => r.data);
+
+export const getMyRecommendations = () =>
+  api
+    .get("/api/recommendations")
+    .then((r) => r.data);
+
+export const getAnnouncements = () =>
+  api
+    .get("/api/announcements")
+    .then((r) => r.data);
+
+export const sendAnnouncement = (data) =>
+  api
+    .post("/api/announcements", data)
+    .then((r) => r.data);
 
 // ---------------------------------------------------------
 // Dashboards API
 // ---------------------------------------------------------
-export const getStudentDashboard = () => api.get("/api/dashboard/student").then((r) => r.data);
-export const getEducatorDashboard = (params = {}) => api.get("/api/dashboard/educator", { params }).then((r) => r.data);
-export const getEmployerDashboard = () => api.get("/api/dashboard/employer").then((r) => r.data);
 
-// Community
-export const getCommunityFeed = (params = {}) =>
-  api.get("/api/community/feed", { params }).then((r) => r.data);
-export const createCommunityPost = (data) =>
-  api.post("/api/community/posts", data).then((r) => r.data);
-export const toggleCommunityPostBookmark = (postId) =>
-  api.post(`/api/community/posts/${postId}/bookmark`).then((r) => r.data);
+export const getStudentDashboard = () =>
+  api
+    .get("/api/dashboard/student")
+    .then((r) => r.data);
 
+export const getEducatorDashboard = (
+  params = {}
+) =>
+  api
+    .get("/api/dashboard/educator", { params })
+    .then((r) => r.data);
+
+export const getEmployerDashboard = () =>
+  api
+    .get("/api/dashboard/employer")
+    .then((r) => r.data);
+
+// ---------------------------------------------------------
+// Student & Educator Community API
+// ---------------------------------------------------------
+
+// IMPORTANT:
+// These currently use the existing community endpoints,
+// while sending the community type.
+// The backend must be updated to enforce and filter
+// these values:
+//
+//   community = "student"
+//   community = "educator"
+//
+// We are intentionally keeping the existing endpoint
+// structure so your current backend functionality can
+// be migrated safely.
+
+// -------------------------
+// Student Community
+// -------------------------
+
+export const getStudentCommunityFeed = (
+  params = {}
+) =>
+  api
+    .get("/api/community/feed", {
+      params: {
+        ...params,
+        community: "student",
+      },
+    })
+    .then((r) => r.data);
+
+export const createStudentCommunityPost = (
+  data
+) =>
+  api
+    .post("/api/community/posts", {
+      ...data,
+      community: "student",
+    })
+    .then((r) => r.data);
+
+export const toggleStudentCommunityPostBookmark = (
+  postId
+) =>
+  api
+    .post(
+      `/api/community/posts/${postId}/bookmark`,
+      {
+        community: "student",
+      }
+    )
+    .then((r) => r.data);
+
+// -------------------------
+// Educator Community
+// -------------------------
+
+export const getEducatorCommunityFeed = (
+  params = {}
+) =>
+  api
+    .get("/api/community/feed", {
+      params: {
+        ...params,
+        community: "educator",
+      },
+    })
+    .then((r) => r.data);
+
+export const createEducatorCommunityPost = (
+  data
+) =>
+  api
+    .post("/api/community/posts", {
+      ...data,
+      community: "educator",
+    })
+    .then((r) => r.data);
+
+export const toggleEducatorCommunityPostBookmark = (
+  postId
+) =>
+  api
+    .post(
+      `/api/community/posts/${postId}/bookmark`,
+      {
+        community: "educator",
+      }
+    )
+    .then((r) => r.data);
+
+
+// -------------------------
+// Employer Community
+// -------------------------
+
+export const getEmployerCommunityFeed = (
+  params = {}
+) =>
+  api
+    .get("/api/community/feed", {
+      params: {
+        ...params,
+        community: "employer",
+      },
+    })
+    .then((r) => r.data);
+
+export const createEmployerCommunityPost = (
+  data
+) =>
+  api
+    .post("/api/community/posts", {
+      ...data,
+      community: "employer",
+    })
+    .then((r) => r.data);
+
+export const toggleEmployerCommunityPostBookmark = (
+  postId
+) =>
+  api
+    .post(
+      `/api/community/posts/${postId}/bookmark`,
+      {
+        community: "employer",
+      }
+    )
+    .then((r) => r.data);
+
+// -------------------------
+// Admin Community
+// -------------------------
+
+export const getAdminCommunityFeed = (
+  params = {}
+) =>
+  api
+    .get("/api/community/feed", {
+      params: {
+        ...params,
+        community: "admin",
+      },
+    })
+    .then((r) => r.data);
+
+export const createAdminCommunityPost = (
+  data
+) =>
+  api
+    .post("/api/community/posts", {
+      ...data,
+      community: "admin",
+    })
+    .then((r) => r.data);
+
+export const toggleAdminCommunityPostBookmark = (
+  postId
+) =>
+  api
+    .post(
+      `/api/community/posts/${postId}/bookmark`,
+      {
+        community: "admin",
+      }
+    )
+    .then((r) => r.data);
+// ---------------------------------------------------------
 // Connections & Users
-export const searchUsers = (q) => api.get(`/api/users/search?q=${q}`).then((r) => r.data);
-export const getMyConnections = () => api.get("/api/connections").then((r) => r.data);
-export const getPendingConnections = () => api.get("/api/connections/pending").then((r) => r.data);
-export const sendConnectionRequest = (userId) => api.post(`/api/connections/request/${userId}`).then((r) => r.data);
-export const acceptConnectionRequest = (connectionId) => api.post(`/api/connections/accept/${connectionId}`).then((r) => r.data);
-export const rejectConnectionRequest = (connectionId) => api.post(`/api/connections/reject/${connectionId}`).then((r) => r.data);
-export const removeConnection = (connectionId) => api.delete(`/api/connections/${connectionId}`).then((r) => r.data);
+// ---------------------------------------------------------
+
+export const searchUsers = (q) =>
+  api
+    .get(`/api/users/search?q=${q}`)
+    .then((r) => r.data);
+
+export const getMyConnections = () =>
+  api
+    .get("/api/connections")
+    .then((r) => r.data);
+
+export const getPendingConnections = () =>
+  api
+    .get("/api/connections/pending")
+    .then((r) => r.data);
+
+export const sendConnectionRequest = (
+  userId
+) =>
+  api
+    .post(
+      `/api/connections/request/${userId}`
+    )
+    .then((r) => r.data);
+
+export const acceptConnectionRequest = (
+  connectionId
+) =>
+  api
+    .post(
+      `/api/connections/accept/${connectionId}`
+    )
+    .then((r) => r.data);
+
+export const rejectConnectionRequest = (
+  connectionId
+) =>
+  api
+    .post(
+      `/api/connections/reject/${connectionId}`
+    )
+    .then((r) => r.data);
+
+export const removeConnection = (
+  connectionId
+) =>
+  api
+    .delete(`/api/connections/${connectionId}`)
+    .then((r) => r.data);
 
 export const getRecommendedJobs = () =>
-  api.get("/api/jobs/recommended").then((r) => r.data);
-
-//certificatevalidation
-export const validateCertificate = (certificateCode) =>
-  api.get(`/api/certificate-validation/${certificateCode}`).then((r) => r.data);
+  api
+    .get("/api/jobs/recommended")
+    .then((r) => r.data);
 
 // ---------------------------------------------------------
-// AI/ML Model APIs (proxied through backend → AIML service)
+// Certificate Validation
 // ---------------------------------------------------------
 
-/** Sentiment Analysis — POST /api/aiml/sentiment/predict */
+export const validateCertificate = (
+  certificateCode
+) =>
+  api
+    .get(
+      `/api/certificate-validation/${certificateCode}`
+    )
+    .then((r) => r.data);
+
+// ---------------------------------------------------------
+// AI/ML Model APIs
+// Proxied through backend → AIML service
+// ---------------------------------------------------------
+
+/**
+ * Sentiment Analysis
+ * POST /api/aiml/sentiment/predict
+ */
 export const aimlPredictSentiment = (data) =>
-  api.post("/api/aiml/sentiment/predict", data).then((r) => r.data);
+  api
+    .post(
+      "/api/aiml/sentiment/predict",
+      data
+    )
+    .then((r) => r.data);
 
-/** Toxicity Detection — POST /api/aiml/toxicity/predict */
+/**
+ * Toxicity Detection
+ * POST /api/aiml/toxicity/predict
+ */
 export const aimlPredictToxicity = (data) =>
-  api.post("/api/aiml/toxicity/predict", data).then((r) => r.data);
+  api
+    .post(
+      "/api/aiml/toxicity/predict",
+      data
+    )
+    .then((r) => r.data);
 
-/** Fraud Detection — POST /api/aiml/fraud/predict (educator/admin) */
+/**
+ * Fraud Detection
+ * POST /api/aiml/fraud/predict
+ * educator/admin
+ */
 export const aimlPredictFraud = (data) =>
-  api.post("/api/aiml/fraud/predict", data).then((r) => r.data);
+  api
+    .post(
+      "/api/aiml/fraud/predict",
+      data
+    )
+    .then((r) => r.data);
 
-/** Performance Prediction — POST /api/aiml/performance/predict */
+/**
+ * Performance Prediction
+ * POST /api/aiml/performance/predict
+ */
 export const aimlPredictPerformance = (data) =>
-  api.post("/api/aiml/performance/predict", data).then((r) => r.data);
+  api
+    .post(
+      "/api/aiml/performance/predict",
+      data
+    )
+    .then((r) => r.data);
 
-/** Skill Demand — GET list of available skills */
+/**
+ * Skill Demand
+ * GET list of available skills
+ */
 export const aimlGetSkills = () =>
-  api.get("/api/aiml/skills").then((r) => r.data);
+  api
+    .get("/api/aiml/skills")
+    .then((r) => r.data);
 
-/** Skill Demand — Forecast a single skill (6 periods default) */
-export const aimlForecastSkill = (skill, periods = 6) =>
-  api.get(`/api/aiml/skill-demand/${encodeURIComponent(skill)}?periods=${periods}`).then((r) => r.data);
+/**
+ * Skill Demand
+ * Forecast a single skill
+ */
+export const aimlForecastSkill = (
+  skill,
+  periods = 6
+) =>
+  api
+    .get(
+      `/api/aiml/skill-demand/${encodeURIComponent(
+        skill
+      )}?periods=${periods}`
+    )
+    .then((r) => r.data);
 
-/** Skill Demand — Batch forecast multiple skills */
-export const aimlForecastBatch = (skills, periods = 6) =>
-  api.post("/api/aiml/skill-demand/batch", { skills, periods }).then((r) => r.data);
+/**
+ * Skill Demand
+ * Batch forecast multiple skills
+ */
+export const aimlForecastBatch = (
+  skills,
+  periods = 6
+) =>
+  api
+    .post(
+      "/api/aiml/skill-demand/batch",
+      {
+        skills,
+        periods,
+      }
+    )
+    .then((r) => r.data);
 
-/** Dropout Risk Prediction — POST /api/aiml/dropout/predict */
+/**
+ * Dropout Risk Prediction
+ * POST /api/aiml/dropout/predict
+ */
 export const aimlPredictDropout = (data) =>
-  api.post("/api/aiml/dropout/predict", data).then((r) => r.data);
+  api
+    .post(
+      "/api/aiml/dropout/predict",
+      data
+    )
+    .then((r) => r.data);
 
-/** Predictive Hiring Compatibility — POST /api/aiml/hiring/predict */
+/**
+ * Predictive Hiring Compatibility
+ * POST /api/aiml/hiring/predict
+ */
 export const aimlPredictHiring = (data) =>
-  api.post("/api/aiml/hiring/predict", data).then((r) => r.data);
+  api
+    .post(
+      "/api/aiml/hiring/predict",
+      data
+    )
+    .then((r) => r.data);
 
-/** Descriptive Answer Evaluation (XLNet) — POST /api/aiml/evaluation/evaluate */
+/**
+ * Descriptive Answer Evaluation
+ * XLNet
+ */
 export const aimlEvaluateAnswer = (data) =>
-  api.post("/api/aiml/evaluation/evaluate", data).then((r) => r.data);
+  api
+    .post(
+      "/api/aiml/evaluation/evaluate",
+      data
+    )
+    .then((r) => r.data);
 
-/** Skill Gap Analysis Engine — POST /api/aiml/skill-gap/analyze */
+/**
+ * Skill Gap Analysis Engine
+ * POST /api/aiml/skill-gap/analyze
+ */
 export const aimlAnalyzeSkillGap = (data) =>
-  api.post("/api/aiml/skill-gap/analyze", data).then((r) => r.data);
+  api
+    .post(
+      "/api/aiml/skill-gap/analyze",
+      data
+    )
+    .then((r) => r.data);
 
-/** Multi-File Project Plagiarism — POST /api/aiml/plagiarism/mini-project */
-export const aimlCheckMiniProjectPlagiarism = (data) =>
-  api.post("/api/aiml/plagiarism/mini-project", data).then((r) => r.data);
+/**
+ * Multi-File Project Plagiarism
+ * POST /api/aiml/plagiarism/mini-project
+ */
+export const aimlCheckMiniProjectPlagiarism = (
+  data
+) =>
+  api
+    .post(
+      "/api/aiml/plagiarism/mini-project",
+      data
+    )
+    .then((r) => r.data);
 
 export default api;
-

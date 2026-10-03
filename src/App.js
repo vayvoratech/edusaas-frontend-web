@@ -1,16 +1,18 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppLayout } from './components/layout/AppLayout';
 import RoleRoute from './components/auth/RoleRoute';
+
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Onboarding from './pages/Onboarding';
+
 import StudentDashboard from './pages/StudentDashboard';
 import EducatorDashboard from './pages/EducatorDashboard';
 import EmployerDashboard from './pages/EmployerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+
 import SkillAssessment from './pages/assessments/SkillAssessment';
 import GapReport from './pages/GapReport';
 import LearningPath from './pages/LearningPath';
@@ -23,7 +25,7 @@ import JobDetails from "./pages/StudentViewJobs";
 import JobApplication from "./pages/JobApplication";
 import StudentJobApplications from './pages/StudentJobApplications';
 
-// New student pages
+// Student pages
 import CoursesPage from './pages/CoursesPage';
 import LearningModule from './pages/LearningModule';
 import AchievementsPage from './pages/AchievementsPage';
@@ -37,8 +39,10 @@ import StudentInsights from './pages/StudentInsights';
 import EngagementTrends from './pages/EngagementTrends';
 import InitialAssessment from './pages/assessments/initial/InitialAssessment';
 import FinalAssessment from './pages/assessments/final/FinalAssessment';
+// Student support
+import HelpSupport from './pages/HelpSupport';
 
-// New educator pages
+// Educator pages
 import ManageCourses from './pages/ManageCourses';
 import ViewLearners from './pages/ViewLearners';
 import EducatorInsights from './pages/EducatorInsights';
@@ -46,30 +50,39 @@ import SendAnnouncement from './pages/SendAnnouncement';
 import EducatorAssessments from './pages/EducatorAssessments';
 import CreateMiniProject from './pages/CreateMiniProject';
 
-// New employer pages
+// Employer pages
 import JobListings from './pages/JobListings';
 import Candidates from './pages/Candidates';
 import EmployerAnalytics from './pages/EmployerAnalytics';
 import Placeholder from './pages/Placeholder';
-import Community from './pages/Community';
+
+// Separate communities
+import StudentCommunity from './pages/StudentCommunity';
+import EducatorCommunity from './pages/EducatorCommunity';
+import EmployerCommunity from './pages/EmployerCommunity';
+import AdminCommunity from './pages/AdminCommunity';
 
 import AssessmentReview from './pages/AssessmentReview';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import MySubscription from './pages/MySubscription';
 
-//student needs contact support
-import HelpSupport from './pages/HelpSupport';
-
 function RoleDashboard() {
   const { role } = useAuth();
 
-  // Ensure we compare in lowercase as the backend returns lowercase roles like "educator", "student"
+  // Backend roles are lowercase.
   switch (role?.toLowerCase()) {
-    case 'educator': return <EducatorDashboard />;
-    case 'employer': return <EmployerDashboard />;
-    case 'admin': return <AdminDashboard />;
+    case 'educator':
+      return <EducatorDashboard />;
+
+    case 'employer':
+      return <EmployerDashboard />;
+
+    case 'admin':
+      return <AdminDashboard />;
+
     case 'student':
-    default: return <StudentDashboard />;
+    default:
+      return <StudentDashboard />;
   }
 }
 
@@ -97,12 +110,40 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter future={{ v7_relativeSplatPath: true }}>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/onboarding" element={<Onboarding />} />
 
-          <Route path="/app" element={<AppLayout />}>
+          {/* =========================================================
+              PUBLIC ROUTES
+          ========================================================= */}
+
+          <Route
+            path="/"
+            element={<Navigate to="/login" replace />}
+          />
+
+          <Route
+            path="/login"
+            element={<Login />}
+          />
+
+          <Route
+            path="/signup"
+            element={<Signup />}
+          />
+
+          <Route
+            path="/onboarding"
+            element={<Onboarding />}
+          />
+
+
+          {/* =========================================================
+              APPLICATION
+          ========================================================= */}
+
+          <Route
+            path="/app"
+            element={<AppLayout />}
+          >
 
             {/* Dashboard */}
             <Route
@@ -110,7 +151,11 @@ export default function App() {
               element={<RoleDashboard />}
             />
 
-            {/* Job Details */}
+
+            {/* =======================================================
+                JOB DETAILS
+            ======================================================= */}
+
             <Route
               path="jobs/:id"
               element={<JobDetails />}
@@ -121,62 +166,277 @@ export default function App() {
               element={<JobApplication />}
             />
 
+
             {/* /app → /app/dashboard */}
             <Route
               index
               element={<Navigate to="dashboard" replace />}
             />
 
-            {/* Shared */}
-            <Route path="profile" element={<Profile />} />
-            <Route path="settings" element={<RoleSettings />} />
-            <Route path="community" element={<Community />} />
 
-            {/* Student */}
-              <Route element={<RoleRoute allowedRoles={["Student"]} />}>
-              <Route path="my-subscription" element={<MySubscription />} />
-              <Route path="courses" element={<CoursesPage />} />
-              <Route path="learning" element={<CoursesPage />} />
-              <Route path="learning/:courseId" element={<LearningModule />} />
-              <Route path="achievements" element={<AchievementsPage />} />
-              <Route path="tasks" element={<TasksPage />} />
-              <Route path="recommendations" element={<RecommendationsPage />} />
-              <Route path="my-insights" element={<StudentInsights />} />
-              <Route path="engagement-trends" element={<EngagementTrends />} />
-              <Route path="help-support" element={<HelpSupport />} />
-              <Route path="assessments" element={<SkillAssessment />} />
-              <Route path="initial-assessment" element={<InitialAssessment />} />
-              <Route path="final-assessment" element={<FinalAssessment />} />
-              <Route path="gap-report" element={<GapReport />} />
-              <Route path="learning-paths" element={<LearningPath />} />
-              <Route path="job-applications" element={<StudentJobApplications />} />
+            {/* =======================================================
+                SHARED
+            ======================================================= */}
+
+            <Route
+              path="profile"
+              element={<Profile />}
+            />
+
+            <Route
+              path="settings"
+              element={<RoleSettings />}
+            />
+
+
+            {/* =======================================================
+                STUDENT
+            ======================================================= */}
+
+            <Route
+              element={
+                <RoleRoute allowedRoles={["Student"]} />
+              }
+            >
+
+              <Route
+                path="my-subscription"
+                element={<MySubscription />}
+              />
+
+              <Route
+                path="courses"
+                element={<CoursesPage />}
+              />
+
+              <Route
+                path="learning"
+                element={<CoursesPage />}
+              />
+
+              <Route
+                path="learning/:courseId"
+                element={<LearningModule />}
+              />
+
+              <Route
+                path="achievements"
+                element={<AchievementsPage />}
+              />
+
+              <Route
+                path="tasks"
+                element={<TasksPage />}
+              />
+
+              <Route
+                path="recommendations"
+                element={<RecommendationsPage />}
+              />
+
+              <Route
+                path="my-insights"
+                element={<StudentInsights />}
+              />
+
+              <Route
+                path="engagement-trends"
+                element={<EngagementTrends />}
+              />
+
+              <Route
+                path="help-support"
+                element={<HelpSupport />}
+              />
+
+              <Route
+                path="assessments"
+                element={<SkillAssessment />}
+              />
+
+              <Route
+                path="initial-assessment"
+                element={<InitialAssessment />}
+              />
+
+              <Route
+                path="final-assessment"
+                element={<FinalAssessment />}
+              />
+
+              <Route
+                path="gap-report"
+                element={<GapReport />}
+              />
+
+              <Route
+                path="learning-paths"
+                element={<LearningPath />}
+              />
+
+              <Route
+                path="job-applications"
+                element={<StudentJobApplications />}
+              />
+
+
+              {/* -------------------------------------------------------
+                  STUDENT COMMUNITY
+              ------------------------------------------------------- */}
+
+              <Route
+                path="student-community"
+                element={<StudentCommunity />}
+              />
+
             </Route>
 
-            {/* Educator */}
-            <Route element={<RoleRoute allowedRoles={["Educator"]} />}>
-              <Route path="manage-courses" element={<ManageCourses />} />
-              <Route path="learners" element={<ViewLearners />} />
-              <Route path="insights" element={<EducatorInsights />} />
-              <Route path="announcements" element={<SendAnnouncement />} />
-              <Route path="educator-assessments" element={<EducatorAssessments />} />
-              <Route path="educator-assessments/create" element={<CreateMiniProject />} />
+
+            {/* =======================================================
+                EDUCATOR
+            ======================================================= */}
+
+            <Route
+              element={
+                <RoleRoute allowedRoles={["Educator"]} />
+              }
+            >
+
+              <Route
+                path="manage-courses"
+                element={<ManageCourses />}
+              />
+
+              <Route
+                path="learners"
+                element={<ViewLearners />}
+              />
+
+              <Route
+                path="insights"
+                element={<EducatorInsights />}
+              />
+
+              <Route
+                path="announcements"
+                element={<SendAnnouncement />}
+              />
+
+              <Route
+                path="educator-assessments"
+                element={<EducatorAssessments />}
+              />
+
+              <Route
+                path="educator-assessments/create"
+                element={<CreateMiniProject />}
+              />
+
+
+              {/* -------------------------------------------------------
+                  EDUCATOR COMMUNITY
+              ------------------------------------------------------- */}
+
+              <Route
+                path="educator-community"
+                element={<EducatorCommunity />}
+              />
+
             </Route>
 
-            {/* Employer */}
-            <Route element={<RoleRoute allowedRoles={["Employer"]} />}>
-              <Route path="job-listings" element={<JobListings />} />
-              <Route path="jobs" element={<Navigate to="/app/job-listings" replace />} />
-              <Route path="candidates" element={<Candidates />} />
-              <Route path="analytics" element={<EmployerAnalytics />} />
-              <Route path="certificate-validation" element={<CertificateValidation />} />
+
+            {/* =======================================================
+                EMPLOYER
+            ======================================================= */}
+
+            <Route
+              element={
+                <RoleRoute allowedRoles={["Employer"]} />
+              }
+            >
+
+              <Route
+                path="job-listings"
+                element={<JobListings />}
+              />
+
+              <Route
+                path="jobs"
+                element={
+                  <Navigate
+                    to="/app/job-listings"
+                    replace
+                  />
+                }
+              />
+
+              <Route
+                path="candidates"
+                element={<Candidates />}
+              />
+
+              <Route
+                path="analytics"
+                element={<EmployerAnalytics />}
+              />
+
+              <Route
+                path="certificate-validation"
+                element={<CertificateValidation />}
+              />
+
+              {/* -------------------------------------------------------
+                  EMPLOYER COMMUNITY
+              ------------------------------------------------------- */}
+
+              <Route
+                path="employer-community"
+                element={<EmployerCommunity />}
+              />
+
+
             </Route>
 
-            {/* Admin */}
-            <Route element={<RoleRoute allowedRoles={["Admin"]} />}>
-              <Route path="users" element={<UserManagement />} />
-              <Route path="user-details" element={<UserDetails />} />
-              <Route path="reports" element={<Reports />} />
-               <Route path="assessment-reviews" element={<AssessmentReview />} />
+
+            {/* =======================================================
+                ADMIN
+            ======================================================= */}
+
+            <Route
+              element={
+                <RoleRoute allowedRoles={["Admin"]} />
+              }
+            >
+
+              <Route
+                path="users"
+                element={<UserManagement />}
+              />
+
+              <Route
+                path="user-details"
+                element={<UserDetails />}
+              />
+
+              <Route
+                path="reports"
+                element={<Reports />}
+              />
+
+              <Route
+                path="assessment-reviews"
+                element={<AssessmentReview />}
+              />
+
+              {/* -------------------------------------------------------
+                  ADMIN COMMUNITY
+              ------------------------------------------------------- */}
+
+              <Route
+                path="admin-community"
+                element={<AdminCommunity />}
+              />
+
 
               <Route
                 path="marketplace"
@@ -209,13 +469,24 @@ export default function App() {
               />
 
               <Route
-  path="subscriptions"
-  element={<SubscriptionManagement />}
-/>
+                path="subscriptions"
+                element={<SubscriptionManagement />}
+              />
+
             </Route>
+
           </Route>
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+
+          {/* =========================================================
+              FALLBACK
+          ========================================================= */}
+
+          <Route
+            path="*"
+            element={<Navigate to="/login" replace />}
+          />
+
         </Routes>
       </BrowserRouter>
     </AuthProvider>
