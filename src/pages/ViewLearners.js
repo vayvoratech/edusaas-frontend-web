@@ -220,7 +220,7 @@ export default function ViewLearners() {
       ...user,
       course:
         courses[index % Math.max(1, courses.length)]
-          ?.title || '—',
+          ?.title || 'â€”',
       progress: 40 + ((index * 17) % 55),
       score: 60 + ((index * 7) % 35),
       engagement: [
@@ -420,13 +420,13 @@ export default function ViewLearners() {
                 className="group inline-flex shrink-0 items-center justify-center gap-3 rounded-2xl border border-white/30 bg-slate-950 px-6 py-3.5 text-sm font-bold text-white shadow-[0_14px_35px_-14px_rgba(15,23,42,0.7)] transition-all duration-300 hover:-translate-y-1 hover:bg-indigo-700 hover:shadow-[0_18px_40px_-14px_rgba(79,70,229,0.55)]"
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-lg leading-none transition-transform duration-300 group-hover:-translate-y-0.5">
-                  ↓
+                  â†“
                 </span>
 
                 Export learners
 
                 <span className="text-white/40 transition-transform duration-300 group-hover:translate-x-0.5">
-                  →
+                  â†’
                 </span>
               </Button>
 
@@ -483,7 +483,7 @@ export default function ViewLearners() {
                   </div>
 
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-lg shadow-inner">
-                    ↗
+                    â†—
                   </div>
                 </div>
               </div>
@@ -501,7 +501,7 @@ export default function ViewLearners() {
                   </div>
 
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-lg shadow-inner">
-                    ✦
+                    âœ¦
                   </div>
                 </div>
               </div>
@@ -534,7 +534,7 @@ export default function ViewLearners() {
             <div className="relative flex-1">
 
               <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                ⌕
+                âŒ•
               </span>
 
               <input
@@ -581,15 +581,15 @@ export default function ViewLearners() {
               </option>
 
               <option value="High">
-                High — 75%+
+                High â€” 75%+
               </option>
 
               <option value="Medium">
-                Medium — 50–74%
+                Medium â€” 50â€“74%
               </option>
 
               <option value="Low">
-                Low — below 50%
+                Low â€” below 50%
               </option>
             </select>
 
@@ -628,7 +628,7 @@ export default function ViewLearners() {
           <div className="rounded-3xl border border-slate-200 bg-white px-6 py-20 text-center shadow-sm">
 
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 text-2xl">
-              ◌
+              â—Œ
             </div>
 
             <h3 className="mt-5 text-xl font-black text-slate-950">
@@ -857,7 +857,7 @@ export default function ViewLearners() {
                   disabled={profileBusy}
                   className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
                 >
-                  ×
+                  Ã—
                 </button>
 
               </div>
@@ -987,7 +987,7 @@ export default function ViewLearners() {
                   disabled={feedbackBusy}
                   className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
                 >
-                  ×
+                  Ã—
                 </button>
 
               </div>
@@ -1071,7 +1071,7 @@ export default function ViewLearners() {
                           {item.rating !== undefined &&
                             item.rating !== null && (
                               <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
-                                ★ {item.rating}
+                                â˜… {item.rating}
                               </span>
                             )}
 
@@ -1133,7 +1133,7 @@ export default function ViewLearners() {
                   disabled={assignBusy}
                   className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
                 >
-                  ×
+                  Ã—
                 </button>
 
               </div>

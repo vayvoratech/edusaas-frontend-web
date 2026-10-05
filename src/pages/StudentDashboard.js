@@ -2,6 +2,26 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import {
+  MessageCircle,
+  Trophy,
+  CheckSquare,
+  Sparkles,
+  Target,
+  ArrowRight,
+  Check,
+  BookOpen,
+  Clock3,
+  Timer,
+  Megaphone,
+  X,
+  Rocket,
+  PartyPopper,
+  BriefcaseBusiness,
+  CircleDollarSign,
+  BookMarked,
+} from "lucide-react";
+
+import {
   LineChart,
   Line,
   ResponsiveContainer,
@@ -41,7 +61,7 @@ import {
 // ----------------------------------------------------
 
 const fmtRel = (iso) => {
-  if (!iso) return 'â€”';
+  if (!iso) return '-';
 
   const diff = (new Date() - new Date(iso)) / 60000;
 
@@ -75,28 +95,29 @@ const fmtRel = (iso) => {
 // Dashboard navigation cards
 // ----------------------------------------------------
 
+
 const moduleCards = [
   {
     to: '/app/learning',
-    emoji: 'ðŸ’¬',
+    icon: MessageCircle,
     title: 'Learning Module',
     sub: 'Continue your video lessons',
   },
   {
     to: '/app/achievements',
-    emoji: 'ðŸ†',
+    icon: Trophy,
     title: 'Achievements',
     sub: 'View your badges and certificates',
   },
   {
     to: '/app/tasks',
-    emoji: 'âœ…',
+    icon: CheckSquare,
     title: 'Tasks & Deadlines',
     sub: 'Stay on top of your assignments',
   },
   {
     to: '/app/recommendations',
-    emoji: 'âœ¨',
+    icon: Sparkles,
     title: 'Course Recommendations',
     sub: 'Picked for your goals',
   },
@@ -130,8 +151,8 @@ export default function StudentDashboard() {
 
   const [dash, setDash] = useState(null);
   const [assessmentOverview, setAssessmentOverview] = useState(null);
-const [terminationReport, setTerminationReport] = useState(null);
-const [assessmentStatusLoading, setAssessmentStatusLoading] = useState(true);
+  const [terminationReport, setTerminationReport] = useState(null);
+  const [assessmentStatusLoading, setAssessmentStatusLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [recs, setRecs] = useState([]);
@@ -1001,7 +1022,7 @@ if (
                 group-hover:-rotate-2
               "
             >
-              ðŸŽ¯
+              <Target className="h-8 w-8 text-brand-blue-600" strokeWidth={2} />
             </div>
 
             <div className="mt-6 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700 ring-1 ring-blue-100">
@@ -1039,7 +1060,7 @@ if (
               Start Skill Assessment
 
               <span className="ml-2 transition-transform duration-200 group-hover:translate-x-1">
-                â†’
+                <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />
               </span>
             </Link>
 
@@ -1181,7 +1202,7 @@ if (
                 </h2>
 
                 <p className="mt-1 text-sm sm:text-base font-normal text-white/85">
-                  Let's close those skill gaps. ðŸš€
+                  Let's close those skill gaps. <Rocket className="h-4 w-4 text-white/90" strokeWidth={2} />
                 </p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-white/75">
@@ -1194,7 +1215,7 @@ if (
                   </span>
 
                   <span className="hidden sm:inline text-white/40">
-                    â€¢
+
                   </span>
 
                   <span>
@@ -1248,7 +1269,7 @@ if (
                       variant="accent"
                       className={buttonHover}
                     >
-                      Continue Learning â†’
+                      Continue Learning <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />
                     </Button>
                   </Link>
 
@@ -1286,7 +1307,7 @@ if (
               </div>
 
               <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 grid place-items-center text-sm">
-                ðŸ“š
+                <BookOpen className="h-4 w-4" strokeWidth={2} />
               </span>
 
             </div>
@@ -1318,7 +1339,7 @@ if (
               </div>
 
               <span className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 grid place-items-center text-sm">
-                ðŸ†
+                <Trophy className="h-4 w-4" strokeWidth={2} />
               </span>
 
             </div>
@@ -1350,7 +1371,7 @@ if (
               </div>
 
               <span className="w-8 h-8 rounded-lg bg-red-50 text-red-600 grid place-items-center text-sm">
-                â°
+                <Clock3 className="h-4 w-4" strokeWidth={2} />
               </span>
 
             </div>
@@ -1382,7 +1403,7 @@ if (
               </div>
 
               <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 grid place-items-center text-sm">
-                â±ï¸
+                <Timer className="h-4 w-4" strokeWidth={2} />
               </span>
 
             </div>
@@ -1447,7 +1468,7 @@ if (
                       hover:-rotate-3
                     "
                   >
-                    ðŸ“£
+                    <Megaphone className="h-4 w-4" strokeWidth={2} />
                   </span>
 
                   <div className="min-w-0">
@@ -1492,7 +1513,7 @@ if (
                       duration-200
                     "
                   >
-                    Community Feed â†’
+                    Community Feed <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />
                   </button>
 
                 </div>
@@ -1569,7 +1590,7 @@ if (
                             </span>
                           )}
 
-                          <span>â€¢</span>
+                          <span> </span>
 
                           <span>
                             {fmtRel(a.created_at)}
@@ -1603,7 +1624,7 @@ if (
                             active:scale-95
                           "
                         >
-                          âœ•
+                          <X className="h-3.5 w-3.5" strokeWidth={2.5} />
                         </button>
 
                       </div>
@@ -1623,7 +1644,7 @@ if (
                           View in Community Feed
                         </span>
 
-                        <span>â†’</span>
+                        <span><ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} /></span>
                       </span>
 
                       <span className="text-slate-400 font-normal">
@@ -1861,7 +1882,7 @@ if (
                           group-hover:bg-brand-green-100
                         "
                       >
-                        âœ“
+                        <Check className="h-8 w-8 text-green-600" strokeWidth={3} />
                       </span>
 
                       <span className="flex-1 truncate text-slate-700 group-hover:text-slate-900 transition-colors">
@@ -1927,7 +1948,7 @@ if (
               ) : (
                 <div className="text-center py-3">
                   <div className="text-2xl">
-                    ðŸŽ‰
+                    <PartyPopper className="h-5 w-5" strokeWidth={2} />
                   </div>
 
                   <p className="mt-1 text-sm text-slate-500">
@@ -2026,7 +2047,7 @@ if (
                     group-hover:translate-x-1
                   "
                 >
-                  Open â†’
+                  Open <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />
                 </div>
 
               </Card>
@@ -2108,7 +2129,7 @@ if (
                         group-hover:bg-brand-blue-100
                       "
                     >
-                      ðŸ“š
+                      <BookOpen className="h-4 w-4" strokeWidth={2} />
                     </div>
 
 
@@ -2128,7 +2149,7 @@ if (
 
                         {a.due_date && (
                           <>
-                            {' Â· '}
+                            {' . '}
 
                             <span
                               className={
@@ -2149,7 +2170,7 @@ if (
                         )}
 
                         {!a.due_date &&
-                          ' Â· No due date'}
+                          ' . No due date'}
 
                       </div>
 
@@ -2284,7 +2305,7 @@ if (
                             group-hover:-rotate-3
                           "
                         >
-                          ðŸ’¼
+                          <BriefcaseBusiness className="h-4 w-4" strokeWidth={2} />
                         </span>
 
                         <div>
@@ -2312,7 +2333,7 @@ if (
 
                         {job.employment_type && (
                           <span className="transition-colors group-hover:text-slate-800">
-                            ðŸ’¼ {job.employment_type}
+                            <BriefcaseBusiness className="h-4 w-4" strokeWidth={2} /> {job.employment_type}
                           </span>
                         )}
 
@@ -2324,7 +2345,7 @@ if (
 
                         {job.salary && (
                           <span className="transition-colors group-hover:text-slate-800">
-                            ðŸ’° {job.salary}
+                            <CircleDollarSign className="h-4 w-4" strokeWidth={2} /> {job.salary}
                           </span>
                         )}
 
@@ -2504,7 +2525,7 @@ if (
                           ${buttonHover}
                         `}
                       >
-                        View Job â†’
+                        View Job <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />
                       </Link>
 
                     </div>
@@ -2602,14 +2623,14 @@ if (
 
                   const notificationIcon =
                     isInterview
-                      ? 'ðŸ“…'
+                      ? '<CalendarDays className="h-4 w-4" strokeWidth={2} />'
                       : type ===
                         'application_selected'
-                      ? 'ðŸŽ‰'
+                      ? '<PartyPopper className="h-5 w-5" strokeWidth={2} />'
                       : type ===
                         'application'
-                      ? 'ðŸ“‹'
-                      : 'ðŸ’¼';
+                      ? '<ClipboardList className="h-4 w-4" strokeWidth={2} />'
+                      : '<BriefcaseBusiness className="h-4 w-4" strokeWidth={2} />';
 
                   return (
                     <div
@@ -2750,7 +2771,7 @@ if (
                                     ${buttonHover}
                                   `}
                                 >
-                                  View Job â†’
+                                  View Job <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />
                                 </Link>
                               ) : isInterview ? (
                                 <button
@@ -2786,7 +2807,7 @@ if (
                                 >
                                   {loadingInterview
                                     ? 'Loading...'
-                                    : 'View Interview â†’'}
+                                    : 'View Interview <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />'}
                                 </button>
                               ) : (
                                 <Link
@@ -2808,7 +2829,7 @@ if (
                                     ${buttonHover}
                                   `}
                                 >
-                                  View Job â†’
+                                  View Job <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />
                                 </Link>
                               )}
                             </>
@@ -2849,7 +2870,7 @@ if (
                   duration-200
                 "
               >
-                See all â†’
+                See all <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />
               </Link>
             }
             className="transition-all duration-300 hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]"
@@ -2902,7 +2923,7 @@ if (
                         group-hover:-rotate-2
                       "
                     >
-                      ðŸ“˜
+                      <BookMarked className="h-4 w-4" strokeWidth={2} />
                     </span>
 
 
@@ -2912,7 +2933,7 @@ if (
 
 
                     <span className="text-xs text-slate-500 truncate leading-relaxed">
-                      â€” {r.reason}
+                      - {r.reason}
                     </span>
 
                   </li>
@@ -3728,7 +3749,7 @@ if (
                           ${buttonHover}
                         `}
                       >
-                        Join Interview â†’
+                        Join Interview <ArrowRight className="ml-2 inline-block h-4 w-4" strokeWidth={2.5} />
                       </a>
 
                     </div>

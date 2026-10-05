@@ -74,7 +74,7 @@ export default function EmployerAnalytics() {
 
   const onExportCsv = () => {
     const rows = [
-      ['EduSaaS â€” Employer Analytics Export'],
+      ['EduSaaS — Employer Analytics Export'],
       ['Generated', new Date().toLocaleString()],
       [],
       ['Headline', 'Value'],
@@ -584,7 +584,7 @@ export default function EmployerAnalytics() {
                     hover:!bg-white/[0.14]
                   "
                 >
-                  ðŸ“„ Export PDF
+                  📄 Export PDF
                 </Button>
 
                 <Button
@@ -600,7 +600,7 @@ export default function EmployerAnalytics() {
                     hover:!bg-white/90
                   "
                 >
-                  â†“ Export CSV
+                  ↓ Export CSV
                 </Button>
 
               </div>
@@ -694,7 +694,7 @@ export default function EmployerAnalytics() {
                         'linear-gradient(135deg, #EDE9FE, #DBEAFE)',
                     }}
                   >
-                    <span className="text-lg">â—ˆ</span>
+                    <span className="text-lg">◈</span>
                   </div>
 
                 </div>
@@ -702,7 +702,7 @@ export default function EmployerAnalytics() {
                 <div className="mt-7 flex items-end justify-between">
 
                   <div className="metric-number text-4xl font-black tracking-tight text-[#191827]">
-                    {data?.jobOpenings ?? 'â€”'}
+                    {data?.jobOpenings ?? '—'}
                   </div>
 
                   <span className="rounded-full bg-[#EEF2FF] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-[#635BCE]">
@@ -773,7 +773,7 @@ export default function EmployerAnalytics() {
                         'linear-gradient(135deg, #FCE7F3, #FFEDD5)',
                     }}
                   >
-                    <span className="text-lg">â—Ž</span>
+                    <span className="text-lg">◎</span>
                   </div>
 
                 </div>
@@ -781,7 +781,7 @@ export default function EmployerAnalytics() {
                 <div className="mt-7 flex items-end justify-between">
 
                   <div className="metric-number text-4xl font-black tracking-tight text-[#191827]">
-                    {data?.newApplicants ?? 'â€”'}
+                    {data?.newApplicants ?? '—'}
                   </div>
 
                   <span className="rounded-full bg-[#FFF1F2] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-[#DB5B76]">
@@ -849,7 +849,7 @@ export default function EmployerAnalytics() {
                         'linear-gradient(135deg, #D1FAE5, #DBEAFE)',
                     }}
                   >
-                    <span className="text-lg">âœ¦</span>
+                    <span className="text-lg">✦</span>
                   </div>
 
                 </div>
@@ -857,7 +857,7 @@ export default function EmployerAnalytics() {
                 <div className="mt-7 flex items-end justify-between">
 
                   <div className="metric-number text-4xl font-black tracking-tight text-[#191827]">
-                    {data?.topMatches ?? 'â€”'}
+                    {data?.topMatches ?? '—'}
                   </div>
 
                   <span className="rounded-full bg-[#ECFDF5] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-[#159A70]">

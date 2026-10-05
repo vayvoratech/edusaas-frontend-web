@@ -66,7 +66,7 @@ selectedCourseId === 'all'
 
 const onExportCsv = () => {
 const rows = [
-['EduSaaS — Educator Insights Export'],
+['EduSaaS â€” Educator Insights Export'],
 ['Scope', selectedCourseName],
 ['Generated', new Date().toLocaleString()],
 [],
@@ -229,7 +229,7 @@ return ( <div
               disabled={!hasData || loading}
               className="!min-h-[42px] !rounded-xl !bg-slate-950 !font-bold !text-white !shadow-sm transition-all hover:!bg-blue-600 hover:!shadow-lg"
             >
-              ⬇ Export CSV
+              â¬‡ Export CSV
             </Button>
           </div>
         </div>
@@ -272,7 +272,7 @@ return ( <div
             </div>
 
             <div className="mt-1 text-3xl font-black text-blue-700">
-              {data?.enrolledLearners ?? '—'}
+              {data?.enrolledLearners ?? 'â€”'}
             </div>
           </div>
         </div>
@@ -298,7 +298,7 @@ return ( <div
             </div>
 
             <div className="mt-1 text-3xl font-black text-emerald-600">
-              {data?.activeCourses ?? '—'}
+              {data?.activeCourses ?? 'â€”'}
             </div>
           </div>
         </div>
@@ -311,7 +311,7 @@ return ( <div
           <div className="relative">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-lg shadow-sm">
-                📈
+                �ˆ
               </div>
 
               <span className="rounded-full bg-orange-100/80 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-orange-700">
@@ -337,7 +337,7 @@ return ( <div
           <div className="relative">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-lg shadow-sm">
-                ⭐
+                â­
               </div>
 
               <span className="rounded-full bg-violet-100/80 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-violet-700">
@@ -350,8 +350,8 @@ return ( <div
             </div>
 
             <div className="mt-1 text-3xl font-black text-violet-700">
-              {data?.avgRating ?? '—'}{' '}
-              <span className="text-xl text-amber-500">★</span>
+              {data?.avgRating ?? 'â€”'}{' '}
+              <span className="text-xl text-amber-500">â˜…</span>
             </div>
           </div>
         </div>

@@ -492,6 +492,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-
-
-

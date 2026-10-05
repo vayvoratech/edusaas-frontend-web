@@ -6,10 +6,10 @@ import { getDomainRoles } from '../services/api';
 import AppDialog from "../components/ui/AppDialog";
 
 const roles = [
-  { id: 'student', label: 'Student', emoji: '🎓', desc: 'Access AI-driven learning paths, earn badges.' },
-  { id: 'educator', label: 'Educator', emoji: '👩‍🏫', desc: 'Create courses, track students and skill gaps.' },
+  { id: 'student', label: 'Student', emoji: '�Ž“', desc: 'Access AI-driven learning paths, earn badges.' },
+  { id: 'educator', label: 'Educator', emoji: '👩�€🏫', desc: 'Create courses, track students and skill gaps.' },
   { id: 'employer', label: 'Employer', emoji: '🏢', desc: 'Post candidate jobs to reach and upskill students.' },
-  { id: 'admin', label: 'Admin', emoji: '⚙️', desc: 'Manage users, courses, and platform settings.' },
+  { id: 'admin', label: 'Admin', emoji: 'âš™ï¸', desc: 'Manage users, courses, and platform settings.' },
 ];
 
 const RoleSelector = ({ selectedRole, onSelectRole }) => (
@@ -260,7 +260,7 @@ const showDialog = (options) => {
           )}
 
           <Button type="button" size="lg" className="w-full py-3" onClick={handleCompleteOnboarding} disabled={submitting}>
-            {submitting ? 'Setting up…' : 'Complete Setup'}
+            {submitting ? 'Setting upâ€¦' : 'Complete Setup'}
           </Button>
 
         </div>

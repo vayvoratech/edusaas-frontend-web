@@ -104,7 +104,7 @@ export default function EducatorAssessments() {
                 <div className="absolute inset-0 animate-ping rounded-2xl bg-amber-300/20" />
 
                 <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-200 bg-gradient-to-br from-slate-900 to-slate-700 text-2xl text-white shadow-[0_12px_30px_rgba(15,23,42,0.20)]">
-                  📋
+                  �‹
                 </div>
               </div>
 
@@ -225,7 +225,7 @@ export default function EducatorAssessments() {
 
                 <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 shadow-sm">
                   <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500 text-xs font-black text-white">
-                    ✓
+                    âœ“
                   </span>
 
                   <span className="text-xs font-bold text-emerald-700">
@@ -235,7 +235,7 @@ export default function EducatorAssessments() {
 
                 <div className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm">
                   <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500 text-xs font-black text-white">
-                    ✎
+                    âœŽ
                   </span>
 
                   <span className="text-xs font-bold text-amber-700">
@@ -255,7 +255,7 @@ export default function EducatorAssessments() {
                 className="!min-h-[50px] !rounded-2xl !border-0 !bg-slate-950 !px-5 !font-extrabold !text-white !shadow-[0_12px_30px_rgba(15,23,42,0.20)] transition-all duration-300 hover:!-translate-y-1 hover:!bg-slate-800 hover:!shadow-[0_18px_40px_rgba(15,23,42,0.25)]"
               >
                 <span className="mr-2 text-lg text-amber-400">
-                  ＋
+                  ï¼‹
                 </span>
                 Create Mini Project
               </Button>
@@ -301,7 +301,7 @@ export default function EducatorAssessments() {
               <div className="relative">
                 <div className="flex items-start justify-between">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-2xl text-white shadow-[0_10px_25px_rgba(15,23,42,0.20)] transition-all duration-500 group-hover:rotate-2 group-hover:scale-110">
-                    📋
+                    �‹
                   </div>
 
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
@@ -338,7 +338,7 @@ export default function EducatorAssessments() {
               <div className="relative">
                 <div className="flex items-start justify-between">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-2xl text-white shadow-[0_10px_25px_rgba(16,185,129,0.25)] transition-all duration-500 group-hover:-rotate-2 group-hover:scale-110">
-                    🚀
+                    �€
                   </div>
 
                   <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">
@@ -412,7 +412,7 @@ export default function EducatorAssessments() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-950 text-lg text-white shadow-[0_8px_20px_rgba(15,23,42,0.16)]">
-                  ◆
+                  â—†
                 </div>
 
                 <div>
@@ -476,7 +476,7 @@ export default function EducatorAssessments() {
                     }
                   >
                     <span className="mr-2 text-amber-400">
-                      ＋
+                      ï¼‹
                     </span>
                     Create Mini Project
                   </Button>
@@ -532,7 +532,7 @@ export default function EducatorAssessments() {
                                   : "bg-amber-500"
                               }`}
                             >
-                              {isPublished ? "🚀" : "📝"}
+                              {isPublished ? "�€" : "📝"}
                             </div>
 
                             <h4 className="min-w-0 break-words text-base font-black tracking-tight text-slate-900 sm:text-lg">
@@ -553,7 +553,7 @@ export default function EducatorAssessments() {
                           {/* Domain */}
                           <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5">
                             <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white text-xs font-black text-slate-700 shadow-sm">
-                              ◈
+                              â—ˆ
                             </span>
 
                             <span className="text-sm font-bold text-slate-600">
@@ -579,7 +579,7 @@ export default function EducatorAssessments() {
                             </span>
 
                             <span className="inline-flex items-center gap-1.5 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700">
-                              <span>⏰</span>
+                              <span>â°</span>
 
                               {project.due_at
                                 ? new Date(
@@ -612,7 +612,7 @@ export default function EducatorAssessments() {
                               ) : (
                                 <>
                                   <span className="mr-2">
-                                    🚀
+                                    �€
                                   </span>
 
                                   Publish
@@ -682,7 +682,7 @@ export default function EducatorAssessments() {
             <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-lg text-amber-300">
-                  ✦
+                  âœ¦
                 </div>
 
                 <div>

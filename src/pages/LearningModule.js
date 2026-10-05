@@ -298,9 +298,9 @@ export default function LearningModule() {
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
         <div>
           <div className="text-xs uppercase text-slate-400">Learning Module</div>
-          <h2 className="text-2xl font-bold text-slate-900">{course?.title || 'Loading…'}</h2>
+          <h2 className="text-2xl font-bold text-slate-900">{course?.title || 'Loadingâ€¦'}</h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            <Link to="/app/courses" className="hover:underline">← Back to Courses</Link>
+            <Link to="/app/courses" className="hover:underline">â† Back to Courses</Link>
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -314,11 +314,11 @@ export default function LearningModule() {
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 font-medium text-sm transition-all shadow-sm"
             title="Rate this course and leave feedback for instructor"
           >
-            <span className="text-base">⭐</span>
-            <span>{myRating ? `Your Rating: ${myRating.rating}★` : 'Rate Course'}</span>
+            <span className="text-base">â­</span>
+            <span>{myRating ? `Your Rating: ${myRating.rating}â˜…` : 'Rate Course'}</span>
             {courseRatings.average_rating > 0 && (
               <span className="text-xs bg-amber-200/70 text-amber-900 px-1.5 py-0.5 rounded-md font-semibold">
-                Avg {courseRatings.average_rating}★ ({courseRatings.total_reviews})
+                Avg {courseRatings.average_rating}â˜… ({courseRatings.total_reviews})
               </span>
             )}
           </button>
@@ -336,7 +336,7 @@ export default function LearningModule() {
       {overall === 100 && (
         <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-5 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">🎉</span>
+            <span className="text-3xl">�Ž‰</span>
             <div>
               <div className="font-bold text-lg">Course Completed!</div>
               <div className="text-sm text-emerald-100">
@@ -353,7 +353,7 @@ export default function LearningModule() {
             }}
             className="px-5 py-2.5 bg-white text-emerald-800 font-bold rounded-xl hover:bg-emerald-50 transition-colors shrink-0 shadow text-sm"
           >
-            {myRating ? "Edit Your Review" : "⭐ Leave Course Feedback"}
+            {myRating ? "Edit Your Review" : "â­ Leave Course Feedback"}
           </button>
         </div>
       )}
@@ -380,7 +380,7 @@ export default function LearningModule() {
                   ></iframe>
                 ) : (
                   <div className="text-center">
-                    <div className="text-5xl mb-3">🎥</div>
+                    <div className="text-5xl mb-3">�Ž¥</div>
                     <div className="text-sm">{activeLesson.title}</div>
                     <div className="text-xs text-slate-400 mt-1">No video URL provided</div>
                   </div>
@@ -392,8 +392,8 @@ export default function LearningModule() {
                   variant={progress[activeLesson.id]?.completion_flag ? 'outline' : 'primary'}
                 >
                   {progress[activeLesson.id]?.completion_flag
-                    ? '↺ Mark as incomplete'
-                    : 'Take Mandatory Quiz ✓'}
+                    ? 'â†º Mark as incomplete'
+                    : 'Take Mandatory Quiz âœ“'}
                 </Button>
                 {/* Download hidden until real video hosting (S3/Azure Blob/Vimeo) is wired. */}
               </div>
@@ -427,10 +427,10 @@ export default function LearningModule() {
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 ${
                       done ? 'bg-brand-green-500 text-white' : 'bg-slate-200 text-slate-600'
                     }`}>
-                      {done ? '✓' : isLocked ? '🔒' : i + 1}
+                      {done ? 'âœ“' : isLocked ? '🔒' : i + 1}
                     </span>
                     <span className="flex-1 truncate">{l.title}</span>
-                    {active && <span className="text-[10px] text-brand-blue-600">●</span>}
+                    {active && <span className="text-[10px] text-brand-blue-600">â—</span>}
                   </button>
                 </li>
               );
@@ -459,7 +459,7 @@ export default function LearningModule() {
             }}
             className="px-4 py-2 bg-brand-blue-600 hover:bg-brand-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-md shadow-brand-blue-600/20 flex items-center gap-2 self-start sm:self-auto"
           >
-            <span>⭐</span>
+            <span>â­</span>
             <span>{myRating ? 'Update Your Review' : 'Rate This Course'}</span>
           </button>
         </div>
@@ -468,14 +468,14 @@ export default function LearningModule() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-6 border-b border-slate-100 items-center">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex flex-col items-center justify-center font-black">
-              <span className="text-2xl leading-none">{courseRatings.average_rating ? courseRatings.average_rating.toFixed(1) : '—'}</span>
+              <span className="text-2xl leading-none">{courseRatings.average_rating ? courseRatings.average_rating.toFixed(1) : 'â€”'}</span>
               <span className="text-[10px] uppercase font-bold text-amber-600 mt-0.5">out of 5</span>
             </div>
             <div>
               <div className="flex items-center gap-1 text-amber-400 text-lg">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <span key={star}>
-                    {star <= Math.round(courseRatings.average_rating || 0) ? '★' : '☆'}
+                    {star <= Math.round(courseRatings.average_rating || 0) ? 'â˜…' : 'â˜†'}
                   </span>
                 ))}
               </div>
@@ -523,7 +523,7 @@ export default function LearningModule() {
                     </div>
                     <div className="flex items-center gap-1 text-amber-400 text-sm">
                       {[1, 2, 3, 4, 5].map((st) => (
-                        <span key={st}>{st <= rev.rating ? '★' : '☆'}</span>
+                        <span key={st}>{st <= rev.rating ? 'â˜…' : 'â˜†'}</span>
                       ))}
                     </div>
                   </div>
@@ -539,7 +539,7 @@ export default function LearningModule() {
             </div>
           ) : (
             <div className="text-center py-8 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-              <span className="text-3xl mb-2 block">⭐</span>
+              <span className="text-3xl mb-2 block">â­</span>
               <p className="text-sm font-semibold text-slate-700">No student reviews yet</p>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                 Be the first to share your thoughts and rate this course!
@@ -567,7 +567,7 @@ export default function LearningModule() {
             <div className="p-6 flex-1 overflow-y-auto space-y-6">
               {quizResult ? (
                 <div className={`p-8 rounded-2xl text-center border-2 ${quizResult.passed ? 'bg-brand-green-50 border-brand-green-200' : 'bg-red-50 border-red-200'}`}>
-                  <div className="text-5xl mb-4">{quizResult.passed ? '🎉' : '❌'}</div>
+                  <div className="text-5xl mb-4">{quizResult.passed ? '�Ž‰' : 'âŒ'}</div>
                   <h3 className={`text-2xl font-bold mb-2 ${quizResult.passed ? 'text-brand-green-700' : 'text-red-700'}`}>
                     You scored {quizResult.score}%
                   </h3>
@@ -638,7 +638,7 @@ export default function LearningModule() {
                   onClick={() => setShowRatingModal(false)}
                   className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 grid place-items-center text-sm font-bold"
                 >
-                  ✕
+                  âœ•
                 </button>
               </div>
             </div>
@@ -646,7 +646,7 @@ export default function LearningModule() {
             <form onSubmit={onSubmitRating} className="p-6 space-y-5">
               {ratingMessage && (
                 <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2">
-                  <span>✓</span>
+                  <span>âœ“</span>
                   <span>{ratingMessage}</span>
                 </div>
               )}
@@ -670,7 +670,7 @@ export default function LearningModule() {
                         className="text-4xl transition-transform hover:scale-125 focus:outline-none"
                       >
                         <span className={isFilled ? "text-amber-400 drop-shadow-sm" : "text-slate-200"}>
-                          ★
+                          â˜…
                         </span>
                       </button>
                     );
@@ -678,11 +678,11 @@ export default function LearningModule() {
                   <span className="text-sm font-semibold text-slate-700 ml-2">
                     {(() => {
                       const v = hoverRating || ratingData.rating;
-                      if (v === 5) return "⭐⭐⭐⭐⭐ Excellent";
-                      if (v === 4) return "⭐⭐⭐⭐ Very Good";
-                      if (v === 3) return "⭐⭐⭐ Good / Average";
-                      if (v === 2) return "⭐⭐ Fair";
-                      if (v === 1) return "⭐ Poor";
+                      if (v === 5) return "â­â­â­â­â­ Excellent";
+                      if (v === 4) return "â­â­â­â­ Very Good";
+                      if (v === 3) return "â­â­â­ Good / Average";
+                      if (v === 2) return "â­â­ Fair";
+                      if (v === 1) return "â­ Poor";
                       return "Select a rating";
                     })()}
                   </span>

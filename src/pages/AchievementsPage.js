@@ -12,16 +12,16 @@ import { downloadCertificatePdf } from '../utils/certificate';
 const badgeIcons = [
   '🏆',
   '🥇',
-  '🌟',
-  '🛡️',
+  '�ŒŸ',
+  '�›¡ï¸',
   '🔥',
-  '⭐',
-  '💎',
-  '🚀',
-  '🎖️',
+  'â­',
+  '�Ž',
+  '�€',
+  '�Ž–ï¸',
   '🏅',
   '👑',
-  '⚡',
+  'âš¡',
 ];
 
 const badgeThemes = [
@@ -146,7 +146,7 @@ export default function AchievementsPage() {
         <div className="achievement-hero-content">
 
           <div className="achievement-kicker">
-            <span className="achievement-kicker-icon">✨</span>
+            <span className="achievement-kicker-icon">âœ¨</span>
             <span>YOUR LEARNING JOURNEY</span>
           </div>
 
@@ -179,9 +179,9 @@ export default function AchievementsPage() {
             🏆
           </div>
 
-          <span className="floating-star star-one">✦</span>
-          <span className="floating-star star-two">✧</span>
-          <span className="floating-star star-three">✦</span>
+          <span className="floating-star star-one">âœ¦</span>
+          <span className="floating-star star-two">âœ§</span>
+          <span className="floating-star star-three">âœ¦</span>
 
         </div>
       </div>
@@ -229,7 +229,7 @@ export default function AchievementsPage() {
           <div className="stat-card-top">
 
             <div className="stat-icon-wrapper green-icon">
-              📜
+              �œ
             </div>
 
             <span className="stat-status">
@@ -261,7 +261,7 @@ export default function AchievementsPage() {
           <div className="stat-card-top">
 
             <div className="stat-icon-wrapper orange-icon">
-              🚀
+              �€
             </div>
 
             <span className="stat-status">
@@ -370,7 +370,7 @@ export default function AchievementsPage() {
 
                       <div className="badge-earned-label">
                         <span className="badge-check">
-                          ✓
+                          âœ“
                         </span>
 
                         Achievement Earned
@@ -393,7 +393,7 @@ export default function AchievementsPage() {
                     </div>
 
                     <div className="badge-arrow">
-                      →
+                      â†’
                     </div>
 
                   </div>
@@ -453,7 +453,7 @@ export default function AchievementsPage() {
         >
 
           <span className="error-icon">
-            ⚠️
+            âš ï¸
           </span>
 
           <div>
@@ -499,7 +499,7 @@ export default function AchievementsPage() {
             </div>
 
             <div className="certificate-count">
-              📜 {certs.length}
+              �œ {certs.length}
             </div>
 
           </div>
@@ -526,7 +526,7 @@ export default function AchievementsPage() {
 
                         <div className="certificate-icon-glow" />
 
-                        <span>📜</span>
+                        <span>�œ</span>
 
                       </div>
 
@@ -539,7 +539,7 @@ export default function AchievementsPage() {
                           </span>
 
                           <span className="certificate-issued">
-                            ✓ VERIFIED
+                            âœ“ VERIFIED
                           </span>
 
                         </div>
@@ -551,7 +551,7 @@ export default function AchievementsPage() {
                         <div className="certificate-course">
 
                           <span className="course-small-icon">
-                            🎓
+                            �Ž“
                           </span>
 
                           <span className="certificate-course-name">
@@ -559,7 +559,7 @@ export default function AchievementsPage() {
                           </span>
 
                           <span className="certificate-divider">
-                            •
+                            â€¢
                           </span>
 
                           <span>
@@ -589,12 +589,12 @@ export default function AchievementsPage() {
                       {isDownloading ? (
                         <>
                           <span className="download-spinner" />
-                          <span>Preparing…</span>
+                          <span>Preparingâ€¦</span>
                         </>
                       ) : (
                         <>
                           <span className="download-icon">
-                            ↓
+                            â†“
                           </span>
 
                           <span>

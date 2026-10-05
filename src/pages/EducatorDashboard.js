@@ -422,7 +422,7 @@ export default function EducatorDashboard() {
                 <div className="flex flex-wrap gap-3 mt-7">
                   <Link to="/app/manage-courses">
                     <button className="inline-flex items-center gap-2 rounded-xl bg-white text-slate-950 px-5 py-2.5 text-sm font-bold shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all">
-                      <span>ðŸ“š</span>
+                      <span>📚</span>
                       Manage Courses
                       <span>â†’</span>
                     </button>
@@ -430,7 +430,7 @@ export default function EducatorDashboard() {
 
                   <Link to="/app/learners">
                     <button className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md text-white px-5 py-2.5 text-sm font-bold hover:bg-white/15 transition-all">
-                      <span>ðŸ‘¥</span>
+                      <span>👥</span>
                       View Learners
                     </button>
                   </Link>
@@ -508,7 +508,7 @@ export default function EducatorDashboard() {
               gradient="from-blue-500 to-cyan-400"
               icon={
                 <span className="text-xl">
-                  ðŸ‘¥
+                  👥
                 </span>
               }
             />
@@ -520,7 +520,7 @@ export default function EducatorDashboard() {
               gradient="from-emerald-500 to-teal-400"
               icon={
                 <span className="text-xl">
-                  ðŸ“š
+                  📚
                 </span>
               }
               valueClass="text-emerald-700 dark:text-emerald-300"
@@ -616,7 +616,7 @@ export default function EducatorDashboard() {
                   </div>
 
                   <div className="hidden sm:flex w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 items-center justify-center">
-                    ðŸ“ˆ
+                    📈
                   </div>
                 </div>
 
@@ -771,7 +771,7 @@ export default function EducatorDashboard() {
                   </div>
 
                   <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
-                    ðŸŽ¯
+                    🎯
                   </div>
                 </div>
 
@@ -921,7 +921,7 @@ export default function EducatorDashboard() {
                 {learners.length === 0 && (
                   <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 py-10 text-center">
                     <div className="text-3xl mb-2">
-                      ðŸ‘¥
+                      👥
                     </div>
 
                     <p className="text-sm text-slate-400">
@@ -969,7 +969,7 @@ export default function EducatorDashboard() {
                     title="Click to view in Community Announcements"
                   >
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-rose-500 text-white flex items-center justify-center shadow-md shrink-0">
-                      ðŸ“£
+                      📣
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -997,7 +997,7 @@ export default function EducatorDashboard() {
                 {recent.length === 0 && (
                   <li className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 py-8 text-center">
                     <div className="text-2xl mb-2">
-                      ðŸ“­
+                      📭
                     </div>
 
                     <div className="text-xs text-slate-400">
@@ -1012,7 +1012,7 @@ export default function EducatorDashboard() {
                   className="mt-4 w-full !rounded-xl"
                   variant="outline"
                 >
-                  ðŸ“£ Send Announcement
+                  📣 Send Announcement
                 </Button>
               </Link>
             </div>
@@ -1036,7 +1036,7 @@ export default function EducatorDashboard() {
               title="Manage Courses"
               description="Create and manage your courses"
               gradient="from-blue-600 to-cyan-500"
-              icon="ðŸ“š"
+              icon="📚"
             />
 
             <QuickAction
@@ -1044,7 +1044,7 @@ export default function EducatorDashboard() {
               title="View Learners"
               description="Monitor your learner community"
               gradient="from-violet-600 to-indigo-500"
-              icon="ðŸ‘¥"
+              icon="👥"
             />
 
             <QuickAction
@@ -1052,7 +1052,7 @@ export default function EducatorDashboard() {
               title="Insights Report"
               description="Explore learning analytics"
               gradient="from-emerald-600 to-teal-500"
-              icon="ðŸ“ˆ"
+              icon="📈"
             />
 
             <QuickAction
@@ -1060,7 +1060,7 @@ export default function EducatorDashboard() {
               title="Send Announcement"
               description="Communicate with learners"
               gradient="from-orange-500 to-rose-500"
-              icon="ðŸ“£"
+              icon="📣"
             />
           </div>
         </section>
@@ -1165,7 +1165,7 @@ export default function EducatorDashboard() {
               ) : (
                 <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50 border border-slate-100 dark:border-white/10 text-center py-10">
                   <div className="text-4xl mb-3">
-                    ðŸ’¬
+                    💬
                   </div>
 
                   <div className="text-sm font-semibold text-slate-500 dark:text-slate-400">
@@ -1209,7 +1209,7 @@ export default function EducatorDashboard() {
               {courses.length === 0 ? (
                 <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 py-10 text-center border border-slate-100 dark:border-white/10">
                   <div className="text-4xl mb-3">
-                    ðŸ“š
+                    📚
                   </div>
 
                   <div className="text-sm font-semibold text-slate-500 dark:text-slate-400">
@@ -1244,7 +1244,7 @@ export default function EducatorDashboard() {
 
                       <div className="flex items-center gap-3 pl-2">
                         <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500/10 to-violet-500/10 dark:from-blue-500/20 dark:to-violet-500/20 border border-blue-100 dark:border-blue-500/10 flex items-center justify-center text-xl shrink-0">
-                          ðŸ“–
+                          📖
                         </div>
 
                         <div className="min-w-0 flex-1">
