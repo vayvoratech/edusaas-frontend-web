@@ -353,7 +353,7 @@ export default function SkillAssessment() {
                     </p>
 
                     <p className="mt-0.5 text-sm font-bold text-slate-800 dark:text-slate-100">
-                      Skill ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Readiness ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Certification
+                      Skill &middot; Readiness &middot; Certification
                     </p>
                   </div>
                 </div>
@@ -768,7 +768,7 @@ export default function SkillAssessment() {
 
                   <div className="mt-4 flex flex-wrap gap-2.5">
                     <InfoPill>
-                      Difficulty: 2ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ4
+                      Difficulty: 2-4
                     </InfoPill>
 
                     <InfoPill>

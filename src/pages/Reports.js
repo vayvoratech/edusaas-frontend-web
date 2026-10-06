@@ -53,7 +53,7 @@ import {
 } from '../utils/exports';
 
 const fmtDate = (iso) => {
-  if (!iso) return 'â€”';
+  if (!iso) return '–';
 
   try {
     return new Date(iso).toLocaleDateString(undefined, {
@@ -144,7 +144,7 @@ const MetricCard = ({
           <div
             className={`mt-2 text-3xl font-black tracking-tight ${style.value}`}
           >
-            {value ?? 'â€”'}
+            {value ?? '–'}
           </div>
 
           {description && (
@@ -323,7 +323,7 @@ const MiniStat = ({
           <div
             className={`mt-1 text-2xl font-black ${style.value}`}
           >
-            {value ?? 'â€”'}
+            {value ?? '–'}
           </div>
         </div>
 
@@ -442,7 +442,7 @@ export default function Reports() {
 
   const onExportCsv = () => {
     const rows = [
-      ['EduSaaS â€” Reports & Platform Analytics'],
+      ['EduSaaS – Reports & Platform Analytics'],
       ['Generated', new Date().toLocaleString()],
       [],
 
@@ -1113,7 +1113,7 @@ export default function Reports() {
                   value={
                     summary?.learning?.completionRate != null
                       ? `${summary.learning.completionRate}%`
-                      : 'â€”'
+                      : '–'
                   }
                   tone="purple"
                   icon={
@@ -1126,7 +1126,7 @@ export default function Reports() {
                   value={
                     summary?.learning?.dropoutRate != null
                       ? `${summary.learning.dropoutRate}%`
-                      : 'â€”'
+                      : '–'
                   }
                   tone="red"
                   icon={
@@ -1142,7 +1142,7 @@ export default function Reports() {
 
                 <span className="text-sm font-black text-slate-800">
                   {summary?.assessments
-                    ?.completedAssessments ?? 'â€”'}
+                    ?.completedAssessments ?? '–'}
                 </span>
               </div>
             </div>
@@ -1244,7 +1244,7 @@ export default function Reports() {
                   value={
                     summary?.recruitment?.shortlistRate != null
                       ? `${summary.recruitment.shortlistRate}%`
-                      : 'â€”'
+                      : '–'
                   }
                   tone="purple"
                   icon={
@@ -1257,7 +1257,7 @@ export default function Reports() {
                   value={
                     summary?.recruitment?.selectionRate != null
                       ? `${summary.recruitment.selectionRate}%`
-                      : 'â€”'
+                      : '–'
                   }
                   tone="indigo"
                   icon={

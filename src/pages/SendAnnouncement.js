@@ -322,7 +322,7 @@ export default function SendAnnouncement() {
                       rows={7}
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Hello everyone, â€¦"
+                      placeholder="Hello everyone, …"
                       className="w-full resize-y rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 font-mono text-sm leading-6 text-slate-800 outline-none transition-all placeholder:font-sans placeholder:text-slate-400 hover:border-blue-200 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
                     />
 
@@ -500,7 +500,7 @@ export default function SendAnnouncement() {
                       {sending ? (
                         <>
                           <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                          Sendingâ€¦
+                          Sending…
                         </>
                       ) : (
                         <>
@@ -630,7 +630,7 @@ export default function SendAnnouncement() {
 
                             <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
                               <span>{fmtRel(a.created_at)}</span>
-                              <span>â€¢</span>
+                              <span>•</span>
                               <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-500">
                                 {a.audience}
                               </span>
@@ -780,7 +780,7 @@ export default function SendAnnouncement() {
                   </span>
 
                   <span className="text-[11px] text-slate-400">
-                    â€¢
+                    •
                   </span>
 
                   <span className="text-[11px] font-medium text-slate-500">
@@ -817,7 +817,7 @@ export default function SendAnnouncement() {
               <div className="mt-5 flex items-center justify-between gap-4">
                 <div className="hidden items-center gap-2 text-xs text-slate-400 sm:flex">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  Preview only â€” nothing has been sent.
+                  Preview only – nothing has been sent.
                 </div>
 
                 <div className="ml-auto">

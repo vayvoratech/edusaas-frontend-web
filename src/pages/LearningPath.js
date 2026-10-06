@@ -3,7 +3,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getCourses, getMyEnrollments, enrollCourse } from '../services/api';
 
-const icons = { aws: 'â˜ï¸', devops: 'âš™ï¸', k8s: '🐳', default: '�˜' };
+const icons = { aws: 'cloud', devops: 'gear', k8s: 'container', default: 'book' };
 const pickIcon = (course) => {
   const t = (course.title || '').toLowerCase();
   if (t.includes('aws') || t.includes('cloud')) return icons.aws;
@@ -92,7 +92,7 @@ export default function LearningPath() {
                     disabled={busyId === step.id || String(step.id).startsWith('mock-')}
                     onClick={() => onEnroll(step.id)}
                   >
-                    {busyId === step.id ? 'Enrollingâ€¦' : 'Enroll'}
+                    {busyId === step.id ? 'Enrolling…' : 'Enroll'}
                   </Button>
                   <Button variant="outline">Start</Button>
                 </>
@@ -115,7 +115,7 @@ export default function LearningPath() {
               Apply what you&apos;ve learned with a hands-on project employers will recognize.
             </p>
           </div>
-          <Button variant="accent">Start Project â†’</Button>
+          <Button variant="accent">Start Project →</Button>
         </div>
       </Card>
     </div>

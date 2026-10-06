@@ -12,7 +12,7 @@ const ROLES = ['', 'student', 'educator', 'employer', 'admin'];
 const STATUSES = ['', 'active', 'suspended'];
 
 const fmtDate = (iso) => {
-  if (!iso) return 'â€”';
+  if (!iso) return '–';
 
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -1285,7 +1285,7 @@ export default function UserManagement() {
                       pageSize +
                     1}
               </span>
-              â€“
+              —
               <span className="font-black text-[#353740]">
                 {Math.min(
                   page * pageSize,
@@ -1310,7 +1310,7 @@ export default function UserManagement() {
                 }
                 disabled={page === 1}
               >
-                â€¹
+                &lt;
               </button>
 
               {Array.from(
@@ -1338,7 +1338,7 @@ export default function UserManagement() {
 
               {totalPages > 3 && (
                 <span className="px-1 text-xs font-black text-[#99948C]">
-                  â€¦
+                  …
                 </span>
               )}
 
@@ -1882,7 +1882,7 @@ export default function UserManagement() {
                   }
                 >
                   {submittingCreate
-                    ? 'Creatingâ€¦'
+                    ? 'Creating…'
                     : 'Create User'}
                 </Button>
 
@@ -1984,7 +1984,7 @@ export default function UserManagement() {
                   }`}
                 >
                   {confirmBusy
-                    ? 'Workingâ€¦'
+                    ? 'Working…'
                     : `Yes, ${confirm.label.toLowerCase()}`}
                 </button>
 

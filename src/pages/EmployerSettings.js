@@ -38,22 +38,22 @@ const LANGUAGE_OPTIONS = [
 ];
 
 const TIME_ZONE_OPTIONS = [
-  { value: 'UTC', label: 'UTC â€” Coordinated Universal Time' },
-  { value: 'Asia/Kolkata', label: 'India â€” Asia/Kolkata' },
-  { value: 'Asia/Dubai', label: 'UAE â€” Asia/Dubai' },
-  { value: 'Asia/Singapore', label: 'Singapore â€” Asia/Singapore' },
-  { value: 'Asia/Tokyo', label: 'Japan â€” Asia/Tokyo' },
-  { value: 'Asia/Shanghai', label: 'China â€” Asia/Shanghai' },
-  { value: 'Asia/Seoul', label: 'South Korea â€” Asia/Seoul' },
-  { value: 'Europe/London', label: 'UK â€” Europe/London' },
-  { value: 'Europe/Paris', label: 'France â€” Europe/Paris' },
-  { value: 'Europe/Berlin', label: 'Germany â€” Europe/Berlin' },
-  { value: 'Africa/Cairo', label: 'Egypt â€” Africa/Cairo' },
-  { value: 'America/New_York', label: 'US East â€” America/New_York' },
-  { value: 'America/Chicago', label: 'US Central â€” America/Chicago' },
-  { value: 'America/Denver', label: 'US Mountain â€” America/Denver' },
-  { value: 'America/Los_Angeles', label: 'US Pacific â€” America/Los_Angeles' },
-  { value: 'Australia/Sydney', label: 'Australia â€” Australia/Sydney' },
+  { value: 'UTC', label: 'UTC – Coordinated Universal Time' },
+  { value: 'Asia/Kolkata', label: 'India – Asia/Kolkata' },
+  { value: 'Asia/Dubai', label: 'UAE – Asia/Dubai' },
+  { value: 'Asia/Singapore', label: 'Singapore – Asia/Singapore' },
+  { value: 'Asia/Tokyo', label: 'Japan – Asia/Tokyo' },
+  { value: 'Asia/Shanghai', label: 'China – Asia/Shanghai' },
+  { value: 'Asia/Seoul', label: 'South Korea – Asia/Seoul' },
+  { value: 'Europe/London', label: 'UK – Europe/London' },
+  { value: 'Europe/Paris', label: 'France – Europe/Paris' },
+  { value: 'Europe/Berlin', label: 'Germany – Europe/Berlin' },
+  { value: 'Africa/Cairo', label: 'Egypt – Africa/Cairo' },
+  { value: 'America/New_York', label: 'US East – America/New_York' },
+  { value: 'America/Chicago', label: 'US Central – America/Chicago' },
+  { value: 'America/Denver', label: 'US Mountain – America/Denver' },
+  { value: 'America/Los_Angeles', label: 'US Pacific – America/Los_Angeles' },
+  { value: 'Australia/Sydney', label: 'Australia – Australia/Sydney' },
 ];
 
 const TAB_META = {
@@ -1047,7 +1047,7 @@ function EmployerSettings() {
                   key={option.value}
                   value={option.value}
                 >
-                  {option.label} â€” {option.native}
+                  {option.label} – {option.native}
                 </option>
               ))}
             </SettingSelect>
@@ -1568,7 +1568,7 @@ function EmployerSettings() {
 
                   <div>
                     <div className="text-[10px] font-black tracking-[0.3em] text-cyan-300">
-                      VAYVORA â€¢ EMPLOYER SPACE
+                      VAYVORA • EMPLOYER SPACE
                     </div>
 
                     <h1 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">

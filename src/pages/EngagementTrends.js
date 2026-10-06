@@ -391,7 +391,7 @@ export default function EngagementTrends() {
           });
 
           return {
-            label: `${formatter.format(days[0])} Ã¢â‚¬â€œ ${formatter.format(
+            label: `${formatter.format(days[0])} - ${formatter.format(
               days[days.length - 1]
             )}`,
             total,
@@ -1233,7 +1233,7 @@ export default function EngagementTrends() {
                     >
                       {hours > 0
                         ? displayHours(hours)
-                        : 'Ã¢â‚¬â€'}
+                        : '-'}
                     </span>
                   </button>
                 );
@@ -1242,7 +1242,7 @@ export default function EngagementTrends() {
 
             {loading && (
               <div className="status-message loading-message">
-                Loading your watch hoursÃ¢â‚¬Â¦
+                Loading your watch hours...
               </div>
             )}
 

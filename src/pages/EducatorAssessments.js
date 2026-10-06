@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "../components/ui/Card";
+import { GraduationCap, PenLine, Plus, FileText, CheckCircle2, Clock3, Sparkles } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import {
   getMyMiniProjects,
@@ -103,8 +104,9 @@ export default function EducatorAssessments() {
               <div className="relative mb-6">
                 <div className="absolute inset-0 animate-ping rounded-2xl bg-amber-300/20" />
 
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-200 bg-gradient-to-br from-slate-900 to-slate-700 text-2xl text-white shadow-[0_12px_30px_rgba(15,23,42,0.20)]">
-                  �‹
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 shadow-inner">
+                  <GraduationCap className="h-8 w-8" strokeWidth={2} />
+                  <Sparkles className="h-4 w-4" strokeWidth={2} />
                 </div>
               </div>
 
@@ -225,7 +227,7 @@ export default function EducatorAssessments() {
 
                 <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 shadow-sm">
                   <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500 text-xs font-black text-white">
-                    âœ“
+                    ✓
                   </span>
 
                   <span className="text-xs font-bold text-emerald-700">
@@ -234,9 +236,9 @@ export default function EducatorAssessments() {
                 </div>
 
                 <div className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500 text-xs font-black text-white">
-                    âœŽ
-                  </span>
+                    <PenLine className="h-3.5 w-3.5" strokeWidth={2.5} />
+
+
 
                   <span className="text-xs font-bold text-amber-700">
                     {draftCount} Draft
@@ -254,9 +256,9 @@ export default function EducatorAssessments() {
                 }
                 className="!min-h-[50px] !rounded-2xl !border-0 !bg-slate-950 !px-5 !font-extrabold !text-white !shadow-[0_12px_30px_rgba(15,23,42,0.20)] transition-all duration-300 hover:!-translate-y-1 hover:!bg-slate-800 hover:!shadow-[0_18px_40px_rgba(15,23,42,0.25)]"
               >
-                <span className="mr-2 text-lg text-amber-400">
-                  ï¼‹
-                </span>
+                  <Plus className="h-5 w-5" strokeWidth={2.5} />
+
+
                 Create Mini Project
               </Button>
             </div>
@@ -300,7 +302,7 @@ export default function EducatorAssessments() {
 
               <div className="relative">
                 <div className="flex items-start justify-between">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-2xl text-white shadow-[0_10px_25px_rgba(15,23,42,0.20)] transition-all duration-500 group-hover:rotate-2 group-hover:scale-110">
+                    <FileText className="h-7 w-7" strokeWidth={2} />
                     �‹
                   </div>
 
@@ -325,7 +327,7 @@ export default function EducatorAssessments() {
                   </div>
                 </div>
               </div>
-            </div>
+
           </Card>
 
           {/* Published */}
@@ -337,7 +339,7 @@ export default function EducatorAssessments() {
 
               <div className="relative">
                 <div className="flex items-start justify-between">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-2xl text-white shadow-[0_10px_25px_rgba(16,185,129,0.25)] transition-all duration-500 group-hover:-rotate-2 group-hover:scale-110">
+                    <CheckCircle2 className="h-7 w-7" strokeWidth={2} />
                     �€
                   </div>
 
@@ -362,7 +364,7 @@ export default function EducatorAssessments() {
                   </div>
                 </div>
               </div>
-            </div>
+
           </Card>
 
           {/* Submissions */}
@@ -411,7 +413,7 @@ export default function EducatorAssessments() {
           <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-amber-50/40 px-5 py-5 sm:px-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-950 text-lg text-white shadow-[0_8px_20px_rgba(15,23,42,0.16)]">
+                  <FileText className="h-5 w-5" strokeWidth={2} />
                   â—†
                 </div>
 
@@ -437,7 +439,7 @@ export default function EducatorAssessments() {
                 </span>
               </div>
             </div>
-          </div>
+
 
           <div className="p-5 sm:p-6">
             {/* =====================================================
@@ -475,9 +477,9 @@ export default function EducatorAssessments() {
                       navigate("/app/educator-assessments/create")
                     }
                   >
-                    <span className="mr-2 text-amber-400">
-                      ï¼‹
-                    </span>
+                      <Plus className="h-4 w-4" strokeWidth={2.5} />
+
+
                     Create Mini Project
                   </Button>
                 </div>
@@ -531,8 +533,9 @@ export default function EducatorAssessments() {
                                   ? "bg-emerald-500"
                                   : "bg-amber-500"
                               }`}
-                            >
-                              {isPublished ? "�€" : "📝"}
+                              >
+                              {isPublished ? <CheckCircle2 className="h-5 w-5" strokeWidth={2} /> : <PenLine className="h-5 w-5" strokeWidth={2} />}
+
                             </div>
 
                             <h4 className="min-w-0 break-words text-base font-black tracking-tight text-slate-900 sm:text-lg">
@@ -552,9 +555,9 @@ export default function EducatorAssessments() {
 
                           {/* Domain */}
                           <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white text-xs font-black text-slate-700 shadow-sm">
-                              â—ˆ
-                            </span>
+                              <FileText className="h-3.5 w-3.5" strokeWidth={2} />
+                              <FileText className="h-3.5 w-3.5" strokeWidth={2} />
+
 
                             <span className="text-sm font-bold text-slate-600">
                               {project.domainRole?.domain_name ||
@@ -578,15 +581,14 @@ export default function EducatorAssessments() {
                                 : "Submissions"}
                             </span>
 
-                            <span className="inline-flex items-center gap-1.5 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700">
-                              <span>â°</span>
-
-                              {project.due_at
-                                ? new Date(
-                                    project.due_at
-                                  ).toLocaleString()
-                                : "No deadline"}
-                            </span>
+                              <Clock3 className="h-3.5 w-3.5" strokeWidth={2} />
+                              <span>
+                                {project.due_at
+                                  ? new Date(
+                                      project.due_at
+                                    ).toLocaleString()
+                                  : "No deadline"}
+                              </span>
                           </div>
                         </div>
 
@@ -611,9 +613,9 @@ export default function EducatorAssessments() {
                                 </>
                               ) : (
                                 <>
-                                  <span className="mr-2">
-                                    �€
-                                  </span>
+                                    <Clock3 className="h-4 w-4" strokeWidth={2} />
+
+
 
                                   Publish
                                 </>
@@ -681,8 +683,8 @@ export default function EducatorAssessments() {
 
             <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-lg text-amber-300">
-                  âœ¦
+                  <Sparkles className="h-5 w-5" strokeWidth={2} />
+
                 </div>
 
                 <div>
@@ -711,7 +713,7 @@ export default function EducatorAssessments() {
                 </span>
               </div>
             </div>
-          </div>
+
         )}
       </div>
     </div>

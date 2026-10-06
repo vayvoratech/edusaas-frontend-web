@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+
 import { Link } from "react-router-dom";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -14,15 +15,15 @@ import {
 const iconFor = (title = "") => {
   const t = title.toLowerCase();
 
-  if (t.includes("python")) return "🐍";
-  if (t.includes("sql")) return "�—„ï¸";
-  if (t.includes("machine")) return "�–";
-  if (t.includes("deep")) return "🧠";
-  if (t.includes("git")) return "�Œ¿";
-  if (t.includes("preprocess") || t.includes("data")) return "📊";
-  if (t.includes("stat")) return "�ˆ";
+  if (t.includes("python")) return "\u{1F40D}";
+  if (t.includes("sql")) return "\u{1F5C3}\uFE0F";
+  if (t.includes("machine")) return "\u{1F916}";
+  if (t.includes("deep")) return "\u{1F9E0}";
+  if (t.includes("git")) return "\u{1F500}";
+  if (t.includes("preprocess") || t.includes("data")) return "\u{1F4CA}";
+  if (t.includes("stat")) return "\u{1F4C8}";
 
-  return "�˜";
+  return "\u{1F4A1}";
 };
 
 const styles = `
@@ -1344,7 +1345,7 @@ export default function RecommendationsPage() {
             <div className="hero-content">
               <div>
                 <div className="hero-badge">
-                  �€ {userDomainName} Career Path
+                  &#x1F680; {userDomainName} Career Path
                 </div>
 
                 <h1 className="hero-title">
@@ -1363,7 +1364,7 @@ export default function RecommendationsPage() {
 
                 <Link to="/app/assessments/initial">
                   <Button className="gradient-button">
-                    Start Initial Assessment â†’
+                    Start Initial Assessment &#x2192;
                   </Button>
                 </Link>
               </div>
@@ -1387,7 +1388,7 @@ export default function RecommendationsPage() {
           <div className="recommendation-section">
             <div className="course-grid">
               <Card className="premium-card no-assessment-card">
-                <div className="no-assessment-icon">�ˆ</div>
+                <div className="no-assessment-icon">&#x1F4CA;</div>
 
                 <h2 className="no-assessment-title">
                   Skill Profile
@@ -1415,7 +1416,7 @@ export default function RecommendationsPage() {
               </Card>
 
               <Card className="premium-card no-assessment-card">
-                <div className="no-assessment-icon">�—ºï¸</div>
+                <div className="no-assessment-icon">&#x1F4C5;</div>
 
                 <h2 className="no-assessment-title">
                   Learning Roadmap
@@ -1446,7 +1447,7 @@ export default function RecommendationsPage() {
 
           <div className="recommendation-section">
             <Card className="premium-card no-assessment-card">
-              <div className="no-assessment-icon">�Ž¯</div>
+              <div className="no-assessment-icon">&#x1F6A8;</div>
 
               <h2 className="no-assessment-title">
                 Personalized Recommendations Awaiting Assessment
@@ -1461,7 +1462,7 @@ export default function RecommendationsPage() {
 
               <Link to="/app/assessments/initial">
                 <Button className="gradient-button">
-                  Take Initial Assessment â†’
+                  Take Initial Assessment &#x2192;
                 </Button>
               </Link>
             </Card>
@@ -1654,7 +1655,7 @@ export default function RecommendationsPage() {
           <div className="hero-content">
             <div>
               <div className="hero-badge">
-                �€ {userDomainName} Career Path
+                &#x1F680; {userDomainName} Career Path
               </div>
 
               <h1 className="hero-title">
@@ -1740,7 +1741,7 @@ export default function RecommendationsPage() {
             </div>
 
             <span className="section-badge">
-              âœ¦ {dynamicSkills.length > 0
+              &#x2726; {dynamicSkills.length > 0
                 ? "Live Assessment Data"
                 : "Initial Profile"}
             </span>
@@ -1785,7 +1786,7 @@ export default function RecommendationsPage() {
               </div>
 
               <h2 className="section-title">
-                �›£ Recommended Learning Roadmap
+                &#x1F4DA; Recommended Learning Roadmap
               </h2>
 
               <p className="section-subtitle">
@@ -1796,8 +1797,8 @@ export default function RecommendationsPage() {
 
             <span className="section-badge">
               {learningPathway.length > 0
-                ? "âœ¦ Dynamic AI Pathway"
-                : "âœ¦ Skill Gap Pathway"}
+                ? "&#x2726; Dynamic AI Pathway"
+                : "&#x2726; Skill Gap Pathway"}
             </span>
           </div>
 
@@ -1828,13 +1829,13 @@ export default function RecommendationsPage() {
                       {String(
                         step.status || ""
                       ).toUpperCase() === "COMPLETED"
-                        ? "âœ“ Completed"
-                        : "âœ¦ Recommended"}
+                        ? "&#x2713; Completed"
+                        : "&#x2726; Recommended"}
                     </span>
 
                     {index < pathway.length - 1 && (
                       <span className="roadmap-arrow">
-                        â†’
+                        &#x2192;
                       </span>
                     )}
                   </div>
@@ -1843,7 +1844,7 @@ export default function RecommendationsPage() {
             ) : (
               <div className="no-assessment-card">
                 <div className="no-assessment-icon">
-                  �—ºï¸
+                  &#x1F4C5;
                 </div>
 
                 <h3 className="no-assessment-title">
@@ -1879,13 +1880,13 @@ export default function RecommendationsPage() {
             </div>
 
             <span className="section-badge">
-              âœ¦ AI Prioritized
+              &#x2726; AI Prioritized
             </span>
           </div>
 
           {error && (
             <div className="recommendation-error">
-              âš ï¸ {error}
+              &#x26A0; {error}
             </div>
           )}
 
@@ -1939,14 +1940,14 @@ export default function RecommendationsPage() {
                           </span>
 
                           <span className="course-badge ai">
-                            â­ AI Recommended
+                            &#x2728; AI Recommended
                           </span>
 
                           {(r?.priority === "high" ||
                             r?.high_priority ||
                             r?.is_high_priority) && (
                             <span className="course-badge priority">
-                              �Ž¯ High Priority
+                              &#x1F6A8; High Priority
                             </span>
                           )}
                         </div>
@@ -1991,7 +1992,7 @@ export default function RecommendationsPage() {
                           </span>
 
                           <span className="course-metric-value">
-                            â­ {rating}
+                            &#x2728; {rating}
                           </span>
                         </div>
                       </div>
@@ -2003,7 +2004,7 @@ export default function RecommendationsPage() {
                             className="enrolled-action"
                             disabled
                           >
-                            âœ“ Enrolled
+                            &#x2713; Enrolled
                           </button>
                         ) : (
                           <Button
@@ -2017,7 +2018,7 @@ export default function RecommendationsPage() {
                           >
                             {busyId === courseId
                               ? "Enrolling..."
-                              : "Enroll Now â†’"}
+                              : "Enroll Now &#x2192;"}
                           </Button>
                         )}
 
@@ -2047,7 +2048,7 @@ export default function RecommendationsPage() {
                 </div>
 
                 <h2 className="section-title">
-                  �– AI Personalized Course Suggestions
+                  &#x1F9E0; AI Personalized Course Suggestions
                 </h2>
 
                 <p className="section-subtitle">
@@ -2057,7 +2058,7 @@ export default function RecommendationsPage() {
               </div>
 
               <span className="section-badge">
-                âœ¦ AI Engine
+                &#x2726; AI Engine
               </span>
             </div>
 
@@ -2089,7 +2090,7 @@ export default function RecommendationsPage() {
                           <div className="course-badges">
                             {confidence !== null && (
                               <span className="course-badge confidence">
-                                âœ¦{" "}
+                                &#x2726;{" "}
                                 {typeof confidence ===
                                 "number"
                                   ? `${Math.round(
@@ -2102,7 +2103,7 @@ export default function RecommendationsPage() {
                             )}
 
                             <span className="course-badge ai">
-                              �– AI Pick
+                              &#x1F9E0; AI Pick
                             </span>
                           </div>
                         </div>
@@ -2137,7 +2138,7 @@ export default function RecommendationsPage() {
                             className="prerequisite-badge"
                             style={{ marginTop: 12 }}
                           >
-                            âœ“ Prerequisite Completed
+                            &#x2713; Prerequisite Completed
                           </div>
                         )}
 
@@ -2151,7 +2152,7 @@ export default function RecommendationsPage() {
                           variant="outline"
                           className="premium-action"
                         >
-                          View Details â†’
+                          View Details &#x2192;
                         </Button>
                       </div>
                     </Card>
@@ -2168,7 +2169,7 @@ export default function RecommendationsPage() {
           <section className="recommendation-section">
             <Card className="premium-card no-assessment-card">
               <div className="no-assessment-icon">
-                �–
+                &#x1F9E0;
               </div>
 
               <h2 className="no-assessment-title">

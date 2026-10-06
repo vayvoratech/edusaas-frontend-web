@@ -79,7 +79,7 @@ export default function Signup() {
                   </div>
 
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">
-                    Learn â€¢ Build â€¢ Grow
+                    Learn • Build • Grow
                   </div>
                 </div>
               </div>
@@ -106,7 +106,7 @@ export default function Signup() {
 
               <p className="mt-6 max-w-lg text-base leading-7 text-white/70 xl:text-lg">
                 Personalized assessments, AI-driven learning paths, practical
-                projects, and direct connections to employers â€” all in one
+                projects, and direct connections to employers – all in one
                 platform.
               </p>
 
@@ -175,7 +175,7 @@ export default function Signup() {
                 </div>
 
                 <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/50">
-                  Learn â€¢ Build â€¢ Grow
+                  Learn • Build • Grow
                 </div>
               </div>
             </div>

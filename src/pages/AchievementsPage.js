@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AlertTriangle, BookOpen } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -10,18 +11,17 @@ import {
 import { downloadCertificatePdf } from '../utils/certificate';
 
 const badgeIcons = [
-  '🏆',
-  '🥇',
-  '�ŒŸ',
-  '�›¡ï¸',
-  '🔥',
-  'â­',
-  '�Ž',
-  '�€',
-  '�Ž–ï¸',
-  '🏅',
-  '👑',
-  'âš¡',
+  '\u{1F3C6}',
+  '\u{1F947}',
+  '\u{2B50}',
+  '\u{1F3AF}',
+  '\u{1F525}',
+  '\u{1F680}',
+  '\u{1F3C5}',
+  '\u{1F4B0}',
+  '\u{1F396}',
+  '\u{1F451}',
+  '\u{26A1}',
 ];
 
 const badgeThemes = [
@@ -146,7 +146,7 @@ export default function AchievementsPage() {
         <div className="achievement-hero-content">
 
           <div className="achievement-kicker">
-            <span className="achievement-kicker-icon">âœ¨</span>
+            <span className="achievement-kicker-icon">✨</span>
             <span>YOUR LEARNING JOURNEY</span>
           </div>
 
@@ -179,9 +179,9 @@ export default function AchievementsPage() {
             🏆
           </div>
 
-          <span className="floating-star star-one">âœ¦</span>
-          <span className="floating-star star-two">âœ§</span>
-          <span className="floating-star star-three">âœ¦</span>
+          <span className="floating-star star-one">✦</span>
+          <span className="floating-star star-two">✧</span>
+          <span className="floating-star star-three">✦</span>
 
         </div>
       </div>
@@ -229,7 +229,7 @@ export default function AchievementsPage() {
           <div className="stat-card-top">
 
             <div className="stat-icon-wrapper green-icon">
-              �œ
+              &#x2713;
             </div>
 
             <span className="stat-status">
@@ -261,7 +261,7 @@ export default function AchievementsPage() {
           <div className="stat-card-top">
 
             <div className="stat-icon-wrapper orange-icon">
-              �€
+              &#x1F4B0;
             </div>
 
             <span className="stat-status">
@@ -370,7 +370,7 @@ export default function AchievementsPage() {
 
                       <div className="badge-earned-label">
                         <span className="badge-check">
-                          âœ“
+                          &#x2713;
                         </span>
 
                         Achievement Earned
@@ -393,7 +393,7 @@ export default function AchievementsPage() {
                     </div>
 
                     <div className="badge-arrow">
-                      â†’
+                      →
                     </div>
 
                   </div>
@@ -453,7 +453,7 @@ export default function AchievementsPage() {
         >
 
           <span className="error-icon">
-            âš ï¸
+            <AlertTriangle className="h-5 w-5" strokeWidth={2.2} />
           </span>
 
           <div>
@@ -499,7 +499,7 @@ export default function AchievementsPage() {
             </div>
 
             <div className="certificate-count">
-              �œ {certs.length}
+              &#x2713; {certs.length}
             </div>
 
           </div>
@@ -526,7 +526,7 @@ export default function AchievementsPage() {
 
                         <div className="certificate-icon-glow" />
 
-                        <span>�œ</span>
+                        <span>&#x2713;</span>
 
                       </div>
 
@@ -539,7 +539,7 @@ export default function AchievementsPage() {
                           </span>
 
                           <span className="certificate-issued">
-                            âœ“ VERIFIED
+                            &#x2713; VERIFIED
                           </span>
 
                         </div>
@@ -551,7 +551,7 @@ export default function AchievementsPage() {
                         <div className="certificate-course">
 
                           <span className="course-small-icon">
-                            �Ž“
+                            <BookOpen className="h-4 w-4" strokeWidth={2} />
                           </span>
 
                           <span className="certificate-course-name">
@@ -559,7 +559,7 @@ export default function AchievementsPage() {
                           </span>
 
                           <span className="certificate-divider">
-                            â€¢
+                            •
                           </span>
 
                           <span>
@@ -589,12 +589,12 @@ export default function AchievementsPage() {
                       {isDownloading ? (
                         <>
                           <span className="download-spinner" />
-                          <span>Preparingâ€¦</span>
+                          <span>Preparing…</span>
                         </>
                       ) : (
                         <>
                           <span className="download-icon">
-                            â†“
+                            ↓
                           </span>
 
                           <span>

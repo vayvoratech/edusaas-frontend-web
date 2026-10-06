@@ -11,7 +11,7 @@ import {
 } from '../services/api';
 
 const formatDate = (value) => {
-  if (!value) return 'â€”';
+  if (!value) return '–';
 
   try {
     return new Date(value).toLocaleDateString(undefined, {
@@ -20,7 +20,7 @@ const formatDate = (value) => {
       day: '2-digit',
     });
   } catch {
-    return 'â€”';
+    return '–';
   }
 };
 
@@ -317,13 +317,13 @@ const handleExtendSubscription = async (subscription) => {
                         {subscription.user?.name || 'Unknown user'}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {subscription.user?.email || 'â€”'}
+                        {subscription.user?.email || '–'}
                       </div>
                     </td>
 
                     <td className="py-3 px-2">
                       <span className="capitalize font-medium">
-                        {subscription.plan_type || 'â€”'}
+                        {subscription.plan_type || '–'}
                       </span>
                     </td>
 

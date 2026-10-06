@@ -228,7 +228,7 @@ export default function Candidates() {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search candidatesâ€¦"
+            placeholder="Search candidates…"
             className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-full sm:w-64"
           />
         </div>
@@ -266,7 +266,7 @@ export default function Candidates() {
                         : 'bg-amber-50 text-amber-700 border-amber-200'
                     }`}
                   >
-                    �– AI {c.ai_hiring_match.match_level} (
+                    [AI] {c.ai_hiring_match.match_level} (
                     {Math.round(
                       c.ai_hiring_match.match_percentage
                     )}
@@ -340,13 +340,13 @@ export default function Candidates() {
 
             {viewLoading ? (
               <p className="text-sm text-slate-500">
-                Loading profileâ€¦
+                Loading profile…
               </p>
             ) : (
               <dl className="space-y-2 text-sm">
                 <Row
                   k="Role"
-                  v={viewProfile?.role || viewing.role || 'â€”'}
+                  v={viewProfile?.role || viewing.role || '–'}
                 />
 
                 <Row
@@ -354,7 +354,7 @@ export default function Candidates() {
                   v={
                     viewing.domain_role ||
                     viewing.role_target ||
-                    'â€”'
+                    '–'
                   }
                 />
 
@@ -374,17 +374,17 @@ export default function Candidates() {
 
                 <Row
                   k="Career goal"
-                  v={viewProfile?.profile?.career_goal || 'â€”'}
+                  v={viewProfile?.profile?.career_goal || '–'}
                 />
 
                 <Row
                   k="Institution"
-                  v={viewProfile?.profile?.institution || 'â€”'}
+                  v={viewProfile?.profile?.institution || '–'}
                 />
 
                 <Row
                   k="Company"
-                  v={viewProfile?.profile?.company || 'â€”'}
+                  v={viewProfile?.profile?.company || '–'}
                 />
 
                 <Row
@@ -394,7 +394,7 @@ export default function Candidates() {
                       ? new Date(
                           viewProfile.last_login
                         ).toLocaleString()
-                      : 'â€”'
+                      : '–'
                   }
                 />
               </dl>
@@ -485,7 +485,7 @@ export default function Candidates() {
 
             {inviteSent && (
               <div className="p-3 mb-3 rounded-lg bg-brand-green-50 text-brand-green-700 text-sm">
-                âœ“ Invite sent.
+                ✓ Invite sent.
               </div>
             )}
 
@@ -504,7 +504,7 @@ export default function Candidates() {
                   type="submit"
                   disabled={inviteBusy || jobs.length === 0}
                 >
-                  {inviteBusy ? 'Sendingâ€¦' : 'Send invite'}
+                  {inviteBusy ? 'Sending…' : 'Send invite'}
                 </Button>
               )}
             </div>

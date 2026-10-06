@@ -8,7 +8,7 @@ import {
 } from '../services/api';
 
 const fmtDate = (iso) => {
-  if (!iso) return 'â€”';
+  if (!iso) return '–';
 
   return new Date(iso).toLocaleDateString(undefined, {
     month: 'short',
@@ -2124,7 +2124,7 @@ export default function TasksPage() {
                     disabled={savingEdit}
                   >
                     {savingEdit
-                      ? 'Savingâ€¦'
+                      ? 'Saving…'
                       : 'Save changes'}
                   </Button>
 
@@ -2208,7 +2208,7 @@ export default function TasksPage() {
                     className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-extrabold hover:from-red-600 hover:to-red-700 disabled:opacity-60 transition shadow-lg shadow-red-500/20"
                   >
                     {deleting
-                      ? 'Deletingâ€¦'
+                      ? 'Deleting…'
                       : 'Yes, delete'}
                   </button>
 

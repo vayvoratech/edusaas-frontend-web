@@ -66,7 +66,7 @@ selectedCourseId === 'all'
 
 const onExportCsv = () => {
 const rows = [
-['EduSaaS â€” Educator Insights Export'],
+['EduSaaS – Educator Insights Export'],
 ['Scope', selectedCourseName],
 ['Generated', new Date().toLocaleString()],
 [],
@@ -272,7 +272,7 @@ return ( <div
             </div>
 
             <div className="mt-1 text-3xl font-black text-blue-700">
-              {data?.enrolledLearners ?? 'â€”'}
+              {data?.enrolledLearners ?? '–'}
             </div>
           </div>
         </div>
@@ -298,7 +298,7 @@ return ( <div
             </div>
 
             <div className="mt-1 text-3xl font-black text-emerald-600">
-              {data?.activeCourses ?? 'â€”'}
+              {data?.activeCourses ?? '–'}
             </div>
           </div>
         </div>
@@ -350,7 +350,7 @@ return ( <div
             </div>
 
             <div className="mt-1 text-3xl font-black text-violet-700">
-              {data?.avgRating ?? 'â€”'}{' '}
+              {data?.avgRating ?? '–'}{' '}
               <span className="text-xl text-amber-500">â˜…</span>
             </div>
           </div>

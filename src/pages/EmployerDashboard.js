@@ -1574,7 +1574,7 @@ export default function EmployerDashboard() {
                 label: "Shortlisted",
                 value: shortlistedCount,
                 detail: "Moving forward",
-                icon: "âœ“",
+                icon: "✓",
               },
             ].map((item) => (
               <div
@@ -2258,7 +2258,7 @@ export default function EmployerDashboard() {
               }
               className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
             >
-              âœ“ Shortlist Selected
+              ✓ Shortlist Selected
             </button>
 
             <button
@@ -2606,8 +2606,8 @@ export default function EmployerDashboard() {
                                   >
                                     {expandedCandidateId ===
                                     candidate.id
-                                      ? "Hide Match Details â†‘"
-                                      : "Why Recommended? â†“"}
+                                      ? "Hide Match Details ←"
+                                      : "Why Recommended? ↓"}
                                   </button>
 
 
@@ -2687,7 +2687,7 @@ export default function EmployerDashboard() {
                                       {updatingApplicationId ===
                                       targetId
                                         ? "Updating..."
-                                        : "âœ“ Shortlist"}
+                                        : "✓ Shortlist"}
                                     </button>
                                   )}
 
@@ -2786,7 +2786,7 @@ export default function EmployerDashboard() {
                                   {candidate.application_status ===
                                     "selected" && (
                                     <span className="font-semibold text-amber-600">
-                                      âœ“ Candidate has been selected for this position.
+                                      ✓ Candidate has been selected for this position.
                                     </span>
                                   )}
 
@@ -3025,7 +3025,7 @@ export default function EmployerDashboard() {
                         }
                         className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Next â†’
+                        Next →
                       </button>
 
                     </div>
@@ -3209,7 +3209,7 @@ export default function EmployerDashboard() {
                                     }`}
                                   >
                                     {step.active
-                                      ? "âœ“"
+                                      ? "✓"
                                       : index + 1}
                                   </div>
 
@@ -3405,7 +3405,7 @@ export default function EmployerDashboard() {
                   }
                   className="rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-orange-400 hover:shadow-orange-500/20 disabled:opacity-30"
                 >
-                  Next â†’
+                  Next →
                 </button>
 
               </div>

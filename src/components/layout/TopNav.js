@@ -1304,7 +1304,7 @@ export function TopNav({ onOpenNav = () => {} }) {
                                       @
                                       {member.username ||
                                         'user'}{' '}
-                                      â€¢{' '}
+                                      •{' '}
                                       {member
                                         .role
                                         ?.name ||

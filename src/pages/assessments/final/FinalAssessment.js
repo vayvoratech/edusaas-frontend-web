@@ -929,9 +929,8 @@ const FinalAssessment = () => {
       {assessmentState === "expired" && (
         <div className="relative z-10 flex min-h-screen items-center justify-center px-6">
           <div className="w-full max-w-lg rounded-[30px] border border-amber-400/20 bg-white/[0.07] p-10 text-center shadow-2xl backdrop-blur-2xl">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-500/15 text-3xl">
-              Î“Ã…â–’
-            </div>
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-500/15 text-3xl">[Expired]</div>
+
 
             <h2 className="mt-6 text-3xl font-bold text-white">
               Assessment Expired

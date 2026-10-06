@@ -2712,7 +2712,7 @@ export default function EmployerCommunity() {
                                     ?.username ||
                                     'user'}
                                   <span className="mx-1 text-slate-300">
-                                    â€¢
+                                    •
                                   </span>
                                   {req
                                     .requester
@@ -2841,7 +2841,7 @@ export default function EmployerCommunity() {
                                     {friend.username ||
                                       'user'}
                                     <span className="mx-1 text-slate-300">
-                                      â€¢
+                                      •
                                     </span>
                                     {friend
                                       .role
@@ -3006,7 +3006,7 @@ export default function EmployerCommunity() {
                                   />
                                   {post.when}
                                   <span>
-                                    â€¢
+                                    •
                                   </span>
                                   <span>
                                     {post.type}

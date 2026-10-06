@@ -89,11 +89,11 @@ export default function JobDetails() {
       any: "Any Qualification",
     };
 
-    return values[qualification] || qualification || "â€”";
+    return values[qualification] || qualification || "–";
   };
 
   const formatDate = (date) => {
-    if (!date) return "â€”";
+    if (!date) return "–";
 
     return new Date(date).toLocaleDateString("en-IN", {
       day: "numeric",
@@ -323,7 +323,7 @@ export default function JobDetails() {
                 {
                   icon: MapPin,
                   label: "Work Location",
-                  value: job.location || "â€”",
+                  value: job.location || "–",
                   gradient: "from-violet-500 to-purple-600",
                 },
                 {
@@ -540,25 +540,25 @@ export default function JobDetails() {
                 label: "Eligible Branches / Degrees",
                 value: Array.isArray(job.eligible_branches)
                   ? job.eligible_branches.join(", ")
-                  : job.eligible_branches || "â€”",
+                  : job.eligible_branches || "–",
                 icon: Target,
                 gradient: "from-violet-500 to-purple-600",
               },
               {
                 label: "Employment Type",
-                value: job.employment_type || "â€”",
+                value: job.employment_type || "–",
                 icon: BriefcaseBusiness,
                 gradient: "from-cyan-500 to-blue-600",
               },
               {
                 label: "Work Mode",
-                value: job.work_mode || "â€”",
+                value: job.work_mode || "–",
                 icon: Users,
                 gradient: "from-indigo-500 to-violet-600",
               },
               {
                 label: "Location",
-                value: job.location || "â€”",
+                value: job.location || "–",
                 icon: MapPin,
                 gradient: "from-emerald-500 to-teal-600",
               },

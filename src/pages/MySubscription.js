@@ -36,12 +36,12 @@ const statusClasses = {
 ========================================================= */
 
 const formatDate = (value) => {
-  if (!value) return 'â€”';
+  if (!value) return '–';
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return 'â€”';
+    return '–';
   }
 
   return date.toLocaleDateString(undefined, {
@@ -555,7 +555,7 @@ export default function MySubscription() {
 
                     <p className="mt-4 text-[20px] font-extrabold capitalize tracking-[-0.03em] text-slate-900">
                       {subscription.plan_type ||
-                        'â€”'}
+                        '–'}
                     </p>
 
                     <p className="mt-1 text-[10px] font-medium text-blue-600">
@@ -1145,7 +1145,7 @@ export default function MySubscription() {
             </span>
 
             <span className="text-slate-300">
-              â€¢
+              •
             </span>
 
             <span className="font-semibold text-slate-500">

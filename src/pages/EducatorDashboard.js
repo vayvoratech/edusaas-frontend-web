@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Sparkles, Star, Clock3, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ResponsiveContainer,
@@ -210,7 +211,7 @@ function QuickAction({
         </div>
 
         <span className="ml-auto text-slate-300 dark:text-slate-600 group-hover:text-brand-blue-500 transition-colors text-lg">
-          â†’
+          →
         </span>
       </div>
     </Link>
@@ -424,7 +425,7 @@ export default function EducatorDashboard() {
                     <button className="inline-flex items-center gap-2 rounded-xl bg-white text-slate-950 px-5 py-2.5 text-sm font-bold shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all">
                       <span>📚</span>
                       Manage Courses
-                      <span>â†’</span>
+                      <span>→</span>
                     </button>
                   </Link>
 
@@ -480,7 +481,7 @@ export default function EducatorDashboard() {
                     </div>
 
                     <div className="text-2xl">
-                      âœ¨
+                      <Sparkles className="h-6 w-6" strokeWidth={2} />
                     </div>
                   </div>
                 </div>
@@ -531,13 +532,13 @@ export default function EducatorDashboard() {
               value={data?.courseRatings ?? 0}
               subtitle={
                 data?.avgRating
-                  ? `Average rating ${data.avgRating} â˜…`
+                  ? `Average rating ${data.avgRating} \u2605`
                   : 'No reviews yet'
               }
               gradient="from-amber-500 to-orange-400"
               icon={
                 <span className="text-xl">
-                  â­
+                  <Star className="h-5 w-5 fill-current" strokeWidth={2} />
                 </span>
               }
               valueClass="text-amber-600 dark:text-amber-300"
@@ -572,7 +573,7 @@ export default function EducatorDashboard() {
 
                     <GradientIcon>
                       <span className="text-xl">
-                        â±
+                        <Clock3 className="h-5 w-5" strokeWidth={2} />
                       </span>
                     </GradientIcon>
                   </div>
@@ -857,7 +858,7 @@ export default function EducatorDashboard() {
                     to="/app/learners"
                     className="text-xs font-bold text-brand-blue-600 dark:text-blue-400 hover:underline"
                   >
-                    View all â†’
+                    View all →
                   </Link>
                 }
               />
@@ -912,7 +913,7 @@ export default function EducatorDashboard() {
                       </div>
 
                       <span className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors">
-                        â†’
+                        →
                       </span>
                     </div>
                   );
@@ -953,7 +954,7 @@ export default function EducatorDashboard() {
                     }
                     className="text-xs font-bold text-brand-blue-600 dark:text-blue-400 hover:underline"
                   >
-                    View feed â†’
+                    View feed →
                   </button>
                 }
               />
@@ -989,7 +990,7 @@ export default function EducatorDashboard() {
                       title="Dismiss from dashboard"
                       className="w-7 h-7 rounded-lg text-slate-300 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700 grid place-items-center text-xs transition"
                     >
-                      âœ•
+                      <X className="h-4 w-4" strokeWidth={2.5} />
                     </button>
                   </li>
                 ))}
@@ -1084,83 +1085,83 @@ export default function EducatorDashboard() {
                     className="text-xs text-brand-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1"
                   >
                     View all in Courses
-                    <span>â†’</span>
+                    <span>→</span>
                   </Link>
                 }
               />
 
-              {data?.recentFeedbacks &&
-              data.recentFeedbacks.length > 0 ? (
+              {data?.recentFeedbacks?.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {data.recentFeedbacks
-                    .slice(0, 4)
-                    .map((f) => (
-                      <div
-                        key={f.id}
-                        className="group relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/70 dark:to-slate-900/70 border border-slate-100 dark:border-white/10 hover:border-amber-200 dark:hover:border-amber-500/20 hover:shadow-lg transition-all"
-                      >
-                        <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-amber-400/10 blur-2xl" />
+                  {data.recentFeedbacks.slice(0, 4).map((f) => (
+                    <div
+                      key={f.id}
+                      className="group relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/70 dark:to-slate-900/70 border border-slate-100 dark:border-white/10 hover:border-amber-200 dark:hover:border-amber-500/20 hover:shadow-lg transition-all"
+                    >
+                      <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-amber-400/10 blur-2xl" />
 
-                        <div className="relative">
-                          <div className="flex items-start justify-between gap-3 mb-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <ReviewerAvatar
-                                name={f.user_name}
-                                avatarUrl={f.avatar_url}
-                              />
+                      <div className="relative">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <ReviewerAvatar
+                              name={f.user_name}
+                              avatarUrl={f.avatar_url}
+                            />
 
-                              <div className="min-w-0">
-                                <div className="font-bold text-sm text-slate-800 dark:text-white truncate">
-                                  {f.user_name}
-                                </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-sm text-slate-800 dark:text-white truncate">
+                                {f.user_name}
+                              </div>
 
-                                <div className="text-[11px] text-brand-blue-600 dark:text-blue-400 font-semibold truncate mt-0.5">
-                                  {f.course_title}
-                                </div>
+                              <div className="text-[11px] text-brand-blue-600 dark:text-blue-400 font-semibold truncate mt-0.5">
+                                {f.course_title}
                               </div>
                             </div>
-
-                            <div className="flex items-center gap-0.5 text-amber-400 text-sm shrink-0">
-                              {[1, 2, 3, 4, 5].map(
-                                (star) => (
-                                  <span key={star}>
-                                    {star <= f.rating
-                                      ? 'â˜…'
-                                      : 'â˜†'}
-                                  </span>
-                                )
-                              )}
-                            </div>
                           </div>
 
-                          {f.review ? (
-                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 italic">
-                              "{f.review}"
-                            </p>
-                          ) : (
-                            <p className="text-xs text-slate-400 dark:text-slate-500 italic">
-                              Rated {f.rating} stars with no
-                              written comments.
-                            </p>
-                          )}
-
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500 text-right mt-3">
-                            {f.created_at
-                              ? new Date(
-                                  f.created_at
-                                ).toLocaleDateString(
-                                  undefined,
-                                  {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric',
-                                  }
-                                )
-                              : ''}
+                          <div className="flex items-center gap-0.5 text-amber-400 text-sm shrink-0">
+                            {[1, 2, 3, 4, 5].map((star) =>
+                              star <= f.rating ? (
+                                <Star
+                                  key={star}
+                                  className="h-4 w-4 fill-current"
+                                  strokeWidth={2}
+                                />
+                              ) : (
+                                <Star
+                                  key={star}
+                                  className="h-4 w-4"
+                                  strokeWidth={2}
+                                />
+                              )
+                            )}
                           </div>
                         </div>
+
+                        {f.review ? (
+                          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 italic">
+                            "{f.review}"
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                            Rated {f.rating} stars with no written comments.
+                          </p>
+                        )}
+
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 text-right mt-3">
+                          {f.created_at
+                            ? new Date(f.created_at).toLocaleDateString(
+                                undefined,
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                }
+                              )
+                            : ""}
+                        </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50 border border-slate-100 dark:border-white/10 text-center py-10">
@@ -1173,8 +1174,7 @@ export default function EducatorDashboard() {
                   </div>
 
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    When learners rate your courses, their
-                    reviews will appear here.
+                    When learners rate your courses, their reviews will appear here.
                   </p>
                 </div>
               )}
@@ -1201,7 +1201,7 @@ export default function EducatorDashboard() {
                     className="inline-flex items-center gap-1 rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 px-3 py-2 text-xs font-bold text-brand-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition"
                   >
                     Manage Courses
-                    <span>â†’</span>
+                    <span>→</span>
                   </Link>
                 }
               />
@@ -1220,7 +1220,7 @@ export default function EducatorDashboard() {
                     to="/app/manage-courses"
                     className="inline-block mt-3 text-xs font-bold text-brand-blue-600 dark:text-blue-400 hover:underline"
                   >
-                    Create or manage courses â†’
+                    Create or manage courses →
                   </Link>
                 </div>
               ) : (
@@ -1268,7 +1268,7 @@ export default function EducatorDashboard() {
                         </div>
 
                         <span className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors">
-                          â†’
+                          →
                         </span>
                       </div>
                     </div>
@@ -1291,7 +1291,7 @@ export default function EducatorDashboard() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-white flex items-center justify-center shadow-lg text-xl shrink-0">
-                  âœ¨
+                  <Sparkles className="h-6 w-6" strokeWidth={2} />
                 </div>
 
                 <div>
@@ -1314,7 +1314,7 @@ export default function EducatorDashboard() {
               <Link to="/app/insights">
                 <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white px-5 py-2.5 text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all whitespace-nowrap">
                   Open Insights
-                  <span>â†’</span>
+                  <span>→</span>
                 </button>
               </Link>
             </div>
