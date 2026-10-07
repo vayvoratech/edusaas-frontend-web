@@ -13,6 +13,7 @@ export default function SkillAssessment() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeView, setActiveView] = useState("overview");
+  const [terminationReport, setTerminationReport] = useState(null);
   const [dialog, setDialog] = useState({
   open: false,
   type: "warning",
@@ -62,6 +63,33 @@ if (initialQuizCompleted && !codingCompleted) {
 
     loadOverview();
   }, []);
+
+ const initialTerminated =
+  overview?.initialAssessment?.status === "Terminated";
+
+const codingTerminated =
+  overview?.codingAssessment?.status === "Terminated";
+
+const codingCompleted =
+  overview?.codingAssessment?.status === "Completed";
+
+  const codingTimedOut =
+  overview?.codingAssessment?.status === "Timed Out";
+
+  const initialQuizCompleted =
+  overview?.initialAssessment?.initialQuizStatus === "Completed";
+
+
+  const initialAssessmentCompleted =
+  initialQuizCompleted &&
+  codingCompleted &&
+  overview?.initialAssessment?.readinessScore != null;
+
+  const courseCompleted =
+  overview?.courseCompletion?.completed === true;
+
+const finalAssessmentUnlocked =
+  initialAssessmentCompleted && courseCompleted;
 
   if (loading) {
     return (
@@ -152,7 +180,40 @@ if (initialQuizCompleted && !codingCompleted) {
       </div>
     </div>
 
-    {/* CTA */}
+
+
+
+{/* CTA */}
+{codingCompleted ? (
+  <div className="flex items-center justify-end">
+    <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700">
+      Completed
+    </span>
+  </div>
+) : codingTerminated && terminationReport?.status === "Approved" ? (
+  <div className="flex items-center justify-end">
+    <Button
+      variant="primary"
+      onClick={() =>
+        navigate("/app/initial-assessment", {
+          state: {
+            phase: "coding",
+            restartApproved: true,
+          },
+        })
+      }
+    >
+      Restart Coding Assessment
+    </Button>
+  </div>
+) : codingTerminated ? (
+  <div className="flex items-center justify-end">
+    <span className="text-sm font-medium text-red-600">
+      Assessment Terminated
+    </span>
+  </div>
+) : (
+  <div className="flex items-center justify-end">
     <Button
       variant="primary"
       onClick={() =>
@@ -164,6 +225,86 @@ if (initialQuizCompleted && !codingCompleted) {
       Continue Coding Assessment
     </Button>
   </div>
+)}
+
+{codingTerminated ? (
+  <div className="flex items-center justify-end">
+    <Button
+      variant="primary"
+      onClick={() =>
+        navigate("/app/initial-assessment", {
+          state: {
+            phase: "coding",
+          },
+        })
+      }
+    >
+      Open Assessment
+    </Button>
+  </div>
+) : initialTerminated ? (
+  <div className="text-right">
+    <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700">
+      Assessment Terminated
+    </span>
+  </div>
+) : initialQuizCompleted ? (
+  <Button
+    variant="primary"
+    onClick={() =>
+      navigate("/app/initial-assessment", {
+        state: {
+          phase: "coding",
+        },
+      })
+    }
+  >
+    Continue Coding Assessment
+  </Button>
+) : null}
+</div>
+
+{/* Termination Notice */}
+{initialTerminated || (codingTerminated && !terminationReport) ? (
+  <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-5">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex gap-3">
+        <span className="mt-0.5 font-bold text-red-600">!</span>
+
+        <div>
+          <h3 className="font-semibold text-red-900">
+            Assessment Terminated
+          </h3>
+
+          <p className="mt-1 text-sm leading-6 text-red-800">
+            Your assessment has been terminated. Please report the issue
+            to Admin for further assistance.
+          </p>
+
+          <p className="mt-2 text-xs text-red-700">
+            You cannot restart the assessment until your termination
+            report has been reviewed and approved by Admin.
+          </p>
+        </div>
+      </div>
+
+      {/* Stage 1 → Report to Admin */}
+      {initialTerminated && !terminationReport && (
+        <Button
+          variant="primary"
+          className="shrink-0 self-start sm:self-center"
+          onClick={() =>
+            navigate(
+              `/app/help-support?category=assessment_termination&sessionId=${overview?.initialAssessment?.sessionId}&assessmentType=INITIAL&assessmentStage=INITIAL_QUIZ&open=report`
+            )
+          }
+        >
+          Report to Admin →
+        </Button>
+      )}
+    </div>
+  </div>
+) : null}
 
   {/* Stages */}
   <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -199,7 +340,15 @@ if (initialQuizCompleted && !codingCompleted) {
     </div>
 
     {/* Stage 2 */}
-    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-5">
+<div
+  className={`rounded-xl p-5 ${
+    codingTerminated && terminationReport?.status !== "Approved"
+      ? "border border-red-200 bg-red-50/40"
+      : overview?.codingAssessment?.status === "Completed"
+        ? "border border-green-200 bg-green-50/40"
+        : "border border-blue-200 bg-blue-50/40"
+  }`}
+>
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           Stage 2
@@ -223,8 +372,55 @@ if (initialQuizCompleted && !codingCompleted) {
           Your coding assessment is ready to continue.
         </span>
       </div>
+{codingTerminated &&
+  terminationReport?.status === "Approved" && (
+    <div>
+      <p className="text-sm font-semibold text-green-700">
+        Termination Report Approved
+      </p>
+
+      <p className="mt-1 text-sm text-green-600">
+        Admin has approved your termination report.
+        You can now resume your Coding Assessment.
+      </p>
     </div>
-  </div>
+  )}
+
+{codingTerminated &&
+  terminationReport?.status === "Rejected" && (
+    <div>
+      <p className="text-sm font-semibold text-red-700">
+        Termination Report Rejected
+      </p>
+
+      <p className="mt-1 text-sm text-red-600">
+        Your termination report was rejected by Admin.
+      </p>
+
+      {terminationReport?.admin_notes && (
+        <p className="mt-1 text-xs text-red-600">
+          Admin response: {terminationReport.admin_notes}
+        </p>
+      )}
+    </div>
+  )}
+
+{codingCompleted ? (
+  <p className="text-sm font-medium text-green-600">
+    ✓ Coding Assessment completed successfully.
+  </p>
+) : !initialQuizCompleted ? (
+  <p className="text-sm text-slate-500">
+    Please complete the Initial Quiz first. Coding Assessment will be
+    available after you complete Stage 1.
+  </p>
+) : !codingTerminated && !codingTimedOut ? (
+  <p className="text-sm text-blue-600">
+    Your coding assessment is ready to continue.
+  </p>
+) : null}
+</div>
+    </div>
 
 
     {/* Assessment metrics */}
@@ -339,14 +535,20 @@ if (initialQuizCompleted && !codingCompleted) {
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-slate-900">
-                Final Assessment
-              </h3>
+  <h3 className="text-lg font-semibold text-slate-900">
+    Final Assessment
+  </h3>
 
-              <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">
-                Certification
-              </span>
-            </div>
+  {initialAssessmentCompleted ? (
+    <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">
+      Certification
+    </span>
+  ) : (
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+      Locked
+    </span>
+  )}
+</div>
 
             <p className="text-sm text-slate-500 mt-2 max-w-2xl">
               Complete the final proctored quiz and mini project to
@@ -377,11 +579,11 @@ if (initialQuizCompleted && !codingCompleted) {
                 </span>
               </div>
 
-              <p className="text-sm text-slate-500 mt-1">
-                Proctored final quiz covering the skills evaluated during
-                your learning journey.
-              </p>
-
+             <p className="text-sm text-slate-500 mt-1">
+  {initialAssessmentCompleted
+    ? "Proctored final quiz covering the skills evaluated during your learning journey."
+    : "Complete the Initial Assessment and receive your readiness score to unlock the Final Assessment."}
+</p>
               <div className="flex flex-wrap gap-4 mt-3 text-xs text-slate-500">
                 <span>• Difficulty: 2–4</span>
                 <span>• Proctored</span>
@@ -394,21 +596,25 @@ if (initialQuizCompleted && !codingCompleted) {
               </div>
             </div>
 
-            {overview.finalAssessment.finalQuiz.status === 'Completed' ? (
-              <span className="text-sm font-medium text-green-600">
-                Completed
-              </span>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={() => navigate('/app/final-assessment')}
-              >
-                {overview.finalAssessment.finalQuiz.status === 'Paused' ||
-                overview.finalAssessment.finalQuiz.status === 'In Progress'
-                  ? 'Resume Final Quiz'
-                  : 'Start Final Quiz'}
-              </Button>
-            )}
+         {overview.finalAssessment.finalQuiz.status === "Completed" ? (
+  <span className="text-sm font-medium text-green-600">
+    Completed
+  </span>
+) : finalAssessmentUnlocked ? (
+  <Button
+    variant="primary"
+    onClick={() => navigate("/app/final-assessment")}
+  >
+    {overview.finalAssessment.finalQuiz.status === "Paused" ||
+    overview.finalAssessment.finalQuiz.status === "In Progress"
+      ? "Resume Final Quiz"
+      : "Start Final Quiz"}
+  </Button>
+) : (
+  <span className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-500">
+    Locked
+  </span>
+)}
           </div>
         </div>
 
@@ -438,12 +644,22 @@ if (initialQuizCompleted && !codingCompleted) {
               </div>
             </div>
 
-            <Button
-              variant="outline"
-              onClick={() => setActiveView("mini-project")}
-            >
-              Start Mini Project
-            </Button>
+       {overview.finalAssessment.miniProject.status === "Not Available" ? (
+  <span className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-500">
+    Not Available
+  </span>
+) : finalAssessmentUnlocked ? (
+  <Button
+    variant="outline"
+    onClick={() => setActiveView("mini-project")}
+  >
+    Start Mini Project
+  </Button>
+) : (
+  <span className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-500">
+    Locked
+  </span>
+)}
           </div>
         </div>
       </Card>

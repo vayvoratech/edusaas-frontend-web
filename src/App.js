@@ -42,6 +42,7 @@ import EducatorInsights from './pages/EducatorInsights';
 import SendAnnouncement from './pages/SendAnnouncement';
 import EducatorAssessments from './pages/EducatorAssessments';
 import CreateMiniProject from './pages/CreateMiniProject';
+import MiniProjectReview from './pages/MiniProjectReview';
 
 // New employer pages
 import JobListings from './pages/JobListings';
@@ -138,6 +139,10 @@ export default function App() {
               <Route path="announcements" element={<SendAnnouncement />} />
               <Route path="educator-assessments" element={<EducatorAssessments />} />
               <Route path="educator-assessments/create" element={<CreateMiniProject />} />
+              <Route path="educator-assessments/:projectId"  element={<MiniProjectReview />}
+                  />
+
+
             </Route>
 
             {/* Employer */}

@@ -698,19 +698,22 @@ const showDialog = (options) => {
         const isTimedOut = serverStatus === "Timed Out";
         const isPaused = serverStatus === "Paused";
         const isInProgress = serverStatus === "In Progress";
+        const isTerminated = serverStatus === "Terminated";
 
         assessmentActiveRef.current = false;
         setAssessmentActive(false);
 
         setSessionStatus(
-          isTimedOut
-            ? "timed_out"
-            : isPaused
-            ? "paused"
-            : isInProgress
-            ? "paused"
-            : "ready"
-        );
+  isTerminated
+    ? "terminated"
+    : isTimedOut
+    ? "timed_out"
+    : isPaused
+    ? "paused"
+    : isInProgress
+    ? "paused"
+    : "ready"
+);
 
         pauseSentRef.current = false;
         skipAutoPauseRef.current = false;
@@ -855,37 +858,75 @@ const showDialog = (options) => {
           setRemainingSeconds(data.remaining_seconds);
         }
 
-        if (data?.active === false) {
-          if (data.status === "Timed Out") {
-            assessmentActiveRef.current = false;
-            setAssessmentActive(false);
-            setSessionStatus("timed_out");
+       if (data?.active === false) {
+  if (data.status === "Terminated") {
+    assessmentActiveRef.current = false;
+    setAssessmentActive(false);
 
-            skipAutoPauseRef.current = true;
+    skipAutoPauseRef.current = true;
 
-            await finalizeAssessment(
-              "Your coding assessment time has expired."
-            );
-          } else {
-            assessmentActiveRef.current = false;
-            setAssessmentActive(false);
-            setSessionStatus("paused");
+    await exitCodingFullscreen();
 
-            console.log(
-              "Server reports coding assessment is paused."
-            );
-          }
-        }
+    if (proctoringRef.current) {
+      proctoringRef.current.cleanup();
+      proctoringRef.current = null;
+    }
+
+    setSessionStatus("terminated");
+
+    setError(
+      "Your coding assessment was terminated by the proctoring system."
+    );
+
+    return;
+  }
+
+  if (data.status === "Timed Out") {
+    assessmentActiveRef.current = false;
+    setAssessmentActive(false);
+
+    skipAutoPauseRef.current = true;
+
+    await finalizeAssessment(
+      "Your coding assessment time has expired."
+    );
+
+    return;
+  }
+
+  assessmentActiveRef.current = false;
+  setAssessmentActive(false);
+  setSessionStatus("paused");
+
+  console.log(
+    "Server reports coding assessment is paused."
+  );
+}
       } catch (err) {
         const status = err.response?.status;
 
         if (status === 409 || status === 404 || status === 403) {
-          setSessionStatus("timed_out");
-          finalizeAssessment(
-            err.response?.data?.error ||
-              "Your coding assessment session has ended."
-          );
-        }
+  const errorCode = err.response?.data?.code;
+
+  assessmentActiveRef.current = false;
+  setAssessmentActive(false);
+
+  if (errorCode === "ASSESSMENT_TERMINATED") {
+    setSessionStatus("terminated");
+    setError(
+      err.response?.data?.error ||
+        "Your coding assessment has been terminated."
+    );
+    return;
+  }
+
+  setSessionStatus("timed_out");
+
+  finalizeAssessment(
+    err.response?.data?.error ||
+      "Your coding assessment session has ended."
+  );
+}
       }
     }, 10000);
 
@@ -1058,7 +1099,9 @@ const formData = new FormData();
 
 formData.append("quiz_session_id", sid);
 formData.append("assessment_type", "CODING");
+formData.append("assessment_stage", "INITIAL_CODING");
 formData.append("reason", reportReason.trim());
+
 
 if (reportEvidence.trim()) {
   formData.append("additional_evidence", reportEvidence.trim());

@@ -72,6 +72,15 @@ export default function EducatorAssessments() {
     0
   );
 
+  const publishedProjects = projects.filter(
+  (project) => project.status === "PUBLISHED"
+);
+
+const submittedProjects = publishedProjects.filter(
+  (project) => (project.submissions?.length || 0) > 0
+);
+
+
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto">
@@ -150,22 +159,172 @@ export default function EducatorAssessments() {
 
       </div>
 
+      {/* Submissions to Review */}
+<Card>
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h3 className="text-lg font-semibold text-slate-900">
+        Submitted Projects
+      </h3>
+
+      <p className="text-sm text-slate-500 mt-1">
+        Review student submissions and their analysis results.
+      </p>
+    </div>
+
+    <span className="text-sm text-slate-500">
+      {submittedProjects.length} project
+      {submittedProjects.length === 1 ? "" : "s"}
+    </span>
+  </div>
+
+  {submittedProjects.length === 0 ? (
+    <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+      <p className="text-sm font-medium text-slate-700">
+        No student submissions yet
+      </p>
+
+      <p className="text-sm text-slate-500 mt-1">
+        Submitted projects will appear here when students complete their work.
+      </p>
+    </div>
+  ) : (
+    <div className="mt-5 space-y-4">
+      {submittedProjects.map((project) => {
+        const submissions = project.submissions || [];
+
+        const latestSubmission = submissions[0];
+
+        const latestAnalysis = latestSubmission?.analysis;
+
+        return (
+          <div
+            key={project.id}
+            className="rounded-xl border border-slate-200 bg-white p-5 hover:border-slate-300 transition"
+          >
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+
+              {/* Project information */}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-base font-semibold text-slate-900">
+                    {project.title}
+                  </h4>
+
+                  <span className="text-xs font-medium rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">
+                    {project.status}
+                  </span>
+                </div>
+
+                <p className="text-sm text-slate-500 mt-1">
+                  {project.domainRole?.domain_name ||
+                    "Domain not specified"}
+                </p>
+
+                <p className="text-sm text-slate-600 mt-3">
+                  {submissions.length} student submission
+                  {submissions.length === 1 ? "" : "s"}
+                </p>
+
+                {latestSubmission?.student && (
+                  <div className="mt-4">
+                    <p className="text-xs text-slate-500">
+                      Latest Submission
+                    </p>
+
+                    <p className="text-sm font-medium text-slate-900 mt-1">
+                      {latestSubmission.student.name ||
+                        "Unknown Student"}
+                    </p>
+
+                    <p className="text-xs text-slate-500 mt-1">
+                      {latestSubmission.student.email ||
+                        "No email available"}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Analysis summary */}
+              <div className="grid grid-cols-2 gap-3 min-w-[280px]">
+                <div className="rounded-lg bg-slate-50 px-4 py-3">
+                  <p className="text-xs text-slate-500">
+                    Analysis
+                  </p>
+
+                  <p className="text-sm font-semibold text-slate-900 mt-1">
+                    {latestAnalysis?.status || "Pending"}
+                  </p>
+                </div>
+
+                <div className="rounded-lg bg-slate-50 px-4 py-3">
+                  <p className="text-xs text-slate-500">
+                    Readiness
+                  </p>
+
+                  <p className="text-sm font-semibold text-blue-600 mt-1">
+                    {latestAnalysis?.readiness_score ?? "—"}
+                  </p>
+                </div>
+
+                <div className="rounded-lg bg-slate-50 px-4 py-3">
+                  <p className="text-xs text-slate-500">
+                    Plagiarism
+                  </p>
+
+                  <p className="text-sm font-semibold text-slate-900 mt-1">
+                    {latestAnalysis?.plagiarism_status || "Pending"}
+                  </p>
+                </div>
+
+                <div className="rounded-lg bg-slate-50 px-4 py-3">
+                  <p className="text-xs text-slate-500">
+                    Submissions
+                  </p>
+
+                  <p className="text-sm font-semibold text-slate-900 mt-1">
+                    {submissions.length}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action */}
+              <div className="flex-shrink-0">
+                <Button
+                  onClick={() =>
+                    navigate(
+                      `/app/educator-assessments/${project.id}`
+                    )
+                  }
+                >
+                  Review
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</Card>
+
       {/* Projects */}
       <Card>
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">
-              Mini Projects
-            </h3>
+              Published Projects
+           </h3>
 
-            <p className="text-sm text-slate-500 mt-1">
-              Manage your role-specific learner projects.
-            </p>
+           <p className="text-sm text-slate-500 mt-1">
+              Projects currently published and available to learners.
+           </p>
           </div>
 
           <span className="text-xs text-slate-500">
-            {draftCount} draft{draftCount === 1 ? "" : "s"}
-          </span>
+                 {publishedProjects.length} project
+                 {publishedProjects.length === 1 ? "" : "s"}
+           </span>
         </div>
 
         {projects.length === 0 ? (
@@ -189,7 +348,7 @@ export default function EducatorAssessments() {
           </div>
         ) : (
           <div className="space-y-4">
-            {projects.map((project) => (
+            {publishedProjects.map((project) => (
               <div
                 key={project.id}
                 className="rounded-xl border border-slate-200 p-5"
@@ -222,21 +381,31 @@ export default function EducatorAssessments() {
                       {project.problem_statement}
                     </p>
 
-                    <div className="flex flex-wrap gap-4 mt-4 text-xs text-slate-500">
-                      <span>
-                        • Submissions:{" "}
-                        {project.submissions?.length || 0}
-                      </span>
+                   <div className="flex flex-wrap items-center gap-3 mt-4">
 
-                      <span>
-                        • Due:{" "}
-                        {project.due_at
-                          ? new Date(
-                              project.due_at
-                            ).toLocaleString()
-                          : "No deadline"}
-                      </span>
-                    </div>
+  <span className="text-sm text-slate-600">
+    {project.submissions?.length || 0} submission
+    {(project.submissions?.length || 0) === 1 ? "" : "s"}
+  </span>
+
+  {(project.submissions?.length || 0) > 0 ? (
+    <span className="text-xs font-medium rounded-full bg-blue-100 px-2.5 py-1 text-blue-700">
+      Student work received
+    </span>
+  ) : (
+    <span className="text-xs font-medium rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">
+      Awaiting submissions
+    </span>
+  )}
+
+  <span className="text-xs text-slate-500">
+    Due:{" "}
+    {project.due_at
+      ? new Date(project.due_at).toLocaleString()
+      : "No deadline"}
+  </span>
+
+</div>
                   </div>
 
                   <div className="flex gap-2 shrink-0">
@@ -257,16 +426,16 @@ export default function EducatorAssessments() {
                       </Button>
                     )}
 
-                    {project.status === "PUBLISHED" && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          navigate("/app/educator-assessments/create");
-                        }}
-                      >
-                        View
-                      </Button>
-                    )}
+                   {project.status === "PUBLISHED" && (
+               <Button
+              variant="outline"
+             onClick={() => {
+             navigate(`/app/educator-assessments/${project.id}`);
+             }}
+            >
+               View
+             </Button>
+              )}
 
                   </div>
                 </div>
@@ -275,6 +444,72 @@ export default function EducatorAssessments() {
           </div>
         )}
       </Card>
+{draftCount > 0 && (
+  <Card>
+    <div className="flex items-center justify-between mb-5">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900">
+          Drafts
+        </h3>
+
+        <p className="text-sm text-slate-500 mt-1">
+          Projects that are not yet published to learners.
+        </p>
+      </div>
+
+      <span className="text-xs text-slate-500">
+        {draftCount} draft{draftCount === 1 ? "" : "s"}
+      </span>
+    </div>
+
+    <div className="space-y-4">
+      {projects
+        .filter((project) => project.status === "DRAFT")
+        .map((project) => (
+          <div
+            key={project.id}
+            className="rounded-xl border border-slate-200 p-5"
+          >
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="font-semibold text-slate-900">
+                    {project.title}
+                  </h4>
+
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-100 text-slate-600">
+                    DRAFT
+                  </span>
+                </div>
+
+                <p className="text-sm text-slate-500 mt-1">
+                  {project.domainRole?.domain_name ||
+                    "Domain not specified"}
+                </p>
+
+                <p className="text-sm text-slate-600 mt-3">
+                  {project.problem_statement}
+                </p>
+              </div>
+
+              <Button
+                variant="outline"
+                disabled={publishingId === project.id}
+                onClick={() => handlePublish(project)}
+              >
+                {publishingId === project.id
+                  ? "Publishing..."
+                  : "Publish"}
+              </Button>
+
+            </div>
+          </div>
+        ))}
+    </div>
+  </Card>
+)}
+
     </div>
   );
 }

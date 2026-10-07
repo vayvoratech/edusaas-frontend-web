@@ -608,6 +608,55 @@ const availableJobs = recommendedJobs.filter(
 
       </div>
 
+ {/* Career Journey */}
+<Card className="mb-6">
+  <div className="flex items-start gap-4">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+      🎓
+    </div>
+
+    <div>
+      <h3 className="text-lg font-semibold text-slate-900">
+        Your Career Journey
+      </h3>
+
+      <p className="mt-1 text-sm text-slate-600">
+        Complete your Initial Assessment first. Then complete the Final
+        Assessment, to become
+        eligible for your certificate.
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+        <span className="rounded-full bg-blue-50 px-3 py-1.5 font-medium text-blue-700">
+          Initial Assessment
+        </span>
+
+        <span className="text-slate-400">→</span>
+
+        <span className="rounded-full bg-purple-50 px-3 py-1.5 font-medium text-purple-700">
+          Final Assessment
+        </span>
+
+        <span className="text-slate-400">→</span>
+
+        <span className="rounded-full bg-green-50 px-3 py-1.5 font-medium text-green-700">
+          Certificate
+        </span>
+
+        <span className="text-slate-400">→</span>
+
+        <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-medium text-emerald-700">
+          Job Opportunities
+        </span>
+      </div>
+
+      <p className="mt-3 text-xs text-slate-500">
+        Complete the required assessments to receive your certificate and
+        become eligible to apply for available job opportunities.
+      </p>
+    </div>
+  </div>
+</Card>
 
       {/* ------------------------------------------------ */}
       {/* Course Announcements Banner */}

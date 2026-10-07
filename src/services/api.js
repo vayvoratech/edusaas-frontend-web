@@ -174,6 +174,10 @@ export const getStudentCandidates = () =>
 export const submitAssessment = (data) => api.post("/api/assessments", data).then((r) => r.data);
 export const getAssessmentResults = (id) => api.get(`/api/assessments/${id}/results`).then((r) => r.data);
 export const getAssessmentOverview = () => api.get("/api/assessments/overview").then((r) => r.data);
+export const getMyAssessmentReports = async () => {
+  const res = await api.get("/api/assessment-reports");
+  return res.data;
+};
 export const fetchGapReport = (userId) => api.get(`/api/gap-report/${userId}`).then((r) => r.data);
 export const getSkillGapAnalysis = (userId) => api.get(`/api/skill-gap-analysis/${userId}`).then((r) => r.data);
 // Initial Adaptive Skill Assessment

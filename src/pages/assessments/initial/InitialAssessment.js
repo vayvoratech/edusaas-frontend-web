@@ -7,6 +7,8 @@ import {
   heartbeatInitialQuiz,
   pauseInitialQuiz,
   pauseInitialQuizOnUnload,
+   getMyAssessmentReports,
+  getAssessmentOverview,
   submitAssessmentReport
 } from "../../../services/api";
 
@@ -47,6 +49,8 @@ const InitialAssessment = () => {
   const location = useLocation();
 
   const isCodingStage = location.state?.phase === "coding";
+  const isCodingAssessment = isCodingStage;
+  const isRestartApproved = location.state?.restartApproved === true;
 
   const proctoringRef = useRef(null);
 
@@ -146,8 +150,10 @@ const InitialAssessment = () => {
 
   // ----------------------------------------------------
   // Page state
-  // ----------------------------------------------------
-  const [page, setPage] = useState("instructions");
+  // ---------------------------------------------------
+
+
+  const [page, setPage] = useState("checking");
   const [loading, setLoading] = useState(false);
   const loadingAssessmentRef = useRef(false);
   const [error, setError] = useState("");
@@ -159,6 +165,8 @@ const InitialAssessment = () => {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [reportError, setReportError] = useState("");
+  const [terminationReport, setTerminationReport] = useState(null);
+const [, setAssessmentStatusLoading] = useState(true);
   const [startingProctoring, setStartingProctoring] = useState(false);
   const [proctoringWarning, setProctoringWarning] = useState(null);
 
@@ -185,6 +193,111 @@ const InitialAssessment = () => {
   const [resumed, setResumed] = useState(false);
   const [assessmentActive, setAssessmentActive] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+
+
+ useEffect(() => {
+  let cancelled = false;
+
+  const loadTerminationStatus = async () => {
+    try {
+      const [overview, reports] = await Promise.all([
+        getAssessmentOverview(),
+        getMyAssessmentReports(),
+      ]);
+
+      if (cancelled) return;
+
+      const currentSessionId = isCodingStage
+  ? overview?.codingAssessment?.sessionId
+  : overview?.initialAssessment?.sessionId;
+
+const currentStatus = isCodingStage
+  ? overview?.codingAssessment?.status
+  : overview?.initialAssessment?.status;
+
+const currentReportStage = isCodingStage
+  ? "INITIAL_CODING"
+  : "INITIAL_QUIZ";
+
+const reportsList = Array.isArray(reports)
+  ? reports
+  : [];
+
+const currentReport =
+  reportsList.find(
+    (report) =>
+      Number(report.quiz_session_id) ===
+        Number(currentSessionId) &&
+      report.assessment_stage === currentReportStage
+  ) || null;
+
+      // Keep the current session ID available for
+      // termination reporting / restart flow.
+     setTerminationReport(currentReport);
+
+if (currentReport) {
+  setReportSubmitted(true);
+}
+
+// Admin approved coding termination.
+// Do NOT reuse the old terminated coding session.
+if (isCodingStage && isRestartApproved) {
+  setPage("instructions");
+  return;
+}
+
+// Keep the current session ID for normal termination/report flow.
+if (currentSessionId) {
+  setSessionId(currentSessionId);
+}
+      /*
+       * TERMINATED SESSION
+       *
+       * The old session must remain visible until the
+       * student has dealt with the termination report.
+       */
+ if (
+  currentStatus === "Terminated" &&
+  !isRestartApproved
+) {
+  setShowReportForm(false);
+  setPage("terminated");
+  return;
+}
+      /*
+       * NORMAL INITIAL ASSESSMENT
+       *
+       * There is no terminated session, so show the
+       * normal instructions/start screen.
+       */
+      setPage("instructions");
+    } catch (err) {
+      console.error(
+        "Failed to load assessment status:",
+        err.response?.data || err.message
+      );
+
+      // If status checking itself fails, don't leave the
+      // student permanently stuck on the checking screen.
+      setError(
+        err.response?.data?.error ||
+          "Failed to check assessment status. Please try again."
+      );
+
+      setPage("instructions");
+    } finally {
+      if (!cancelled) {
+        setAssessmentStatusLoading(false);
+      }
+    }
+  };
+
+  loadTerminationStatus();
+
+  return () => {
+    cancelled = true;
+  };
+}, [isRestartApproved, isCodingStage]);
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
@@ -693,16 +806,43 @@ await submitAssessmentReport(formData);
         // The server is authoritative on time. If it says the session
         // has expired or is gone, stop immediately instead of leaving
         // the student stuck on a clock that can no longer submit.
-        if (status === 409 || status === 404 || status === 403) {
-          skipAutoPauseRef.current = true;
-          setAssessmentActive(false);
-          await exitAssessmentFullscreen();
-          if (proctoringRef.current) proctoringRef.current.cleanup();
-          setPage("expired");
-          setError(
-            err.response?.data?.error || "Your assessment session has ended."
-          );
-        }
+       const errorCode = err.response?.data?.code;
+
+if (errorCode === "ASSESSMENT_TERMINATED") {
+  skipAutoPauseRef.current = true;
+  setAssessmentActive(false);
+
+  await exitAssessmentFullscreen();
+
+  if (proctoringRef.current) {
+    proctoringRef.current.cleanup();
+  }
+
+  setPage("terminated");
+  setError(
+    err.response?.data?.error ||
+      "Your assessment has been terminated."
+  );
+
+  return;
+}
+
+if (status === 409 || status === 404 || status === 403) {
+  skipAutoPauseRef.current = true;
+  setAssessmentActive(false);
+
+  await exitAssessmentFullscreen();
+
+  if (proctoringRef.current) {
+    proctoringRef.current.cleanup();
+  }
+
+  setPage("expired");
+  setError(
+    err.response?.data?.error ||
+      "Your assessment session has ended."
+  );
+}
       }
     }, 10000);
 
@@ -798,10 +938,322 @@ await submitAssessmentReport(formData);
     setPage("coding");
   }, []);
 
-   // Instructions Screen
-  if (page === "instructions") {
-    const isCodingAssessment = isCodingStage;
+ // Checking previous assessment status
+if (page === "checking") {
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
+        <div className="text-lg font-semibold text-gray-900">
+          Checking assessment status...
+        </div>
 
+        <p className="mt-2 text-sm text-gray-500">
+          Please wait while we check your previous assessment status.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Instructions Screen
+if (page === "instructions") {
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
+
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+            {isCodingAssessment
+              ? "Initial Assessment — Stage 2: Coding Assessment"
+              : "Initial Assessment — Stage 1: Initial Quiz"}
+          </h1>
+
+          <p className="mt-3 text-gray-500">
+            {isCodingAssessment
+              ? "Complete the coding assessment to evaluate your practical problem-solving skills."
+              : "Complete the initial quiz to evaluate your knowledge and skills."}
+          </p>
+        </div>
+
+        {/* =========================================================
+            CODING ASSESSMENT INSTRUCTIONS
+           ========================================================= */}
+        {isCodingAssessment ? (
+          <>
+            {/* Coding Assessment Overview */}
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+
+              {/* Assessment */}
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-5">
+                <p className="text-sm text-slate-500">Assessment</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  Coding Assessment
+                </p>
+              </div>
+
+              {/* Questions */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-sm text-slate-500">Questions</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  {codingInfo?.question_count
+                    ? `${codingInfo.question_count} Coding Problems`
+                    : "Coding Problems"}
+                </p>
+              </div>
+
+              {/* Format */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-sm text-slate-500">Format</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  {codingInfo?.format || "Practical Coding"}
+                </p>
+              </div>
+            </div>
+
+            {/* What to Expect */}
+            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+              <h2 className="text-base font-semibold text-slate-900">
+                What to expect
+              </h2>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+
+                <div className="flex gap-3">
+                  <span className="text-green-600">✓</span>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Solve coding problems using the provided coding environment.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="text-green-600">✓</span>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Read each problem and its requirements carefully.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="text-green-600">✓</span>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Manage your time across the available coding problems.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="text-green-600">✓</span>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Your solutions will be evaluated as part of the assessment.
+                  </p>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Before You Begin */}
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
+              <div className="flex gap-3">
+                <span className="font-bold text-amber-600">!</span>
+
+                <div>
+                  <h2 className="font-semibold text-amber-900">
+                    Before you begin
+                  </h2>
+
+                  <p className="mt-1 text-sm leading-6 text-amber-800">
+                    Make sure you are ready to complete the coding assessment.
+                    The assessment rules you accepted earlier will continue to apply.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          /* =========================================================
+             INITIAL QUIZ INSTRUCTIONS
+             ========================================================= */
+          <>
+            {/* Initial Quiz Overview */}
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+
+              {/* Assessment */}
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-5">
+                <p className="text-sm text-slate-500">Assessment</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  Initial Quiz
+                </p>
+              </div>
+
+              {/* Stage */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-sm text-slate-500">Stage</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  Stage 1
+                </p>
+              </div>
+
+              {/* Format */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-sm text-slate-500">Format</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  Multiple Choice Quiz
+                </p>
+              </div>
+            </div>
+
+            {/* What to Expect */}
+            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+              <h2 className="text-base font-semibold text-slate-900">
+                What to expect
+              </h2>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+
+                <div className="flex gap-3">
+                  <span className="text-green-600">✓</span>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Answer the questions based on your knowledge and skills.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="text-green-600">✓</span>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Read each question and all available options carefully.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="text-green-600">✓</span>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Manage your time while completing the quiz.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="text-green-600">✓</span>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Your responses will be evaluated as part of the assessment.
+                  </p>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Before You Begin */}
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
+              <div className="flex gap-3">
+                <span className="font-bold text-amber-600">!</span>
+
+                <div>
+                  <h2 className="font-semibold text-amber-900">
+                    Before you begin
+                  </h2>
+
+                  <p className="mt-1 text-sm leading-6 text-amber-800">
+                    Make sure you are ready to complete the initial quiz.
+                    The assessment rules you accepted earlier will continue to apply.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* =========================================================
+            START BUTTON
+           ========================================================= */}
+        <div className="mt-8 flex justify-end">
+
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="button"
+          onClick={() => {
+  if (isCodingAssessment && isRestartApproved) {
+    loadAssessment();
+    return;
+  }
+
+  if (isCodingAssessment) {
+    setPage("coding");
+    return;
+  }
+
+  loadAssessment();
+}}
+            disabled={loading}
+            className="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading
+              ? isCodingAssessment
+                ? "Starting Coding Assessment..."
+                : "Loading Assessment..."
+              : isCodingAssessment
+              ? "Start Coding Assessment →"
+              : "Start Assessment"}
+          </button>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Coding Assessment
+if (page === "coding") {
+  return (
+    <InitialCodingAssessment
+      sessionId={sessionId}
+      proctoringWarning={proctoringWarning}
+      onComplete={async (result) => {
+        console.log("Coding assessment completed:", result);
+
+        await exitAssessmentFullscreen();
+        setPage("completed");
+      }}
+    />
+  );
+}
+
+// Completed Screen
+if (page === "completed") {
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
+        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
+          ✓
+        </div>
+
+        <h1 className="text-3xl font-bold text-gray-900">
+          Assessment Completed
+        </h1>
+
+        <p className="mt-4 text-gray-600">
+          You have successfully completed your initial skill assessment.
+        </p>
+
+        <button
+          onClick={() => handleExitAssessmentToDashboard()}
+          className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+        >
+          Go to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Terminated Screen
+if (page === "terminated") {
+
+  // Admin approved the termination report
+  if (terminationReport?.status === "Approved") {
 
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
@@ -911,9 +1363,7 @@ await submitAssessmentReport(formData);
 
             <button
               type="button"
-              onClick={loadAssessment}
-              disabled={loading}
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+
             >
               {loading
   ? isCodingAssessment
@@ -929,12 +1379,14 @@ await submitAssessmentReport(formData);
     );
   }
 
+
   // Coding Assessment
   if (page === "coding") {
     return (
       <InitialCodingAssessment
         sessionId={sessionId}
         proctoringWarning={proctoringWarning}
+
         onComplete={async (result) => {
           console.log("Coding assessment completed:", result);
 
@@ -944,6 +1396,7 @@ await submitAssessmentReport(formData);
       />
     );
   }
+
 
   // Completed Screen
   if (page === "completed") {
@@ -976,6 +1429,11 @@ await submitAssessmentReport(formData);
 
   // Terminated Screen
   if (page === "terminated") {
+
+
+
+  // Normal terminated state
+
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
@@ -1285,5 +1743,7 @@ await submitAssessmentReport(formData);
     </>
   );
 };
+
+}
 
 export default InitialAssessment;
