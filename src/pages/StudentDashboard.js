@@ -1192,7 +1192,7 @@ if (
 
                 <h2 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">
 
-                  {user?.name?.split(' ')[0] ||
+                  {user?.username?.replace(/^@/, '') || user?.name?.split(' ')[0] ||
                     user?.name ||
                     'Student'}
 
@@ -3837,3 +3837,4 @@ if (
     </>
   );
 }
+
