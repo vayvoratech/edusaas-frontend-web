@@ -39,6 +39,20 @@ const formatAssessmentType = (type) => {
   return labels[value] || String(type).replace(/_/g, ' ');
 };
 
+const formatAssessmentStage = (stage) => {
+  if (!stage) return '';
+
+  const value = String(stage).toUpperCase();
+
+  const labels = {
+    INITIAL_QUIZ: 'Initial Quiz',
+    INITIAL_CODING: 'Initial Coding',
+    FINAL_QUIZ: 'Final Quiz',
+  };
+
+  return labels[value] || String(stage).replace(/_/g, ' ');
+};
+
 export default function AssessmentReviews() {
   const navigate = useNavigate();
 
@@ -271,6 +285,7 @@ export default function AssessmentReviews() {
                 <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
                   <th className="px-3 py-3">Student</th>
                   <th className="px-3 py-3">Assessment</th>
+                  <th className="px-3 py-3">Stage</th>
                   <th className="px-3 py-3">Reason</th>
                   <th className="px-3 py-3">Status</th>
                   <th className="px-3 py-3 text-right">Action</th>
@@ -313,13 +328,20 @@ export default function AssessmentReviews() {
                           {report.student_email ||
                             report.user_email ||
                             report.student?.email ||
+
+                            
                             '�'}
+
                         </div>
                       </td>
 
                       <td className="px-3 py-4 font-medium text-slate-700">
-                        {formatAssessmentType(assessmentType)}
-                      </td>
+                       {formatAssessmentType(assessmentType)}
+                          </td>
+
+                      <td className="px-3 py-4 text-slate-600">
+                       {formatAssessmentStage(report.assessment_stage) || "Not specified"}
+                        </td>
 
                       <td className="max-w-xs px-3 py-4 text-slate-600">
                         <div className="truncate">
@@ -382,7 +404,7 @@ export default function AssessmentReviews() {
                   disabled={savingDecision}
                   className="rounded-lg px-3 py-1 text-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
-                  �
+
                 </button>
               </div>
             </div>
@@ -405,7 +427,10 @@ export default function AssessmentReviews() {
                     {selectedReport.student_email ||
                       selectedReport.user_email ||
                       selectedReport.student?.email ||
+
                       '�'}
+
+                    
                   </div>
                 </div>
 
@@ -414,17 +439,23 @@ export default function AssessmentReviews() {
                     Assessment
                   </div>
 
-                  <div className="mt-1 font-semibold text-slate-900">
-                    {formatAssessmentType(
-                      selectedReport.assessment_type ||
-                        selectedReport.quizSession?.assessment_type ||
-                        selectedReport.quiz_session?.assessment_type
-                    )}
-                  </div>
+                 <div className="mt-1 font-semibold text-slate-900">
+  {formatAssessmentType(
+    selectedReport.assessment_type ||
+      selectedReport.quizSession?.assessment_type ||
+      selectedReport.quiz_session?.assessment_type
+  )}
+</div>
 
-                  <div className="mt-1 text-sm text-slate-500">
-                    Session ID: {selectedReport.quiz_session_id || '�'}
-                  </div>
+<div className="mt-1 text-sm text-slate-500">
+  Stage:{" "}
+  {formatAssessmentStage(selectedReport.assessment_stage) ||
+    "Not specified"}
+</div>
+
+<div className="mt-1 text-sm text-slate-500">
+  Session ID: {selectedReport.quiz_session_id || "—"}
+</div>
                 </div>
               </div>
 

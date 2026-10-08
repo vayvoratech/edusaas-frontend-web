@@ -7,14 +7,16 @@ import {
   heartbeatInitialQuiz,
   pauseInitialQuiz,
   pauseInitialQuizOnUnload,
-   getMyAssessmentReports,
-  getAssessmentOverview,
-  submitAssessmentReport
+getMyAssessmentReports,
+getAssessmentOverview,
+submitAssessmentReport
 } from "../../../services/api";
 
 import ProctoringService from "../../../services/proctoringServices";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getInitialCodingAssessmentInfo } from "../../../services/api";
+import AssessmentTerminationReport from "../../../components/AssessmentTerminationReport";
+
 
 // ----------------------------------------------------
 // 1. Fullscreen helper
@@ -48,6 +50,7 @@ const InitialAssessment = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+
   const isCodingStage = location.state?.phase === "coding";
   const isCodingAssessment = isCodingStage;
   const isRestartApproved = location.state?.restartApproved === true;
@@ -67,6 +70,7 @@ const InitialAssessment = () => {
   const sessionIdRef = useRef(null)
   const skipAutoPauseRef = useRef(false)
   const pauseSentRef = useRef(false)
+  const assessmentTerminatedRef = useRef(false);
 
   useEffect(() => {
     proctoringRef.current =
@@ -76,12 +80,16 @@ const InitialAssessment = () => {
         },
 
         onStarted: (data) => {
-          console.log("AI proctoring started:", data);
-          setStartingProctoring(false);
-          setError("");
-          setAssessmentActive(true);
-          setPage("quiz")
-        },
+  console.log("AI proctoring started:", data);
+
+  setStartingProctoring(false);
+  setError("");
+
+  assessmentActiveRef.current = true;
+  setAssessmentActive(true);
+
+  setPage("quiz");
+},
 
         onResult: (data) => {
           if (!data?.fraud) return;
@@ -96,6 +104,13 @@ const InitialAssessment = () => {
               action: fraud.action || "WARNING",
             });
           }
+
+          setLastProctoringViolation({
+  violationType: fraud.violation_type,
+  message: fraud.message,
+  violationCount: fraud.violation_count,
+  action: fraud.action,
+});
         },
 
         onWarning: (data) => {
@@ -115,21 +130,33 @@ const InitialAssessment = () => {
           console.warn("Assessment paused by proctoring:", data);
         },
 
-        onTerminate: async (data) => {
-          console.error("Assessment terminated:", data);
+       onTerminate: async (data) => {
+  console.error("Assessment terminated:", data);
 
-          skipAutoPauseRef.current = true;
+  assessmentTerminatedRef.current = true;
+  skipAutoPauseRef.current = true;
 
-          setAssessmentActive(false);
+  assessmentActiveRef.current = false;
+setAssessmentActive(false);
 
-          await exitAssessmentFullscreen();
+setLastProctoringViolation({
+    violationType: data?.violation_type || "PROCTORING",
+    message:
+      data?.reason ||
+      data?.message ||
+      "The assessment was terminated.",
+    violationCount: data?.violation_count ?? 2,
+    action: "TERMINATE_EXAM",
+  });
 
-          if (proctoringRef.current) {
-            proctoringRef.current.cleanup();
-          }
+  await exitAssessmentFullscreen();
 
-          setPage("terminated");
-        },
+  if (proctoringRef.current) {
+    proctoringRef.current.cleanup();
+  }
+  setShowReportForm(false);
+  setPage("terminated");
+},
 
         onDisconnected: () => {
           console.log("Proctoring WebSocket disconnected.");
@@ -149,26 +176,33 @@ const InitialAssessment = () => {
   }, []);
 
   // ----------------------------------------------------
-  // Page state
-  // ---------------------------------------------------
+// Page state
+// ----------------------------------------------------
 
+const [page, setPage] = useState(
+  isCodingStage || isRestartApproved
+    ? "instructions"
+    : "checking"
+);
+const [loading, setLoading] = useState(false);
+const loadingAssessmentRef = useRef(false);
+const [error, setError] = useState("");
 
-  const [page, setPage] = useState("checking");
-  const [loading, setLoading] = useState(false);
-  const loadingAssessmentRef = useRef(false);
-  const [error, setError] = useState("");
-  const [showReportForm, setShowReportForm] = useState(false);
-  const [reportReason, setReportReason] = useState("");
-  const [reportEvidence, setReportEvidence] = useState("");
-
-  const [reportEvidenceFile, setReportEvidenceFile] = useState(null);
-  const [reportSubmitting, setReportSubmitting] = useState(false);
-  const [reportSubmitted, setReportSubmitted] = useState(false);
-  const [reportError, setReportError] = useState("");
-  const [terminationReport, setTerminationReport] = useState(null);
+const [showReportForm, setShowReportForm] = useState(false);
+const [reportReason, setReportReason] = useState("");
+const [reportEvidence, setReportEvidence] = useState("");
+const [reportEvidenceFile, setReportEvidenceFile] = useState(null);
+const [reportSubmitting, setReportSubmitting] = useState(false);
+const [reportSubmitted, setReportSubmitted] = useState(false);
+const [, setReportError] = useState("");
+const [terminationReport, setTerminationReport] = useState(null);
 const [, setAssessmentStatusLoading] = useState(true);
-  const [startingProctoring, setStartingProctoring] = useState(false);
-  const [proctoringWarning, setProctoringWarning] = useState(null);
+
+const [startingProctoring, setStartingProctoring] = useState(false);
+const [proctoringWarning, setProctoringWarning] = useState(null);
+const [lastProctoringViolation, setLastProctoringViolation] = useState(null);
+
+
 
   const [codingInfo, setCodingInfo] = useState(null);
 
@@ -233,7 +267,7 @@ const currentReport =
 
       // Keep the current session ID available for
       // termination reporting / restart flow.
-     setTerminationReport(currentReport);
+setTerminationReport(currentReport);
 
 if (currentReport) {
   setReportSubmitted(true);
@@ -256,7 +290,9 @@ if (currentSessionId) {
        * The old session must remain visible until the
        * student has dealt with the termination report.
        */
- if (
+
+      if (
+
   currentStatus === "Terminated" &&
   !isRestartApproved
 ) {
@@ -264,6 +300,7 @@ if (currentSessionId) {
   setPage("terminated");
   return;
 }
+
       /*
        * NORMAL INITIAL ASSESSMENT
        *
@@ -302,6 +339,7 @@ if (currentSessionId) {
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+
 
 useEffect(() => {
   if (page !== "instructions") return;
@@ -436,12 +474,45 @@ useEffect(() => {
 
       setAssessmentActive(false);
       setPage("ready");
-    } catch (err) {
-      console.error("Failed to start initial quiz:", err);
-      setError(
-        err.response?.data?.error || "Failed to start the initial assessment."
-      );
-    } finally {
+  } catch (err) {
+  console.error("Failed to start initial quiz:", err);
+
+  const errorCode = err.response?.data?.code;
+  const errorMessage = err.response?.data?.error || "";
+
+  if (
+    errorCode === "ASSESSMENT_TERMINATED" ||
+    errorMessage.toLowerCase().includes("assessment has been terminated")
+  ) {
+    setAssessmentActive(false);
+
+    setError(
+      errorMessage ||
+        "This assessment has been terminated. Please report the issue to Admin before restarting."
+    );
+
+    setPage("terminated");
+
+    return;
+  }
+
+  if (
+  errorCode === "ASSESSMENT_TIME_EXPIRED" ||
+  errorMessage.toLowerCase().includes("assessment has already expired")
+) {
+  setAssessmentActive(false);
+
+  setError(
+    errorMessage || "This assessment has already expired."
+  );
+
+  return;
+}
+
+  setError(
+    errorMessage || "Failed to start the initial assessment."
+  );
+} finally {
       loadingAssessmentRef.current = false;
       setLoading(false);
     }
@@ -494,7 +565,9 @@ useEffect(() => {
      */
     let activatedRemaining = null;
     try {
+      console.log("RESUME STEP 1: Activating assessment...");
       const activateResponse = await activateInitialQuiz(sessionId);
+      console.log("RESUME STEP 2: Assessment activated:", activateResponse);
       activatedRemaining = activateResponse?.data?.remaining_seconds;
 
       if (typeof activatedRemaining === "number") {
@@ -513,7 +586,9 @@ useEffect(() => {
     await enterAssessmentFullscreen();
 
     try {
+      console.log("RESUME STEP 3: Starting proctoring...");
       await proctoringRef.current.start(sessionId);
+      console.log("RESUME STEP 4: Proctoring start returned.");
 
       console.log("Proctoring connection established. Waiting for AI...");
     } catch (err) {
@@ -577,55 +652,6 @@ useEffect(() => {
     }
   };
 
-  const handleSubmitAssessmentReport = async (e) => {
-  e.preventDefault();
-
-  if (!sessionId) {
-    setReportError("Assessment session not found.");
-    return;
-  }
-
-  if (!reportReason.trim()) {
-    setReportError("Please provide a reason for reporting the termination.");
-    return;
-  }
-
-  try {
-    setReportSubmitting(true);
-    setReportError("");
-
-const formData = new FormData();
-
-formData.append("quiz_session_id", sessionId);
-formData.append("assessment_type", "INITIAL");
-formData.append("reason", reportReason.trim());
-
-if (reportEvidence.trim()) {
-  formData.append("additional_evidence", reportEvidence.trim());
-}
-
-if (reportEvidenceFile) {
-  formData.append("evidence", reportEvidenceFile);
-}
-
-await submitAssessmentReport(formData);
-
-    setReportSubmitted(true);
-    setShowReportForm(false);
-  } catch (err) {
-    console.error(
-      "Assessment report submission failed:",
-      err.response?.data || err.message
-    );
-
-    setReportError(
-      err.response?.data?.error ||
-        "Failed to submit the assessment report."
-    );
-  } finally {
-    setReportSubmitting(false);
-  }
-};
 
   // Timer countdown
   useEffect(() => {
@@ -675,14 +701,21 @@ await submitAssessmentReport(formData);
 
     const handleFullscreenChange = async () => {
       // Still in fullscreen — nothing to do.
-      if (document.fullscreenElement !== null) {
-        return;
-      }
+     if (document.fullscreenElement !== null) {
+  return;
+}
 
-      // Assessment may have already been stopped/completed.
-      if (!assessmentActiveRef.current) {
-        return;
-      }
+if (assessmentTerminatedRef.current) {
+  return;
+}
+
+if (skipAutoPauseRef.current) {
+  return;
+}
+
+if (!assessmentActiveRef.current) {
+  return;
+}
 
       console.warn(
         "Fullscreen exited during initial quiz. Pausing assessment."
@@ -722,14 +755,24 @@ await submitAssessmentReport(formData);
         );
 
         // Even if the pause request fails, stop the local assessment.
-        setAssessmentActive(false);
-        setResumed(true);
-        setPage("ready");
+     if (err.response?.status === 409) {
+  assessmentTerminatedRef.current = true;
+  skipAutoPauseRef.current = true;
 
-        setError(
-          err.response?.data?.error ||
-          "Assessment was interrupted because fullscreen mode was exited."
-        );
+  setAssessmentActive(false);
+  setPage("terminated");
+
+  return;
+}
+
+setAssessmentActive(false);
+setResumed(true);
+setPage("ready");
+
+setError(
+  err.response?.data?.error ||
+  "Assessment was interrupted because fullscreen mode was exited."
+);
       } finally {
         pauseSentRef.current = false;
       }
@@ -859,6 +902,7 @@ if (status === 409 || status === 404 || status === 403) {
       if (
         !currentSessionId ||
         !assessmentActiveRef.current ||
+         assessmentTerminatedRef.current ||
         skipAutoPauseRef.current ||
         pauseSentRef.current
       ) {
@@ -896,6 +940,7 @@ if (status === 409 || status === 404 || status === 403) {
       if (
         !currentSessionId ||
         !assessmentActiveRef.current ||
+        assessmentTerminatedRef.current ||
         skipAutoPauseRef.current ||
         pauseSentRef.current
       ) {
@@ -955,8 +1000,10 @@ if (page === "checking") {
   );
 }
 
-// Instructions Screen
+ // Instructions Screen
 if (page === "instructions") {
+
+  const isCodingAssessment = isCodingStage;
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
@@ -1174,12 +1221,7 @@ if (page === "instructions") {
 
           <button
             type="button"
-          onClick={() => {
-  if (isCodingAssessment && isRestartApproved) {
-    loadAssessment();
-    return;
-  }
-
+            onClick={() => {
   if (isCodingAssessment) {
     setPage("coding");
     return;
@@ -1254,131 +1296,77 @@ if (page === "terminated") {
 
   // Admin approved the termination report
   if (terminationReport?.status === "Approved") {
-
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
+        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
           <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-              {isCodingAssessment
-                ? "Coding Assessment"
-                : "Initial Skill Assessment"}
+
+            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
+              ✓
+            </div>
+
+            <h1 className="text-3xl font-bold text-gray-900">
+              Assessment Restart Approved
             </h1>
 
-            <p className="mt-3 text-gray-500">
-              {isCodingAssessment
-                ? "Complete the coding assessment to evaluate your practical problem-solving skills."
-                : "Complete this assessment to personalize your learning path."}
+            <p className="mt-4 text-gray-600">
+              Admin has approved your assessment termination report.
             </p>
-          </div>
 
-         {/* Coding Assessment Overview */}
-<div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-  <div className="rounded-xl border border-blue-100 bg-blue-50 p-5">
-    <p className="text-sm text-slate-500">Assessment</p>
-    <p className="mt-1 text-lg font-semibold text-slate-900">
-      Coding Assessment
-    </p>
-  </div>
-
-  {/* Questions */}
-  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-    <p className="text-sm text-slate-500">Questions</p>
-  <p className="mt-1 text-lg font-semibold text-slate-900">
-  {codingInfo?.question_count
-    ? `${codingInfo.question_count} Coding Problems`
-    : "Coding Problems"}
+            <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-5 text-left">
+              <p className="text-sm font-semibold text-green-800">
+  {terminationReport?.assessment_stage === "INITIAL_CODING"
+    ? "You can now restart your Coding Assessment."
+    : "You can now restart your Initial Quiz."}
 </p>
-  </div>
 
-  {/* Format */}
-  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-    <p className="text-sm text-slate-500">Format</p>
-   <p className="mt-1 text-lg font-semibold text-slate-900">
-  {codingInfo?.format || "Practical Coding"}
+             <p className="mt-2 text-sm text-green-700">
+  {terminationReport?.assessment_stage === "INITIAL_CODING"
+    ? "Your coding assessment termination report was approved by Admin."
+    : "Your initial quiz termination report was approved by Admin."}
 </p>
-  </div>
-</div>
-
-{/* What to Expect */}
-<div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
-  <h2 className="text-base font-semibold text-slate-900">
-    What to expect
-  </h2>
-
-  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-    <div className="flex gap-3">
-      <span className="text-green-600">✓</span>
-      <p className="text-sm leading-6 text-slate-600">
-        Solve coding problems using the provided coding environment.
-      </p>
-    </div>
-
-    <div className="flex gap-3">
-      <span className="text-green-600">✓</span>
-      <p className="text-sm leading-6 text-slate-600">
-        Read each problem and its requirements carefully.
-      </p>
-    </div>
-
-    <div className="flex gap-3">
-      <span className="text-green-600">✓</span>
-      <p className="text-sm leading-6 text-slate-600">
-        Manage your time across the available coding problems.
-      </p>
-    </div>
-
-    <div className="flex gap-3">
-      <span className="text-green-600">✓</span>
-      <p className="text-sm leading-6 text-slate-600">
-        Your solutions will be evaluated as part of the assessment.
-      </p>
-    </div>
-  </div>
-</div>
-
-{/* Before You Begin */}
-<div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
-  <div className="flex gap-3">
-    <span className="font-bold text-amber-600">!</span>
-
-    <div>
-      <h2 className="font-semibold text-amber-900">
-        Before you begin
-      </h2>
-
-      <p className="mt-1 text-sm leading-6 text-amber-800">
-        Make sure you are ready to complete the coding assessment. The assessment rules you accepted earlier will continue to apply.
-      </p>
-    </div>
-  </div>
-</div>
-
-         <div className="mt-8 flex justify-end">
-            {error && (
-              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                {error}
-              </div>
-            )}
+            </div>
 
             <button
               type="button"
 
+              onClick={() => {
+                const stage = terminationReport?.assessment_stage;
+
+                // Old terminated session must not be reused
+                setSessionId(null);
+
+                setReportSubmitted(false);
+                setShowReportForm(false);
+                setTerminationReport(null);
+
+                if (stage === "INITIAL_CODING") {
+                  navigate("/app/initial-assessment", {
+                    state: {
+                      phase: "coding",
+                    },
+                  });
+                  return;
+                }
+
+                // INITIAL_QUIZ
+                navigate("/app/initial-assessment", {
+                  state: {
+                    phase: "quiz",
+                  },
+                });
+              }}
+              className="mt-6 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
+
             >
-              {loading
-  ? isCodingAssessment
-    ? "Starting Coding Assessment..."
-    : "Loading Assessment..."
-  : isCodingAssessment
-  ? "Start Coding Assessment →"
-  : "Start Assessment"}
+              Restart Assessment →
             </button>
+
           </div>
         </div>
       </div>
     );
   }
-
 
   // Coding Assessment
   if (page === "coding") {
@@ -1433,11 +1421,12 @@ if (page === "terminated") {
 
 
   // Normal terminated state
-
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10">
+
         <div className="text-center">
+
           <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
             !
           </div>
@@ -1452,12 +1441,19 @@ if (page === "terminated") {
           </p>
 
           {reportSubmitted ? (
-            <div className="mt-6 p-4 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
-              Your report has been submitted successfully. An administrator
-              will review your assessment termination.
-            </div>
-          ) : !showReportForm ? (
+  <div className="mt-6 rounded-xl border border-yellow-200 bg-yellow-50 p-5 text-left">
+    <p className="text-sm font-semibold text-yellow-800">
+      Report Status: {terminationReport?.status || "Pending"}
+    </p>
+
+    <p className="mt-2 text-sm text-yellow-700">
+      Your termination report has been submitted and is waiting for Admin
+      review.
+    </p>
+  </div>
+) : !showReportForm ? (
             <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+
               <button
                 type="button"
                 onClick={() => {
@@ -1476,272 +1472,231 @@ if (page === "terminated") {
               >
                 Go to Dashboard
               </button>
+
             </div>
           ) : (
-            <form
-              onSubmit={handleSubmitAssessmentReport}
-              className="mt-8 text-left"
-            >
-              <h2 className="text-lg font-semibold text-gray-900">
-                Report Assessment Termination
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-500">
-                Explain why you believe the termination was incorrect.
-              </p>
-
-              <div className="mt-5">
-                <label className="block text-sm font-medium text-gray-700">
-                  Reason <span className="text-red-500">*</span>
-                </label>
-
-                <textarea
-                  value={reportReason}
-                  onChange={(e) => setReportReason(e.target.value)}
-                  rows={4}
-                  placeholder="Explain why you are reporting the termination..."
-                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={reportSubmitting}
-                />
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Additional Evidence / Explanation
-                </label>
-
-                <textarea
-                  value={reportEvidence}
-                  onChange={(e) => setReportEvidence(e.target.value)}
-                  rows={4}
-                  placeholder="Provide any additional information that may help the administrator review your report..."
-                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={reportSubmitting}
-                />
-{/* report evidence */}
-<label className="mt-4 block text-sm font-medium text-gray-700">
-  Supporting Evidence
-</label>
-
-<input
-  type="file"
-  accept=".png,.jpg,.jpeg,.pdf"
-  onChange={(e) =>
-    setReportEvidenceFile(e.target.files?.[0] || null)
-  }
-  className="mt-2 block w-full text-sm text-gray-700"
-  disabled={reportSubmitting}
-/>
-
-<p className="mt-1 text-xs text-gray-500">
-  Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
-</p>
-              </div>
-
-              {reportError && (
-                <p className="mt-3 text-sm text-red-600">
-                  {reportError}
-                </p>
-              )}
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowReportForm(false);
-                    setReportError("");
-                  }}
-                  disabled={reportSubmitting}
-                  className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={reportSubmitting}
-                  className="px-5 py-2.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50"
-                >
-                  {reportSubmitting ? "Submitting..." : "Submit Report"}
-                </button>
-              </div>
-            </form>
+            <AssessmentTerminationReport
+              sessionId={sessionId}
+              assessmentType={isCodingStage ? "CODING" : "INITIAL"}
+              assessmentStage={
+                isCodingStage
+                  ? "INITIAL_CODING"
+                  : "INITIAL_QUIZ"
+              }
+              onCancel={() => {
+                setShowReportForm(false);
+              }}
+             onSubmitted={(report) => {
+  setReportSubmitted(true);
+  setTerminationReport(report);
+  setShowReportForm(false);
+}}
+            />
           )}
+
         </div>
       </div>
     </div>
   );
 }
 
-  // Expired Screen
-  if (page === "expired") {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
-          <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
+// Expired Screen
+if (page === "expired") {
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
+
+        <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
+          !
+        </div>
+
+        <h1 className="text-3xl font-bold text-gray-900">
+          Assessment Time Expired
+        </h1>
+
+        <p className="mt-4 text-gray-600">
+          {error || "Your assessment time has expired."}
+        </p>
+
+        <button
+          onClick={() => handleExitAssessmentToDashboard()}
+          className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+        >
+          Go to Dashboard
+        </button>
+
+      </div>
+    </div>
+  );
+}
+
+
+// Quiz screen
+return (
+  <>
+    {/* Tab-switch blocking overlay */}
+    {tabSwitchAlert && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-2xl">
+
+          <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
             !
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900">
-            Assessment Time Expired
-          </h1>
+          <h2 className="text-xl font-bold text-slate-900">
+            Return to the Assessment
+          </h2>
 
-          <p className="mt-4 text-gray-600">
-            {error || "Your assessment time has expired."}
+          <p className="mt-3 text-sm text-slate-600">
+            You switched away from the assessment tab or window. This has
+            been recorded as a proctoring violation. Complete the test
+            first — you must stay on this tab until you finish.
+          </p>
+
+          <p className="mt-2 text-xs text-slate-400">
+            Tab switches detected: {tabSwitchCountRef.current}
           </p>
 
           <button
-            onClick={() => handleExitAssessmentToDashboard()}
-            className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+            type="button"
+            onClick={() => setTabSwitchAlert(false)}
+            className="mt-6 w-full rounded-full bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition"
           >
-            Go to Dashboard
+            Return to Assessment
           </button>
+
         </div>
       </div>
-    );
-  }
+    )}
 
-  // Quiz screen
-  return (
-    <>
-      {/* Tab-switch blocking overlay */}
-      {tabSwitchAlert && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4">
-          <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-2xl">
-            <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-              !
-            </div>
+    {/* Assessment Viewport */}
+    <div className="h-[calc(100vh-80px)] overflow-hidden bg-[#f5f7f6]">
 
-            <h2 className="text-xl font-bold text-slate-900">
-              Return to the Assessment
+      <div className="fixed bottom-5 left-5 z-40 w-48 overflow-hidden rounded-xl border-2 border-white bg-black shadow-xl">
+        <video
+          id="cameraVideo"
+          autoPlay
+          muted
+          playsInline
+          className="aspect-video w-full object-cover"
+        />
+
+        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+
+            <span className="text-[10px] font-medium text-white">
+              Camera & Mic active
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {page === "ready" ? (
+
+        <div className="h-full flex items-center justify-center p-6">
+
+          <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
+
+            <h2 className="text-2xl font-bold text-slate-900">
+              {resumed
+                ? "Resume Skill Assessment"
+                : "Start Skill Assessment"}
             </h2>
 
-            <p className="mt-3 text-sm text-slate-600">
-              You switched away from the assessment tab or window. This has
-              been recorded as a proctoring violation. Complete the test
-              first — you must stay on this tab until you finish.
+            <p className="mt-3 text-sm text-slate-500">
+              {resumed
+                ? "Your previous progress has been saved. You will continue from the same question with the remaining time."
+                : "Your assessment is ready. Click below to enter full-screen mode and launch proctoring."}
             </p>
 
-            <p className="mt-2 text-xs text-slate-400">
-              Tab switches detected: {tabSwitchCountRef.current}
-            </p>
+            {resumed && lastProctoringViolation && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-left">
+
+                <p className="text-sm font-semibold text-amber-900">
+                  Proctoring Violation{" "}
+                  {lastProctoringViolation.violationCount} of 2
+                </p>
+
+                <p className="mt-1 text-sm text-amber-800">
+                  {lastProctoringViolation.message}
+                </p>
+
+                {lastProctoringViolation.violationCount === 1 && (
+                  <p className="mt-2 text-xs text-amber-700">
+                    This is your first accepted violation. One more accepted
+                    proctoring violation will terminate the assessment.
+                  </p>
+                )}
+
+              </div>
+            )}
+
+            {error && (
+              <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-600">
+                {error}
+              </div>
+            )}
 
             <button
               type="button"
-              onClick={() => setTabSwitchAlert(false)}
-              className="mt-6 w-full rounded-full bg-red-600 py-3 text-sm font-semibold text-white hover:bg-red-700 transition"
+              onClick={handleStartAssessment}
+              disabled={startingProctoring}
+              className="mt-6 w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white hover:bg-emerald-800 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Return to Assessment
+              {startingProctoring ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                  <span>Connecting Proctoring AI... Please wait...</span>
+                </>
+              ) : resumed ? (
+                "Resume Skill Assessment"
+              ) : (
+                "Start Skill Assessment"
+              )}
             </button>
+
           </div>
         </div>
+
+      ) : quizData ? (
+
+        <InitialQuiz
+          sessionId={sessionId}
+          initialDomain={quizData.domain}
+          initialSkill={quizData.skill}
+          initialQuestion={quizData.question}
+          initialAssessment={quizData.assessment}
+          initialQuestionsAnswered={
+            quizData.questionsAnswered
+          }
+          initialSkillQuestionsAnswered={
+            quizData.skillQuestionsAnswered
+          }
+          remainingSeconds={remainingSeconds}
+          assessmentActive={assessmentActive}
+          proctoringWarning={proctoringWarning}
+          tabSwitchAlert={tabSwitchAlert}
+          onQuizComplete={handleQuizComplete}
+          onError={(message) => {
+            setError(message || "");
+          }}
+        />
+
+      ) : (
+
+        <div className="h-full flex items-center justify-center p-6">
+          <p className="text-slate-500">
+            No question available.
+          </p>
+        </div>
+
       )}
 
-      {/* 4. Assessment Viewport (non-scrolling) */}
-      <div className="h-[calc(100vh-80px)] overflow-hidden bg-[#f5f7f6]">
-        <div className="fixed bottom-5 left-5 z-40 w-48 overflow-hidden rounded-xl border-2 border-white bg-black shadow-xl">
-          <video
-            id="cameraVideo"
-            autoPlay
-            muted
-            playsInline
-            className="aspect-video w-full object-cover"
-          />
+    </div>
+  </>
+);
 
-          <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-
-              <span className="text-[10px] font-medium text-white">
-                Camera & Mic active
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {page === "ready" ? (
-          <div className="h-full flex items-center justify-center p-6">
-
-            <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
-
-              <h2 className="text-2xl font-bold text-slate-900">
-                {resumed
-                  ? "Resume Skill Assessment"
-                  : "Start Skill Assessment"}
-              </h2>
-
-              <p className="mt-3 text-sm text-slate-500">
-                {resumed
-                  ? "Your previous progress has been saved. You will continue from the same question with the remaining time."
-                  : "Your assessment is ready. Click below to enter full-screen mode and launch proctoring."}
-              </p>
-
-              {error && (
-                <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-600">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleStartAssessment}
-                disabled={startingProctoring}
-                className="mt-6 w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white hover:bg-emerald-800 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {startingProctoring ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
-                    <span>Connecting Proctoring AI... Please wait...</span>
-                  </>
-                ) : resumed ? (
-                  "Resume Skill Assessment"
-                ) : (
-                  "Start Skill Assessment"
-                )}
-              </button>
-
-            </div>
-          </div>
-
-        ) : quizData ? (
-
-          <InitialQuiz
-            sessionId={sessionId}
-
-            initialDomain={quizData.domain}
-            initialSkill={quizData.skill}
-            initialQuestion={quizData.question}
-            initialAssessment={quizData.assessment}
-            initialQuestionsAnswered={
-              quizData.questionsAnswered
-            }
-            initialSkillQuestionsAnswered={
-              quizData.skillQuestionsAnswered
-            }
-
-            remainingSeconds={remainingSeconds}
-            assessmentActive={assessmentActive}
-            proctoringWarning={proctoringWarning}
-            tabSwitchAlert={tabSwitchAlert}
-
-            onQuizComplete={handleQuizComplete}
-
-            onError={(message) => {
-              setError(message || "");
-            }}
-          />
-
-        ) : (
-          <div className="h-full flex items-center justify-center p-6">
-            <p className="text-slate-500">
-              No question available.
-            </p>
-          </div>
-        )}
-
-      </div>
-    </>
-  );
 };
 
 }

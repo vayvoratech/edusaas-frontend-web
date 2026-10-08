@@ -1640,25 +1640,26 @@ const sortedDomainRoles = Array.from(
   </button>
 )}
 
+{/* Candidate Status Actions */}
+<div className="flex flex-wrap gap-2">
 
-{/* Shortlist - show when NOT already shortlisted */}
-{c.application_status !== "shortlisted" && (
-  <button
-    type="button"
-    disabled={
-      updatingApplicationId === (c.application_id || c.id)
-    }
-    onClick={() =>
-      handleApplicationStatus(c, "shortlisted")
-    }
-    className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
-  >
-    {updatingApplicationId === (c.application_id || c.id)
-      ? "Updating..."
-      : "Shortlist"}
-  </button>
-)}
-
+  {/* Shortlist - show when NOT already shortlisted */}
+  {c.application_status !== "shortlisted" && (
+    <button
+      type="button"
+      disabled={
+        updatingApplicationId === (c.application_id || c.id)
+      }
+      onClick={() =>
+        handleApplicationStatus(c, "shortlisted")
+      }
+      className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {updatingApplicationId === (c.application_id || c.id)
+        ? "Updating..."
+        : "Shortlist"}
+    </button>
+  )}
 
   {/* Reject - show when NOT already rejected */}
   {c.application_status !== "rejected" && (
@@ -1667,21 +1668,21 @@ const sortedDomainRoles = Array.from(
       disabled={
         updatingApplicationId === (c.application_id || c.id)
       }
-     onClick={() => {
-  showDialog({
-    type: "confirm",
-    title: "Reject Candidate?",
-    message: `Are you sure you want to reject ${c.name}?`,
-    confirmText: "Reject",
-    cancelText: "Cancel",
-    showCancel: true,
-    destructive: true,
-    onConfirm: () => {
-      closeDialog();
-      handleApplicationStatus(c, "rejected");
-    },
-  });
-}}
+      onClick={() => {
+        showDialog({
+          type: "confirm",
+          title: "Reject Candidate?",
+          message: `Are you sure you want to reject ${c.name}?`,
+          confirmText: "Reject",
+          cancelText: "Cancel",
+          showCancel: true,
+          destructive: true,
+          onConfirm: () => {
+            closeDialog();
+            handleApplicationStatus(c, "rejected");
+          },
+        });
+      }}
       className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {updatingApplicationId === (c.application_id || c.id)
@@ -1689,6 +1690,12 @@ const sortedDomainRoles = Array.from(
         : "Reject"}
     </button>
   )}
+
+
+</div>
+{/* Candidate Status Actions */}
+<div className="flex flex-wrap gap-2">
+
 
   {/* Move to Submitted - show when NOT already submitted */}
   {c.application_status !== "submitted" && (
@@ -1707,6 +1714,8 @@ const sortedDomainRoles = Array.from(
         : "Move to Submitted"}
     </button>
   )}
+
+</div>
 
 </div>
 

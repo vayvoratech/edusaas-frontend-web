@@ -418,14 +418,10 @@ export default function Profile() {
     storedUser?.username ||
     (rawEmail ? rawEmail.split('@')[0] : '');
 
-  const rawName =
-    profile?.name ||
-    user?.fullName ||
-    (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : null) ||
-    user?.name ||
-    storedUser?.name ||
-    rawUsername ||
-    'User';
+ const rawName =
+  profile?.name && profile.name.trim().toLowerCase() !== 'user'
+    ? profile.name
+    : rawUsername || 'User';
 
   const formattedUsername = rawUsername
     ? (rawUsername.startsWith('@') ? rawUsername : `@${rawUsername}`)

@@ -87,16 +87,25 @@ const navByRole = {
       to: '/app/profile',
       labelKey: 'my_profile',
       icon: UserRound,
+
     },
+
+    {
+    to: '/app/my-subscription',
+    labelKey: 'My Subscriptions',
+   icon: CreditCard,
+    },
+
+
+    {
+  to: '/app/help-support',
+  labelKey: 'Help & Support',
+  icon: MessageCircle,
+},
     {
       to: '/app/settings',
       labelKey: 'settings',
       icon: Settings,
-    },
-    {
-      to: '/app/my-subscription',
-      labelKey: 'My-subscriptions',
-      icon: CreditCard,
     },
   ],
 

@@ -155,6 +155,7 @@ const resources = {
       logout: "Log out",
       profile: "Profile",
       my_profile: "My Profile",
+      help_support: "Help & Support",
       home: "Home",
       courses: "Courses",
       assessments: "Assessments",

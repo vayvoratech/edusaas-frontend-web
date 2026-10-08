@@ -2,18 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { getAssessmentOverview } from '../../services/api';
+import { getAssessmentOverview, getMyAssessmentReports } from '../../services/api';
 import MiniProject from './MiniProject';
 import AppDialog from '../../components/ui/AppDialog';
 
-export default function SkillAssessment() {
+
+  export default function SkillAssessment() {
+    console.log("SKILL ASSESSMENT COMPONENT LOADED");
   const navigate = useNavigate();
+
 
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeView, setActiveView] = useState("overview");
   const [terminationReport, setTerminationReport] = useState(null);
+  const [activeView, setActiveView] = useState("overview");
+  
   const [dialog, setDialog] = useState({
   open: false,
   type: "warning",
@@ -25,10 +29,31 @@ export default function SkillAssessment() {
 });
 
   useEffect(() => {
-    const loadOverview = async () => {
-      try {
-        const data = await getAssessmentOverview();
-setOverview(data);
+   const loadOverview = async () => {
+  try {
+    const [data, reports] = await Promise.all([
+      getAssessmentOverview(),
+      getMyAssessmentReports(),
+    ]);
+
+    setOverview(data);
+
+    const codingSessionId =
+      data?.codingAssessment?.sessionId;
+
+    const codingReport =
+      Array.isArray(reports)
+        ? reports.find(
+            (report) =>
+              Number(report.quiz_session_id) ===
+                Number(codingSessionId) &&
+              String(report.assessment_stage || "").toUpperCase() ===
+                "INITIAL_CODING"
+          ) || null
+        : null;
+
+    setTerminationReport(codingReport);
+
 
 const initialQuizCompleted =
   data.initialAssessment.questionsAnswered >=
@@ -38,7 +63,12 @@ const initialQuizCompleted =
 const codingCompleted =
   data.codingAssessment?.status === "Completed";
 
-if (initialQuizCompleted && !codingCompleted) {
+
+if (
+  initialQuizCompleted &&
+  !codingCompleted &&
+  data.codingAssessment?.status !== "Terminated"
+) {
   setDialog({
     open: true,
     type: "warning",
@@ -91,6 +121,7 @@ const codingCompleted =
 const finalAssessmentUnlocked =
   initialAssessmentCompleted && courseCompleted;
 
+
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto">
@@ -128,7 +159,7 @@ const finalAssessmentUnlocked =
       <MiniProject onBack={() => setActiveView("overview")}/>
     );
   }
-
+  
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Page Header */}
@@ -155,11 +186,16 @@ const finalAssessmentUnlocked =
 
 {/* Initial Assessment */}
 <Card>
-  {/* Header */}
   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div className="flex items-start gap-4">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-        ✓
+      <div
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+          initialTerminated || codingTerminated
+            ? "bg-red-50 text-red-600"
+            : "bg-blue-50 text-blue-600"
+        }`}
+      >
+        {initialTerminated || codingTerminated ? "!" : "✓"}
       </div>
 
       <div>
@@ -179,8 +215,6 @@ const finalAssessmentUnlocked =
         </p>
       </div>
     </div>
-
-
 
 
 {/* CTA */}
@@ -207,40 +241,37 @@ const finalAssessmentUnlocked =
     </Button>
   </div>
 ) : codingTerminated ? (
-  <div className="flex items-center justify-end">
-    <span className="text-sm font-medium text-red-600">
-      Assessment Terminated
-    </span>
-  </div>
-) : (
-  <div className="flex items-center justify-end">
-    <Button
-      variant="primary"
-      onClick={() =>
-        navigate("/app/initial-assessment", {
-          state: { phase: "coding" },
-        })
-      }
-    >
-      Continue Coding Assessment
-    </Button>
-  </div>
-)}
+  <div className="flex flex-wrap items-center justify-end gap-2">
+    {!terminationReport && (
+      <>
+        <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700">
+          Assessment Terminated
+        </span>
 
-{codingTerminated ? (
-  <div className="flex items-center justify-end">
-    <Button
-      variant="primary"
-      onClick={() =>
-        navigate("/app/initial-assessment", {
-          state: {
-            phase: "coding",
-          },
-        })
-      }
-    >
-      Open Assessment
-    </Button>
+        <Button
+          variant="primary"
+          onClick={() =>
+            navigate("/app/initial-assessment", {
+              state: { phase: "coding" },
+            })
+          }
+        >
+          Open Assessment
+        </Button>
+      </>
+    )}
+
+    {terminationReport?.status === "Pending" && (
+      <span className="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1.5 text-sm font-medium text-yellow-700">
+        Report Pending
+      </span>
+    )}
+
+    {terminationReport?.status === "Rejected" && (
+      <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700">
+        Report Rejected
+      </span>
+    )}
   </div>
 ) : initialTerminated ? (
   <div className="text-right">
@@ -262,12 +293,17 @@ const finalAssessmentUnlocked =
     Continue Coding Assessment
   </Button>
 ) : null}
+
 </div>
+
+
 
 {/* Termination Notice */}
 {initialTerminated || (codingTerminated && !terminationReport) ? (
   <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-5">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
       <div className="flex gap-3">
         <span className="mt-0.5 font-bold text-red-600">!</span>
 
@@ -290,17 +326,19 @@ const finalAssessmentUnlocked =
 
       {/* Stage 1 → Report to Admin */}
       {initialTerminated && !terminationReport && (
-        <Button
-          variant="primary"
-          className="shrink-0 self-start sm:self-center"
-          onClick={() =>
-            navigate(
-              `/app/help-support?category=assessment_termination&sessionId=${overview?.initialAssessment?.sessionId}&assessmentType=INITIAL&assessmentStage=INITIAL_QUIZ&open=report`
-            )
-          }
-        >
-          Report to Admin →
-        </Button>
+
+       <Button
+  variant="primary"
+  className="shrink-0 self-start sm:self-center"
+  onClick={() =>
+    navigate(
+      `/app/help-support?category=assessment_termination&sessionId=${overview?.initialAssessment?.sessionId}&assessmentType=INITIAL&assessmentStage=INITIAL_QUIZ&open=report`
+    )
+  }
+>
+  Report to Admin →
+</Button>
+
       )}
     </div>
   </div>
@@ -308,16 +346,35 @@ const finalAssessmentUnlocked =
 
   {/* Stages */}
   <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+
     {/* Stage 1 */}
-    <div className="rounded-xl border border-green-200 bg-green-50/40 p-5">
+    <div
+      className={`rounded-xl p-5 ${
+        initialTerminated
+  ? "border border-red-200 bg-red-50/40"
+  : overview.initialAssessment?.status === "Completed"
+    ? "border border-green-200 bg-green-50/40"
+    : "border border-slate-200 bg-slate-50/40"
+      }`}
+    >
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           Stage 1
         </span>
 
-        <span className="text-sm font-medium text-green-600">
-          Completed
-        </span>
+       <span
+  className={`text-sm font-medium ${
+    initialTerminated
+      ? "text-red-600"
+      : overview.initialAssessment?.initialQuizStatus === "Completed"
+        ? "text-green-600"
+        : "text-slate-600"
+  }`}
+>
+  {initialTerminated
+    ? "Terminated"
+    : overview.initialAssessment?.initialQuizStatus || "Not Started"}
+</span>
       </div>
 
       <h3 className="mt-2 text-lg font-semibold text-slate-900">
@@ -328,15 +385,26 @@ const finalAssessmentUnlocked =
         Knowledge and skill assessment
       </p>
 
-      <div className="mt-4 flex items-center justify-between rounded-lg bg-white px-4 py-3">
-        <span className="text-sm text-slate-500">
-          Questions
-        </span>
+     <div className="mt-4 rounded-lg bg-white px-4 py-3">
+  <div className="flex items-center justify-between">
+    <span className="text-sm text-slate-500">
+      Questions
+    </span>
 
-        <span className="font-semibold text-slate-900">
-          50 / 50
-        </span>
-      </div>
+    <span className="font-semibold text-slate-900">
+      {overview.initialAssessment.questionsAnswered}/
+      {overview.initialAssessment.totalQuestions}
+    </span>
+  </div>
+
+ {overview.initialAssessment.totalQuestions > 0 &&
+  overview.initialAssessment.questionsAnswered ===
+    overview.initialAssessment.totalQuestions && (
+      <p className="mt-2 text-sm font-medium text-green-600">
+        ✓ Initial Quiz completed successfully.
+      </p>
+)}
+</div>
     </div>
 
     {/* Stage 2 */}
@@ -354,8 +422,21 @@ const finalAssessmentUnlocked =
           Stage 2
         </span>
 
-        <span className="text-sm font-medium text-blue-600">
-          Ready
+        <span
+  className={`text-sm font-medium ${
+  codingTerminated && terminationReport?.status === "Approved"
+    ? "text-green-600"
+    : codingTerminated
+      ? "text-red-600"
+      : overview.codingAssessment?.status === "Completed"
+        ? "text-green-600"
+        : "text-blue-600"
+}`}
+>               {codingTerminated && terminationReport?.status === "Approved"
+  ? "Ready to Restart"
+  : codingTerminated
+    ? "Terminated"
+    : overview.codingAssessment?.status || "Ready"}
         </span>
       </div>
 
@@ -367,11 +448,32 @@ const finalAssessmentUnlocked =
         Practical coding evaluation
       </p>
 
-      <div className="mt-4 rounded-lg bg-white px-4 py-3">
-        <span className="text-sm text-blue-600">
-          Your coding assessment is ready to continue.
-        </span>
+     <div className="mt-4 rounded-lg bg-white px-4 py-3">
+  {codingTerminated && !terminationReport && (
+    <span className="text-sm text-red-600">
+      Your coding assessment has been terminated. Please contact Admin.
+    </span>
+  )}
+
+  {codingTerminated &&
+    terminationReport?.status === "Pending" && (
+      <div>
+        <p className="text-sm font-semibold text-green-700">
+          Termination Report Sent Successfully
+        </p>
+
+        <p className="mt-1 text-sm text-green-600">
+          Your termination report has been sent successfully
+          and is awaiting Admin review.
+        </p>
+
+        <p className="mt-1 text-xs text-green-600">
+          You can resume the Coding Assessment after Admin approval.
+        </p>
       </div>
+
+    )}  
+
 {codingTerminated &&
   terminationReport?.status === "Approved" && (
     <div>
@@ -404,7 +506,6 @@ const finalAssessmentUnlocked =
       )}
     </div>
   )}
-
 {codingCompleted ? (
   <p className="text-sm font-medium text-green-600">
     ✓ Coding Assessment completed successfully.
@@ -414,67 +515,81 @@ const finalAssessmentUnlocked =
     Please complete the Initial Quiz first. Coding Assessment will be
     available after you complete Stage 1.
   </p>
+
 ) : !codingTerminated && !codingTimedOut ? (
+
   <p className="text-sm text-blue-600">
     Your coding assessment is ready to continue.
   </p>
 ) : null}
-</div>
-    </div>
+        </div>
+     </div>
+  </div>
 
+  {/* Assessment metrics */}
+  <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
 
-    {/* Assessment metrics */}
-    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-          Overall Status
-        </span>
+    <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        Overall Status
+      </span>
 
-        <p
-          className={`mt-1 text-sm font-semibold ${
-            overview.initialAssessment.status === "Completed"
+      <p
+        className={`mt-1 text-sm font-semibold ${
+          initialTerminated || codingTerminated
+            ? "text-red-600"
+            : overview.initialAssessment.status === "Completed"
               ? "text-green-600"
               : "text-amber-600"
-          }`}
-        >
-          {overview.initialAssessment.status}
-        </p>
-      </div>
-
-      <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-          Questions
-        </span>
-
-        <p className="mt-1 text-sm font-semibold text-slate-700">
-          {overview.initialAssessment.questionsAnswered}/
-          {overview.initialAssessment.totalQuestions}
-        </p>
-      </div>
-
-      <div className="rounded-lg bg-orange-50 px-3 py-2.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-orange-500">
-          Readiness
-        </span>
-
-        <p className="mt-1 text-sm font-semibold text-orange-600">
-         {overview.initialAssessment.readinessScore != null
-  ? overview.initialAssessment.readinessScore
-  : "Pending"}
-        </p>
-      </div>
-
-      <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-          Purpose
-        </span>
-
-        <p className="mt-1 text-sm font-semibold text-slate-700">
-          Skill & Readiness
-        </p>
-      </div>
+        }`}
+      >
+        {codingTerminated
+          ? "Terminated"
+          : overview.initialAssessment.status}
+      </p>
     </div>
-    </Card>
+
+    <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        Questions
+      </span>
+
+      <p className="mt-1 text-sm font-semibold text-slate-700">
+        {overview.initialAssessment.questionsAnswered}/
+        {overview.initialAssessment.totalQuestions}
+      </p>
+    </div>
+
+    <div className="rounded-lg bg-orange-50 px-3 py-2.5">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-orange-500">
+        Readiness
+      </span>
+
+      <p
+  className={`text-sm font-semibold ${
+    overview.initialAssessment?.readinessScore != null
+      ? "text-green-600"
+      : "text-slate-900"
+  }`}
+>
+  {overview.initialAssessment?.readinessScore != null
+    ? overview.initialAssessment.readinessScore
+    : "Pending"}
+</p>
+    </div>
+
+    <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        Purpose
+      </span>
+
+      <p className="mt-1 text-sm font-semibold text-slate-700">
+        Skill & Readiness
+      </p>
+    </div>
+
+  </div>
+</Card>
 
       {/* Learning Prerequisites */}
       <Card>
@@ -691,7 +806,7 @@ const finalAssessmentUnlocked =
     });
   }}
 />
+</div>
 
-    </div>
   );
 }

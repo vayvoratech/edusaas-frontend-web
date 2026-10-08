@@ -316,7 +316,6 @@ const InitialCodingAssessment = ({
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportEvidence, setReportEvidence] = useState("");
-
   const [reportEvidenceFile, setReportEvidenceFile] = useState(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
@@ -742,6 +741,19 @@ const showDialog = (options) => {
       } catch (err) {
         if (!mounted) return;
 
+        const errorCode = err.response?.data?.code;
+
+        if (errorCode === "ASSESSMENT_TERMINATED") {
+          setAssessmentActive(false);
+          assessmentActiveRef.current = false;
+          setSessionStatus("terminated");
+          setError(
+            err.response?.data?.error ||
+              "This assessment has been terminated. Please report the issue to Admin before restarting."
+          );
+          return;
+        }
+
         const message = getErrorMessage(
           err,
           "Unable to start the coding assessment."
@@ -1095,7 +1107,7 @@ const handleSubmitAssessmentReport = async (e) => {
     setReportSubmitting(true);
     setReportError("");
 
-const formData = new FormData();
+    const formData = new FormData();
 
 formData.append("quiz_session_id", sid);
 formData.append("assessment_type", "CODING");
@@ -1646,7 +1658,8 @@ await submitAssessmentReport(formData);
             />
 
 {/* report evidence */}
-<label className="mt-4 block text-xs font-medium text-slate-300">
+
+<label className="mt-4 block text-sm font-medium text-gray-700">
   Supporting Evidence
 </label>
 
@@ -1656,10 +1669,11 @@ await submitAssessmentReport(formData);
   onChange={(e) =>
     setReportEvidenceFile(e.target.files?.[0] || null)
   }
-  className="mt-1.5 block w-full text-sm text-slate-300"
+  className="mt-2 block w-full text-sm text-gray-700"
+  disabled={reportSubmitting}
 />
 
-<p className="mt-1 text-xs text-slate-500">
+<p className="mt-1 text-xs text-gray-500">
   Upload PNG, JPG, JPEG, or PDF. Maximum size: 10 MB.
 </p>
             {reportError && (

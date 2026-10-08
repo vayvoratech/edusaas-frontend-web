@@ -30,6 +30,9 @@ import AchievementsPage from './pages/AchievementsPage';
 import TasksPage from './pages/TasksPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import StudentSettings from './pages/StudentSettings';
+import EducatorSettings from './pages/EducatorSettings';
+import EmployerSettings from './pages/EmployerSettings';
+import AdminSettings from './pages/AdminSettings';
 import StudentInsights from './pages/StudentInsights';
 import EngagementTrends from './pages/EngagementTrends';
 import InitialAssessment from './pages/assessments/initial/InitialAssessment';
@@ -55,6 +58,9 @@ import AssessmentReview from './pages/AssessmentReview';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import MySubscription from './pages/MySubscription';
 
+//student needs contact support
+import HelpSupport from './pages/HelpSupport';
+
 function RoleDashboard() {
   const { role } = useAuth();
 
@@ -68,14 +74,29 @@ function RoleDashboard() {
   }
 }
 
-function StudentOrAdminSettings() {
-  return <StudentSettings />;
+function RoleSettings() {
+  const { role } = useAuth();
+
+  switch (role?.toLowerCase()) {
+    case 'educator':
+      return <EducatorSettings />;
+
+    case 'employer':
+      return <EmployerSettings />;
+
+    case 'admin':
+      return <AdminSettings />;
+
+    case 'student':
+    default:
+      return <StudentSettings />;
+  }
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
@@ -109,7 +130,7 @@ export default function App() {
 
             {/* Shared */}
             <Route path="profile" element={<Profile />} />
-            <Route path="settings" element={<StudentOrAdminSettings />} />
+            <Route path="settings" element={<RoleSettings />} />
             <Route path="community" element={<Community />} />
 
             {/* Student */}
@@ -123,6 +144,7 @@ export default function App() {
               <Route path="recommendations" element={<RecommendationsPage />} />
               <Route path="my-insights" element={<StudentInsights />} />
               <Route path="engagement-trends" element={<EngagementTrends />} />
+              <Route path="help-support" element={<HelpSupport />} />
               <Route path="assessments" element={<SkillAssessment />} />
               <Route path="initial-assessment" element={<InitialAssessment />} />
               <Route path="final-assessment" element={<FinalAssessment />} />

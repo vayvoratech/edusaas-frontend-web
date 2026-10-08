@@ -222,7 +222,7 @@ export default function UserDetails() {
     ? u.name
     : u.username || u.name}
 </div>
-                        </div>
+</div>
                     </td>
                     <td className="px-5 py-3 text-slate-600">{u.email}</td>
                     <td className="px-5 py-3">
