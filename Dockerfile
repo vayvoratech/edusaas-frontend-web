@@ -7,9 +7,12 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# CHANGE: Set to relative path so Nginx handles routing
+# Build arguments for React frontend compilation
 ARG REACT_APP_API_BASE=/api
+ARG REACT_APP_CLERK_PUBLISHABLE_KEY=pk_test_aW5jbHVkZWQtYmx1ZWdpbGwtNTI1MS5jbGVyay5hY2NvdW50cy5kZXYk
+
 ENV REACT_APP_API_BASE=$REACT_APP_API_BASE
+ENV REACT_APP_CLERK_PUBLISHABLE_KEY=$REACT_APP_CLERK_PUBLISHABLE_KEY
 
 COPY . .
 RUN npm run build

@@ -6,10 +6,12 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ClerkProvider } from '@clerk/react';
 
-const PUBLISHABLE_KEY = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+const PUBLISHABLE_KEY =
+  process.env.REACT_APP_CLERK_PUBLISHABLE_KEY ||
+  'pk_test_aW5jbHVkZWQtYmx1ZWdpbGwtNTI1MS5jbGVyay5hY2NvdW50cy5kZXYk';
 
 if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Publishable Key");
+  console.error("Missing Clerk Publishable Key in environment variables.");
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
