@@ -45,6 +45,16 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  const [syncTrigger, setSyncTrigger] = useState(0);
+
+  useEffect(() => {
+    const handleResync = () => {
+      setSyncTrigger((c) => c + 1);
+    };
+    window.addEventListener("edu_resync_needed", handleResync);
+    return () => window.removeEventListener("edu_resync_needed", handleResync);
+  }, []);
+
   // Background sync: Fetch latest user profile from PostgreSQL if signed in with token
   useEffect(() => {
     if (isLoaded && isSignedIn && user) {
@@ -73,6 +83,13 @@ export function AuthProvider({ children }) {
                 localStorage.setItem('edu_user', JSON.stringify(updated));
                 setDbUser(updated);
               }
+            } else if (res.status === 404 || res.status === 401) {
+              console.warn('[AUTH] Stale user token detected (DB mismatch). Re-syncing...');
+              localStorage.removeItem('edu_token');
+              localStorage.removeItem('edu_user');
+              localStorage.removeItem('edu_refresh');
+              setDbUser(null);
+              setSyncTrigger((c) => c + 1);
             }
           } catch (e) {
             console.debug('Background user profile sync check:', e);
@@ -168,7 +185,7 @@ export function AuthProvider({ children }) {
     return () => {
       isMounted = false;
     };
-  }, [isLoaded, isSignedIn, user, getToken]);
+  }, [isLoaded, isSignedIn, user, getToken, syncTrigger]);
 
   const updateAuthUser = React.useCallback((patch) => {
     try {

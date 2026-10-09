@@ -75,6 +75,12 @@ api.interceptors.response.use(
         localStorage.removeItem(USER_KEY);
       }
     }
+    if (status === 404 && (err.response?.data?.error === "User not found" || err.response?.data?.error === "User not found.")) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_KEY);
+      localStorage.removeItem(USER_KEY);
+      window.dispatchEvent(new CustomEvent("edu_resync_needed"));
+    }
     return Promise.reject(err);
   }
 );
