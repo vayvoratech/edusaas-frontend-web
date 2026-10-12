@@ -6,7 +6,8 @@ import {
   activateInitialQuiz,
   heartbeatInitialQuiz,
   pauseInitialQuiz,
-  pauseInitialQuizOnUnload
+  pauseInitialQuizOnUnload,
+  warmUpAIMLService
 } from "../../../services/api";
 
 import ProctoringService from "../../../services/proctoringServices";
@@ -61,6 +62,9 @@ const InitialAssessment = () => {
   const pauseSentRef = useRef(false)
 
   useEffect(() => {
+    // Pre-warm the unified AI/ML proctoring service in the background
+    warmUpAIMLService();
+
     proctoringRef.current =
       new ProctoringService({
         onConnected: () => {
@@ -72,7 +76,7 @@ const InitialAssessment = () => {
           setStartingProctoring(false);
           setError("");
           setAssessmentActive(true);
-          setPage("quiz")
+          setPage("quiz");
         },
 
         onResult: (data) => {
@@ -123,12 +127,25 @@ const InitialAssessment = () => {
           setPage("terminated");
         },
 
-        onDisconnected: () => {
-          console.log("Proctoring WebSocket disconnected.");
+        onDisconnected: (event) => {
+          console.log("Proctoring WebSocket disconnected:", event);
+          setStartingProctoring((active) => {
+            if (active) {
+              setError("Proctoring connection closed unexpectedly. Please click Start again to retry.");
+              exitAssessmentFullscreen().catch(() => {});
+            }
+            return false;
+          });
         },
 
         onError: (error) => {
           console.error("Proctoring error:", error);
+          setStartingProctoring(false);
+          exitAssessmentFullscreen().catch(() => {});
+          setError(
+            error?.message ||
+            "Unable to connect to AI proctoring service. Please click Start to retry."
+          );
         },
       });
 
@@ -148,7 +165,33 @@ const InitialAssessment = () => {
   const loadingAssessmentRef = useRef(false);
   const [error, setError] = useState("");
   const [startingProctoring, setStartingProctoring] = useState(false);
+  const [proctoringWaitMessage, setProctoringWaitMessage] = useState("");
   const [proctoringWarning, setProctoringWarning] = useState(null);
+
+  useEffect(() => {
+    let t1, t2, watchdog;
+    if (startingProctoring) {
+      setProctoringWaitMessage("Connecting to Proctoring AI...");
+      t1 = setTimeout(() => {
+        setProctoringWaitMessage("Waking up AI model on cloud server... Please wait...");
+      }, 4000);
+      t2 = setTimeout(() => {
+        setProctoringWaitMessage("AI model cold boot taking longer than usual... Still connecting...");
+      }, 18000);
+      watchdog = setTimeout(() => {
+        setStartingProctoring(false);
+        exitAssessmentFullscreen().catch(() => {});
+        setError("AI Proctoring service took too long to connect. Please click Start again to retry.");
+      }, 70000);
+    } else {
+      setProctoringWaitMessage("");
+    }
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(watchdog);
+    };
+  }, [startingProctoring]);
 
   // ----------------------------------------------------
   // Tab-switch blocking overlay — purely client-side and instant,
@@ -987,7 +1030,7 @@ const InitialAssessment = () => {
                 {startingProctoring ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
-                    <span>Connecting Proctoring AI... Please wait...</span>
+                    <span>{proctoringWaitMessage || "Connecting Proctoring AI... Please wait..."}</span>
                   </>
                 ) : resumed ? (
                   "Resume Skill Assessment"

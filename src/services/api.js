@@ -644,5 +644,9 @@ export const aimlAnalyzeSkillGap = (data) =>
 export const aimlCheckMiniProjectPlagiarism = (data) =>
   api.post("/api/aiml/plagiarism/mini-project", data).then((r) => r.data);
 
+/** Pre-warm Unified AI/ML Service — GET /api/aiml/health */
+export const warmUpAIMLService = () =>
+  api.get("/api/aiml/health").then((r) => r.data).catch(() => null);
+
 export default api;
 
