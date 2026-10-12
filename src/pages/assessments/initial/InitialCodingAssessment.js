@@ -10,7 +10,8 @@ import {
   runInitialCodingCode,
   submitInitialCodingAnswer,
   completeInitialCodingAssessment,
-  submitAssessmentReport
+  submitAssessmentReport,
+  warmUpAIMLService
 } from "../../../services/api";
 import ProctoringService from "../../../services/proctoringServices";
 import Editor from "@monaco-editor/react";
@@ -430,6 +431,8 @@ const showDialog = (options) => {
   }, [assessmentActive]);
 
   useEffect(() => {
+    warmUpAIMLService();
+
     proctoringRef.current = new ProctoringService({
       assessmentType: "CODING",
 
@@ -532,10 +535,16 @@ const showDialog = (options) => {
 
       onDisconnected: () => {
         console.warn("Coding proctoring WebSocket disconnected.");
+        setResuming(false);
       },
 
       onError: (error) => {
         console.error("Coding proctoring error:", error);
+        setResuming(false);
+        setError(
+          error?.message ||
+          "Unable to connect to AI proctoring service. Please click Resume to retry."
+        );
       },
     });
 

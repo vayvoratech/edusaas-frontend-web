@@ -7,7 +7,8 @@ import {
   heartbeatInitialQuiz,
   pauseInitialQuiz,
   pauseInitialQuizOnUnload,
-  submitAssessmentReport
+  submitAssessmentReport,
+  warmUpAIMLService
 } from "../../../services/api";
 
 import ProctoringService from "../../../services/proctoringServices";
@@ -68,6 +69,9 @@ const InitialAssessment = () => {
   const assessmentTerminatedRef = useRef(false);
 
   useEffect(() => {
+    // Pre-warm the unified AI/ML proctoring service in the background
+    warmUpAIMLService();
+
     proctoringRef.current =
       new ProctoringService({
         onConnected: () => {
@@ -135,12 +139,25 @@ const InitialAssessment = () => {
           setPage("terminated");
         },
 
-        onDisconnected: () => {
-          console.log("Proctoring WebSocket disconnected.");
+        onDisconnected: (event) => {
+          console.log("Proctoring WebSocket disconnected:", event);
+          setStartingProctoring((active) => {
+            if (active) {
+              setError("Proctoring connection closed unexpectedly. Please click Start again to retry.");
+              exitAssessmentFullscreen().catch(() => {});
+            }
+            return false;
+          });
         },
 
         onError: (error) => {
           console.error("Proctoring error:", error);
+          setStartingProctoring(false);
+          exitAssessmentFullscreen().catch(() => {});
+          setError(
+            error?.message ||
+            "Unable to connect to AI proctoring service. Please click Start to retry."
+          );
         },
       });
 
@@ -172,9 +189,35 @@ const InitialAssessment = () => {
   const [reportError, setReportError] = useState("");
   
   const [startingProctoring, setStartingProctoring] = useState(false);
+  const [proctoringWaitMessage, setProctoringWaitMessage] = useState("");
   const [proctoringWarning, setProctoringWarning] = useState(null);
 
   const [codingInfo, setCodingInfo] = useState(null);
+
+  useEffect(() => {
+    let t1, t2, watchdog;
+    if (startingProctoring) {
+      setProctoringWaitMessage("Connecting to Proctoring AI...");
+      t1 = setTimeout(() => {
+        setProctoringWaitMessage("Waking up AI model on cloud server... Please wait...");
+      }, 4000);
+      t2 = setTimeout(() => {
+        setProctoringWaitMessage("AI model cold boot taking longer than usual... Still connecting...");
+      }, 18000);
+      watchdog = setTimeout(() => {
+        setStartingProctoring(false);
+        exitAssessmentFullscreen().catch(() => {});
+        setError("AI Proctoring service took too long to connect. Please click Start again to retry.");
+      }, 70000);
+    } else {
+      setProctoringWaitMessage("");
+    }
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(watchdog);
+    };
+  }, [startingProctoring]);
 
   // ----------------------------------------------------
   // Tab-switch blocking overlay
@@ -1651,8 +1694,6 @@ const InitialAssessment = () => {
                       <span>{error}</span>
                     </div>
                   </div>
-                )}
-
                 <button
                   type="button"
                   onClick={
@@ -1668,7 +1709,7 @@ const InitialAssessment = () => {
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
 
                       <span>
-                        Connecting Proctoring AI... Please wait...
+                        {proctoringWaitMessage || "Connecting Proctoring AI... Please wait..."}
                       </span>
                     </>
                   ) : (
@@ -1680,7 +1721,7 @@ const InitialAssessment = () => {
                       </span>
 
                       <span className="text-lg">
-                        ΓåÆ
+                        →
                       </span>
                     </>
                   )}
