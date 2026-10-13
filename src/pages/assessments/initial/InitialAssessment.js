@@ -1694,6 +1694,7 @@ const InitialAssessment = () => {
                       <span>{error}</span>
                     </div>
                   </div>
+                )}
                 <button
                   type="button"
                   onClick={
