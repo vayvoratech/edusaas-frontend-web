@@ -53,6 +53,7 @@ const InitialAssessment = () => {
   const isRestartApproved = location.state?.restartApproved === true;
 
   const proctoringRef = useRef(null);
+  const assessmentLoadRequestedRef = useRef(false);
 
   // Hide the normal application shell while the assessment is active.
   useEffect(() => {
@@ -67,6 +68,7 @@ const InitialAssessment = () => {
   const sessionIdRef = useRef(null)
   const skipAutoPauseRef = useRef(false)
   const pauseSentRef = useRef(false)
+  const assessmentTerminatedRef = useRef(false);
 
   useEffect(() => {
     proctoringRef.current =
@@ -115,21 +117,30 @@ const InitialAssessment = () => {
           console.warn("Assessment paused by proctoring:", data);
         },
 
-        onTerminate: async (data) => {
-          console.error("Assessment terminated:", data);
+      onTerminate: async (data) => {
+  console.error("Assessment terminated:", data);
 
-          skipAutoPauseRef.current = true;
+  assessmentTerminatedRef.current = true;
+  skipAutoPauseRef.current = true;
+  assessmentActiveRef.current = false;
 
-          setAssessmentActive(false);
+  setAssessmentActive(false);
 
-          await exitAssessmentFullscreen();
+  setError(
+    data?.reason ||
+      data?.message ||
+      "Your assessment was terminated by the proctoring system."
+  );
 
-          if (proctoringRef.current) {
-            proctoringRef.current.cleanup();
-          }
+  await exitAssessmentFullscreen();
 
-          setPage("terminated");
-        },
+  if (proctoringRef.current) {
+    proctoringRef.current.cleanup();
+  }
+
+  setShowReportForm(false);
+  setPage("terminated");
+},
 
         onDisconnected: () => {
           console.log("Proctoring WebSocket disconnected.");
@@ -154,6 +165,9 @@ const InitialAssessment = () => {
 
 
   const [page, setPage] = useState("checking");
+  useEffect(() => {
+  console.log("PAGE STATE CHANGED:", page);
+}, [page]);
   const [loading, setLoading] = useState(false);
   const loadingAssessmentRef = useRef(false);
   const [error, setError] = useState("");
@@ -173,7 +187,7 @@ const [, setAssessmentStatusLoading] = useState(true);
   const [codingInfo, setCodingInfo] = useState(null);
 
   // ----------------------------------------------------
-  // Tab-switch blocking overlay — purely client-side and instant,
+  // Tab-switch blocking overlay â€” purely client-side and instant,
   // so it doesn't depend on a round trip through the AI proctoring
   // websocket. ProctoringService still separately reports TAB_SWITCH
   // to the backend for violation-count escalation (warning/pause/
@@ -207,13 +221,26 @@ const [, setAssessmentStatusLoading] = useState(true);
 
       if (cancelled) return;
 
-      const currentSessionId = isCodingStage
+
+const currentSessionId = isCodingStage
   ? overview?.codingAssessment?.sessionId
   : overview?.initialAssessment?.sessionId;
 
 const currentStatus = isCodingStage
   ? overview?.codingAssessment?.status
   : overview?.initialAssessment?.status;
+
+// Stage 1 is completed, so Stage 2 determines
+// whether the overall initial assessment is blocked.
+const codingStatus = overview?.codingAssessment?.status;
+
+const effectiveStatus =
+  !isCodingStage &&
+  overview?.initialAssessment?.initialQuizStatus === "Completed" &&
+  codingStatus === "Terminated"
+    ? "Terminated"
+    : currentStatus;
+
 
 const currentReportStage = isCodingStage
   ? "INITIAL_CODING"
@@ -256,21 +283,33 @@ if (currentSessionId) {
        * The old session must remain visible until the
        * student has dealt with the termination report.
        */
- if (
-  currentStatus === "Terminated" &&
+
+
+if (
+  effectiveStatus === "Terminated" &&
   !isRestartApproved
 ) {
   setShowReportForm(false);
-  setPage("terminated");
+
+  if (isCodingStage || codingStatus === "Terminated") {
+    setPage("coding");
+  } else {
+    setPage("terminated");
+  }
+
   return;
 }
+
+
       /*
        * NORMAL INITIAL ASSESSMENT
        *
        * There is no terminated session, so show the
        * normal instructions/start screen.
        */
-      setPage("instructions");
+      if (!assessmentLoadRequestedRef.current) {
+  setPage("instructions");
+}
     } catch (err) {
       console.error(
         "Failed to load assessment status:",
@@ -284,7 +323,9 @@ if (currentSessionId) {
           "Failed to check assessment status. Please try again."
       );
 
-      setPage("instructions");
+      if (!cancelled && !assessmentLoadRequestedRef.current) {
+  setPage("instructions");
+}
     } finally {
       if (!cancelled) {
         setAssessmentStatusLoading(false);
@@ -327,6 +368,11 @@ useEffect(() => {
 
   // Load Assessment configuration
   const loadAssessment = async () => {
+    console.log("LOAD ASSESSMENT CALLED", {
+  isCodingAssessment,
+  isRestartApproved,
+});
+    assessmentLoadRequestedRef.current = true;
     if (loadingAssessmentRef.current) {
       return;
     }
@@ -376,25 +422,24 @@ useEffect(() => {
           testStream.getTracks().forEach((track) => track.stop());
         }
       }
-
+  console.log("CALLING START INITIAL QUIZ API");
       const response = await startInitialQuiz();
+      console.log("START INITIAL QUIZ RAW RESPONSE", response);
       console.log("Initial Quiz Started:", response);
 
       const quiz = response.data;
+      console.log("APPROVED RESTART RESPONSE:", quiz);
 
       if (quiz.phase === "coding") {
-  console.log(
-    "Initial quiz completed. Entering/resuming coding assessment."
-  );
+
 
   setSessionId(quiz.session_id);
 
   setQuizData(quiz);
-  console.log("SETTING CODING QUIZ DATA:", quiz);
 
 
   setAssessmentActive(false);
-  console.log("CODING QUIZ DATA BEFORE PAGE:", quiz);
+
   setPage("coding");
 
   return;
@@ -412,16 +457,20 @@ useEffect(() => {
         return;
       }
 
-      setSessionId(quiz.session_id);
-      pauseSentRef.current = false; // CRITICAL: Reset so assessment can pause again if resumed
 
-      const overallAnswered =
-        quiz.assessment?.overall_question
-          ? Math.max(
-            quiz.assessment.overall_question - 1,
-            0
-          )
-          : 0;
+      // Normal Stage 1: Initial Quiz
+      if (!quiz.question || !quiz.session_id) {
+        throw new Error(
+          "Initial quiz response is missing the session ID or question."
+        );
+      }
+
+      setSessionId(quiz.session_id);
+      pauseSentRef.current = false;
+
+      const overallAnswered = quiz.assessment?.overall_question
+        ? Math.max(quiz.assessment.overall_question - 1, 0)
+        : 0;
 
       setQuizData({
         domain: quiz.domain,
@@ -431,11 +480,14 @@ useEffect(() => {
         questionsAnswered: overallAnswered,
         skillQuestionsAnswered: overallAnswered % 10,
       });
+
       setResumed(Boolean(quiz.resumed));
       setRemainingSeconds(quiz.timer?.remaining_seconds ?? 0);
 
       setAssessmentActive(false);
+      console.log("DEBUG 3: Setting page to ready");
       setPage("ready");
+
     } catch (err) {
       console.error("Failed to start initial quiz:", err);
       setError(
@@ -484,7 +536,7 @@ useEffect(() => {
 
     /*
      * Activate the server-side timer FIRST, before fullscreen/camera.
-     * This is the exact moment the exam clock starts (or resumes) —
+     * This is the exact moment the exam clock starts (or resumes) â€”
      * not when the "Resume Assessment" screen was loaded, and not
      * after however long the camera permission dialog takes.
      *
@@ -644,7 +696,7 @@ await submitAssessmentReport(formData);
     return () => clearInterval(timer);
   }, [assessmentActive]);
 
-  // Time's up — act on it immediately client-side instead of waiting
+  // Time's up â€” act on it immediately client-side instead of waiting
   // for the next heartbeat or answer submission to come back 409.
   useEffect(() => {
     if (!assessmentActive || remainingSeconds > 0) return;
@@ -674,7 +726,7 @@ await submitAssessmentReport(formData);
     if (page !== "quiz" || !assessmentActive) return;
 
     const handleFullscreenChange = async () => {
-      // Still in fullscreen — nothing to do.
+      // Still in fullscreen â€” nothing to do.
       if (document.fullscreenElement !== null) {
         return;
       }
@@ -683,7 +735,12 @@ await submitAssessmentReport(formData);
       if (!assessmentActiveRef.current) {
         return;
       }
-
+   if (assessmentTerminatedRef.current) {
+  skipAutoPauseRef.current = true;
+  setAssessmentActive(false);
+  setPage("terminated");
+  return;
+}
       console.warn(
         "Fullscreen exited during initial quiz. Pausing assessment."
       );
@@ -748,10 +805,10 @@ await submitAssessmentReport(formData);
     };
   }, [page, assessmentActive]);
   // Tab-switch blocking overlay. Fires the instant the tab is hidden
-  // (switched away from, minimized, etc.) — the overlay is then shown
+  // (switched away from, minimized, etc.) â€” the overlay is then shown
   // on top of the quiz until the student explicitly acknowledges it,
   // blocking further interaction in the meantime. The exam clock
-  // deliberately keeps running through this — pausing it would let
+  // deliberately keeps running through this â€” pausing it would let
   // students "stop the clock" by tab-switching, which defeats the
   // point of a timed test.
   useEffect(() => {
@@ -937,6 +994,7 @@ if (status === 409 || status === 404 || status === 403) {
 
     setPage("coding");
   }, []);
+  console.log("RENDER TRACE: reached conditional returns", page);
 
  // Checking previous assessment status
 if (page === "checking") {
@@ -954,7 +1012,7 @@ if (page === "checking") {
     </div>
   );
 }
-
+console.log("RENDER TRACE: checking instructions branch", page);
 // Instructions Screen
 if (page === "instructions") {
 
@@ -966,8 +1024,8 @@ if (page === "instructions") {
         <div className="text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
             {isCodingAssessment
-              ? "Initial Assessment — Stage 2: Coding Assessment"
-              : "Initial Assessment — Stage 1: Initial Quiz"}
+              ? "Initial Assessment â€” Stage 2: Coding Assessment"
+              : "Initial Assessment â€” Stage 1: Initial Quiz"}
           </h1>
 
           <p className="mt-3 text-gray-500">
@@ -1021,28 +1079,28 @@ if (page === "instructions") {
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
 
                 <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600">âœ“</span>
                   <p className="text-sm leading-6 text-slate-600">
                     Solve coding problems using the provided coding environment.
                   </p>
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600">âœ“</span>
                   <p className="text-sm leading-6 text-slate-600">
                     Read each problem and its requirements carefully.
                   </p>
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600">âœ“</span>
                   <p className="text-sm leading-6 text-slate-600">
                     Manage your time across the available coding problems.
                   </p>
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600">âœ“</span>
                   <p className="text-sm leading-6 text-slate-600">
                     Your solutions will be evaluated as part of the assessment.
                   </p>
@@ -1111,28 +1169,28 @@ if (page === "instructions") {
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
 
                 <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600">âœ“</span>
                   <p className="text-sm leading-6 text-slate-600">
                     Answer the questions based on your knowledge and skills.
                   </p>
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600">âœ“</span>
                   <p className="text-sm leading-6 text-slate-600">
                     Read each question and all available options carefully.
                   </p>
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600">âœ“</span>
                   <p className="text-sm leading-6 text-slate-600">
                     Manage your time while completing the quiz.
                   </p>
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="text-green-600">✓</span>
+                  <span className="text-green-600">âœ“</span>
                   <p className="text-sm leading-6 text-slate-600">
                     Your responses will be evaluated as part of the assessment.
                   </p>
@@ -1176,9 +1234,14 @@ if (page === "instructions") {
             type="button"
           onClick={() => {
   if (isCodingAssessment && isRestartApproved) {
-    loadAssessment();
-    return;
-  }
+  console.log("RESTART BUTTON CLICKED", {
+    isCodingAssessment,
+    isRestartApproved,
+  });
+
+  loadAssessment();
+  return;
+}
 
   if (isCodingAssessment) {
     setPage("coding");
@@ -1195,7 +1258,7 @@ if (page === "instructions") {
                 ? "Starting Coding Assessment..."
                 : "Loading Assessment..."
               : isCodingAssessment
-              ? "Start Coding Assessment →"
+              ? "Start Coding Assessment â†’"
               : "Start Assessment"}
           </button>
 
@@ -1208,8 +1271,12 @@ if (page === "instructions") {
 // Coding Assessment
 if (page === "coding") {
   return (
+
     <InitialCodingAssessment
       sessionId={sessionId}
+      openTerminationReport={
+    location.state?.openTerminationReport === true
+  }
       proctoringWarning={proctoringWarning}
       onComplete={async (result) => {
         console.log("Coding assessment completed:", result);
@@ -1227,7 +1294,7 @@ if (page === "completed") {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
         <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
-          ✓
+          âœ“
         </div>
 
         <h1 className="text-3xl font-bold text-gray-900">
@@ -1308,28 +1375,28 @@ if (page === "terminated") {
 
   <div className="mt-4 grid gap-3 sm:grid-cols-2">
     <div className="flex gap-3">
-      <span className="text-green-600">✓</span>
+      <span className="text-green-600">âœ“</span>
       <p className="text-sm leading-6 text-slate-600">
         Solve coding problems using the provided coding environment.
       </p>
     </div>
 
     <div className="flex gap-3">
-      <span className="text-green-600">✓</span>
+      <span className="text-green-600">âœ“</span>
       <p className="text-sm leading-6 text-slate-600">
         Read each problem and its requirements carefully.
       </p>
     </div>
 
     <div className="flex gap-3">
-      <span className="text-green-600">✓</span>
+      <span className="text-green-600">âœ“</span>
       <p className="text-sm leading-6 text-slate-600">
         Manage your time across the available coding problems.
       </p>
     </div>
 
     <div className="flex gap-3">
-      <span className="text-green-600">✓</span>
+      <span className="text-green-600">âœ“</span>
       <p className="text-sm leading-6 text-slate-600">
         Your solutions will be evaluated as part of the assessment.
       </p>
@@ -1370,7 +1437,7 @@ if (page === "terminated") {
     ? "Starting Coding Assessment..."
     : "Loading Assessment..."
   : isCodingAssessment
-  ? "Start Coding Assessment →"
+  ? "Start Coding Assessment â†’"
   : "Start Assessment"}
             </button>
           </div>
@@ -1378,57 +1445,6 @@ if (page === "terminated") {
       </div>
     );
   }
-
-
-  // Coding Assessment
-  if (page === "coding") {
-    return (
-      <InitialCodingAssessment
-        sessionId={sessionId}
-        proctoringWarning={proctoringWarning}
-
-        onComplete={async (result) => {
-          console.log("Coding assessment completed:", result);
-
-          await exitAssessmentFullscreen();
-          setPage("completed");
-        }}
-      />
-    );
-  }
-
-
-  // Completed Screen
-  if (page === "completed") {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 text-center">
-          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
-            ✓
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Assessment Completed
-          </h1>
-          <p className="mt-4 text-gray-600">
-            You have successfully completed your initial skill assessment.
-          </p>
-
-
-          <button
-            onClick={() => handleExitAssessmentToDashboard()}
-            className="mt-8 px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-          >
-            Go to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-
-
-  // Terminated Screen
-  if (page === "terminated") {
 
 
 
@@ -1601,6 +1617,12 @@ if (page === "terminated") {
     );
   }
 
+  console.log("FINAL RENDER:", {
+  page,
+  hasQuizData: Boolean(quizData),
+  sessionId,
+});
+
   // Quiz screen
   return (
     <>
@@ -1619,7 +1641,7 @@ if (page === "terminated") {
             <p className="mt-3 text-sm text-slate-600">
               You switched away from the assessment tab or window. This has
               been recorded as a proctoring violation. Complete the test
-              first — you must stay on this tab until you finish.
+              first â€” you must stay on this tab until you finish.
             </p>
 
             <p className="mt-2 text-xs text-slate-400">
@@ -1639,6 +1661,8 @@ if (page === "terminated") {
 
       {/* 4. Assessment Viewport (non-scrolling) */}
       <div className="h-[calc(100vh-80px)] overflow-hidden bg-[#f5f7f6]">
+
+
         <div className="fixed bottom-5 left-5 z-40 w-48 overflow-hidden rounded-xl border-2 border-white bg-black shadow-xl">
           <video
             id="cameraVideo"
@@ -1742,7 +1766,6 @@ if (page === "terminated") {
       </div>
     </>
   );
-};
 
 }
 

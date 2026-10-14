@@ -164,7 +164,7 @@ const writeDraft = (sessionId, questionId, language, code) => {
       })
     );
   } catch (err) {
-    // Storage full/unavailable — non-fatal, submissions are still
+    // Storage full/unavailable â€” non-fatal, submissions are still
     // persisted server-side.
   }
 };
@@ -288,6 +288,7 @@ const Icon = {
 const InitialCodingAssessment = ({
   sessionId,
   onComplete,
+  openTerminationReport,
   onError,
   proctoringWarning,
 }) => {
@@ -347,6 +348,14 @@ const InitialCodingAssessment = ({
   const editorRef = useRef(null);
   const proctoringRef = useRef(null);
   const proctoringStartRef = useRef(false);
+
+  useEffect(() => {
+  if (openTerminationReport && sessionStatus === "terminated") {
+    setShowReportForm(true);
+    setReportError("");
+  }
+}, [openTerminationReport, sessionStatus]);
+
 
   const getMonacoLanguage = (lang) => {
     const l = String(lang || "").toLowerCase();
@@ -676,7 +685,7 @@ const showDialog = (options) => {
 
         if (!mounted) return;
 
-        const data = response?.data;
+        const data = response?.data ?? response;
 
         if (!data) {
           throw new Error("Invalid coding assessment response.");
@@ -739,17 +748,31 @@ const showDialog = (options) => {
         setCurrentIndex(firstUnanswered >= 0 ? firstUnanswered : 0);
         setRemainingSeconds(Number(remainingTime));
 
-      } catch (err) {
-        if (!mounted) return;
+       } catch (err) {
+  if (!mounted) return;
 
-        const message = getErrorMessage(
-          err,
-          "Unable to start the coding assessment."
-        );
+  const errorCode = err?.response?.data?.code;
+  const errorMessage = getErrorMessage(
+    err,
+    "Unable to start the coding assessment."
+  );
 
-        setError(message);
-        onError?.(message);
-      } finally {
+  const isTerminated =
+    errorCode === "ASSESSMENT_TERMINATED" ||
+    errorMessage.toLowerCase().includes("assessment has been terminated") ||
+    errorMessage.toLowerCase().includes("coding assessment was terminated");
+
+  if (isTerminated) {
+    assessmentActiveRef.current = false;
+    setAssessmentActive(false);
+    setSessionStatus("terminated");
+    setError("");
+    return;
+  }
+
+  setError(errorMessage);
+  onError?.(errorMessage);
+} finally {
         if (mounted) {
           setLoading(false);
         }
@@ -1072,8 +1095,26 @@ const showDialog = (options) => {
           "The assessment was interrupted, but the pause could not be saved."
         )
       );
+      throw err;
     }
   }, [sessionId]);
+
+  const handleExitToDashboard = useCallback(async () => {
+  try {
+    await pauseCodingAssessment();
+
+    if (proctoringRef.current) {
+      await proctoringRef.current.cleanup();
+      proctoringRef.current = null;
+    }
+
+    await exitCodingFullscreen();
+    navigate("/app/dashboard");
+  } catch (err) {
+    console.error("Failed to pause before leaving assessment:", err);
+    setError("Unable to pause the assessment. Please try again.");
+  }
+}, [pauseCodingAssessment, navigate]);
 
 // coding assessmnet report for termination
 const handleSubmitAssessmentReport = async (e) => {
@@ -1438,7 +1479,7 @@ await submitAssessmentReport(formData);
   }).length;
 
   // ----------------------------------------------------------
-  // Resizable split (presentational only — driven by mouse events,
+  // Resizable split (presentational only â€” driven by mouse events,
   // never touches assessment data or handlers)
   // ----------------------------------------------------------
   const handleDividerMouseDown = () => {
@@ -1542,7 +1583,7 @@ await submitAssessmentReport(formData);
             disabled={resuming}
             className="mt-6 w-full rounded-lg bg-[#3161d1] py-2.5 text-sm font-medium text-white transition hover:bg-[#2952b3] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {resuming ? "Resuming…" : "Resume assessment"}
+            {resuming ? "Resumingâ€¦" : "Resume assessment"}
           </button>
         </div>
       </div>
@@ -1550,29 +1591,7 @@ await submitAssessmentReport(formData);
     );
   }
 
-  if (!currentQuestion) {
-    return (
-      <div className="h-full flex items-center justify-center bg-[#111318] p-6">
-        <div className="max-w-md rounded-xl border border-white/10 bg-[#181b22] p-8 text-center">
-          <h2 className="text-base font-semibold text-white">
-            No questions available
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-400">
-            This assessment session doesn't have any coding questions to
-            display.
-          </p>
-
-          {error && (
-            <p className="mt-4 rounded-lg bg-red-500/10 p-3 text-xs text-red-300">
-              {error}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
+  // first: terminated session
   if (sessionStatus === "terminated") {
   return (
     <div className="h-full flex items-center justify-center bg-[#111318] p-6">
@@ -1608,7 +1627,7 @@ await submitAssessmentReport(formData);
 
             <button
               type="button"
-              onClick={() => navigate("/app/dashboard")}
+             onClick={handleExitToDashboard}
               className="w-full rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800"
             >
               Go to Dashboard
@@ -1703,7 +1722,7 @@ await submitAssessmentReport(formData);
 
             <button
               type="button"
-              onClick={ () => navigate("/app/dashboard")}
+              onClick={handleExitToDashboard}
               className="mt-4 w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-600"
             >
               Go to Dashboard
@@ -1714,6 +1733,31 @@ await submitAssessmentReport(formData);
     </div>
   );
 }
+
+//second: empty questions
+  if (!currentQuestion) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[#111318] p-6">
+        <div className="max-w-md rounded-xl border border-white/10 bg-[#181b22] p-8 text-center">
+          <h2 className="text-base font-semibold text-white">
+            No questions available
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-400">
+            This assessment session doesn't have any coding questions to
+            display.
+          </p>
+
+          {error && (
+            <p className="mt-4 rounded-lg bg-red-500/10 p-3 text-xs text-red-300">
+              {error}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
 
   if (sessionStatus === "timed_out") {
     return (
@@ -1746,7 +1790,7 @@ await submitAssessmentReport(formData);
             disabled={completing}
             className="mt-6 w-full rounded-lg bg-white py-2.5 text-sm font-medium text-[#111318] transition hover:bg-slate-200 disabled:opacity-50"
           >
-            {completing ? "Finalizing…" : "Finalize assessment"}
+            {completing ? "Finalizingâ€¦" : "Finalize assessment"}
           </button>
         </div>
       </div>
@@ -1783,7 +1827,7 @@ await submitAssessmentReport(formData);
             <p className="mt-3 text-sm text-slate-600">
               You switched away from the coding assessment tab or window. This has
               been recorded as a proctoring violation. Complete the test
-              first — you must stay on this tab until you finish.
+              first â€” you must stay on this tab until you finish.
             </p>
 
             <p className="mt-2 text-xs text-slate-400">
@@ -1822,7 +1866,7 @@ await submitAssessmentReport(formData);
             <div className="flex flex-wrap items-center gap-3">
               {activeWarning && (
                 <div className="flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-200 animate-pulse">
-                  <span>⚠️</span>
+                  <span>âš ï¸</span>
                   <span>Warning {activeWarning.violationCount || 1}/2: Please return to test and face the camera</span>
                 </div>
               )}
@@ -1875,7 +1919,7 @@ await submitAssessmentReport(formData);
                 : "bg-amber-500/20 border-amber-500/40 text-amber-200"
             }`}>
               <div className="flex items-center gap-2">
-                <span className="text-sm">⚠️</span>
+                <span className="text-sm">âš ï¸</span>
                 <span className="font-semibold">{error || activeWarning?.message}</span>
               </div>
 
@@ -1946,7 +1990,7 @@ await submitAssessmentReport(formData);
           })}
 
           <span className="ml-2 text-[11px] text-slate-400">
-            Navigate freely — each question is submitted independently.
+            Navigate freely â€” each question is submitted independently.
           </span>
         </div>
       </div>
@@ -2263,7 +2307,7 @@ await submitAssessmentReport(formData);
                 <>
                   {!runResult && (
                     <p className="text-xs text-slate-400">
-                      Run your code (or press ⌘/Ctrl + Enter) to see the
+                      Run your code (or press âŒ˜/Ctrl + Enter) to see the
                       output here.
                     </p>
                   )}
@@ -2406,22 +2450,22 @@ await submitAssessmentReport(formData);
                   type="button"
                   onClick={onClickRun}
                   disabled={running || submitting || completing || !code.trim()}
-                  title="⌘/Ctrl + Enter"
+                  title="âŒ˜/Ctrl + Enter"
                   className="flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Icon.Play className="h-3.5 w-3.5" />
-                  {running ? "Running…" : "Run code"}
+                  {running ? "Runningâ€¦" : "Run code"}
                 </button>
 
                 <button
                   type="button"
                   onClick={onClickSubmit}
                   disabled={running || submitting || completing || !code.trim()}
-                  title="⌘/Ctrl + Shift + Enter"
+                  title="âŒ˜/Ctrl + Shift + Enter"
                   className="flex items-center gap-1.5 rounded-md bg-emerald-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Icon.Send className="h-3.5 w-3.5" />
-                  {submitting ? "Submitting…" : "Submit"}
+                  {submitting ? "Submittingâ€¦" : "Submit"}
                 </button>
               </div>
 
@@ -2506,7 +2550,7 @@ await submitAssessmentReport(formData);
                 disabled={completing || answeredCount < totalQuestions}
                 className="rounded-md bg-[#111318] px-5 py-2 text-xs font-semibold text-white transition hover:bg-black disabled:opacity-50"
               >
-                {completing ? "Finalizing…" : "Finish assessment"}
+                {completing ? "Finalizingâ€¦" : "Finish assessment"}
               </button>
             </div>
           </div>

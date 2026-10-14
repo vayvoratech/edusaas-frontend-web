@@ -54,6 +54,7 @@ import Community from './pages/Community';
 import AssessmentReview from './pages/AssessmentReview';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import MySubscription from './pages/MySubscription';
+import HelpSupport from './pages/HelpSupport';
 
 function RoleDashboard() {
   const { role } = useAuth();
@@ -111,6 +112,7 @@ export default function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<StudentOrAdminSettings />} />
             <Route path="community" element={<Community />} />
+            <Route path="help-support" element={<HelpSupport />} />
 
             {/* Student */}
               <Route element={<RoleRoute allowedRoles={["Student"]} />}>

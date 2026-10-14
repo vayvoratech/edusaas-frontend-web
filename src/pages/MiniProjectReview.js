@@ -2,7 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { getMyMiniProjects } from "../services/api";
+import {
+  getMyMiniProjects,
+  approveMiniProjectSubmission,
+  reassignMiniProjectSubmission,
+} from "../services/api";
 
 export default function MiniProjectReview() {
   const { projectId } = useParams();
@@ -11,6 +15,7 @@ export default function MiniProjectReview() {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -42,6 +47,55 @@ export default function MiniProjectReview() {
 
     loadProject();
   }, [projectId]);
+
+const handleApprove = async (submissionId) => {
+  try {
+    setActionLoading(`approve-${submissionId}`);
+    setError(null);
+
+    await approveMiniProjectSubmission(submissionId);
+
+    const data = await getMyMiniProjects();
+    const selectedProject = Array.isArray(data)
+      ? data.find((item) => item.id === projectId)
+      : null;
+
+    setProject(selectedProject);
+  } catch (err) {
+    setError(
+      err.response?.data?.error ||
+        err.message ||
+        "Failed to approve mini project submission."
+    );
+  } finally {
+    setActionLoading(null);
+  }
+};
+
+const handleReassign = async (submissionId) => {
+  try {
+    setActionLoading(`reassign-${submissionId}`);
+    setError(null);
+
+    await reassignMiniProjectSubmission(submissionId);
+
+    const data = await getMyMiniProjects();
+    const selectedProject = Array.isArray(data)
+      ? data.find((item) => item.id === projectId)
+      : null;
+
+    setProject(selectedProject);
+  } catch (err) {
+    setError(
+      err.response?.data?.error ||
+        err.message ||
+        "Failed to reassign mini project submission."
+    );
+  } finally {
+    setActionLoading(null);
+  }
+};
+
 
   if (loading) {
     return (
@@ -194,6 +248,30 @@ export default function MiniProjectReview() {
                     >
                       {submission.status}
                     </span>
+
+
+{submission.status === "SUBMITTED" && (
+  <div className="flex gap-3 mt-4">
+    <Button
+      onClick={() => handleApprove(submission.id)}
+      disabled={actionLoading !== null}
+    >
+      {actionLoading === `approve-${submission.id}`
+        ? "Approving..."
+        : "Approve"}
+    </Button>
+
+    <Button
+      onClick={() => handleReassign(submission.id)}
+      disabled={actionLoading !== null}
+    >
+      {actionLoading === `reassign-${submission.id}`
+        ? "Reassigning..."
+        : "Reassign"}
+    </Button>
+  </div>
+)}
+
                   </div>
 
                   {/* Repository */}
