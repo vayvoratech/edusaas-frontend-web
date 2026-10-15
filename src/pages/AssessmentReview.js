@@ -330,7 +330,7 @@ export default function AssessmentReviews() {
                             report.student?.email ||
 
                             
-                            '�'}
+                            '—'}
 
                         </div>
                       </td>
@@ -428,7 +428,7 @@ export default function AssessmentReviews() {
                       selectedReport.user_email ||
                       selectedReport.student?.email ||
 
-                      '�'}
+                      '—'}
 
                     
                   </div>

@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { Megaphone, X, ArrowRight, ExternalLink } from "lucide-react";
+import {
+  CalendarClock,
+  PartyPopper,
+  ClipboardList,
+  BriefcaseBusiness,
+} from "lucide-react";
+
+
+
 import {
   LineChart,
   Line,
@@ -36,11 +46,9 @@ import {
 } from '../services/api';
 
 
-
-
 // Helper function to format relative time from an ISO string.
 const fmtRel = (iso) => {
-  if (!iso) return 'â€”';
+  if (!iso) return '—';
 
   const diff = (new Date() - new Date(iso)) / 60000;
 
@@ -60,25 +68,25 @@ const fmtRel = (iso) => {
 const moduleCards = [
   {
     to: '/app/learning',
-    emoji: 'ðŸ’¬',
+    emoji: "💬",
     title: 'Learning Module',
     sub: 'Continue your video lessons',
   },
   {
     to: '/app/achievements',
-    emoji: 'ðŸ†',
+    emoji: '🏆',
     title: 'Achievements',
     sub: 'View your badges and certificates',
   },
   {
     to: '/app/tasks',
-    emoji: 'âœ…',
+    emoji: '✅',
     title: 'Tasks & Deadlines',
     sub: 'Stay on top of your assignments',
   },
   {
     to: '/app/recommendations',
-    emoji: 'âœ¨',
+    emoji: '✨',
     title: 'Course Recommendations',
     sub: 'Picked for your goals',
   },
@@ -652,7 +660,6 @@ if (
   </div>
 )}
 
-
           <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-5">
             <p className="text-sm font-semibold text-green-800">
               Your assessment can now be restarted.
@@ -685,7 +692,11 @@ if (
 }
 
 
-  if (!dash.assessmentCompleted) {
+if (dash === null) {
+  return null;
+}
+
+if (dash.assessmentCompleted !== true) {
     return (
       <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
         <div className="mx-auto max-w-5xl space-y-6">
@@ -698,7 +709,7 @@ if (
 
 
 <h1 className="mt-2 text-3xl sm:text-4xl font-bold">
-  Welcome, {user?.name?.trim()?.split(/\s+/)[0] || "Unnava- there"}!
+  Welcome, {user?.name?.trim()?.split(/\s+/)[0] || "there"}!
 </h1>
 
 
@@ -710,114 +721,96 @@ if (
             </p>
           </div>
 
-          {/* Career journey */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-              Your Career Journey
-            </h2>
+         {/* Career journey */}
+<Card className="mb-6">
+  <div className="flex-1">
+    <h3 className="text-lg font-semibold text-slate-900">
+      Your Career Journey
+    </h3>
 
-            <p className="mt-2 text-sm text-slate-600">
-              Follow these steps to progress from learning to career opportunities.
-            </p>
+    <p className="mt-1 text-sm text-slate-600">
+      {journeyMessage}
+    </p>
 
-            <div className="mt-6 space-y-5">
+    {/* Overall progress */}
+    <div className="mt-4">
+      <div className="mb-2 flex justify-between text-sm">
+        <span className="font-medium text-slate-700">
+          Overall Progress
+        </span>
+        <span className="font-semibold text-blue-700">
+          {careerJourney ? `${journeyProgress}%` : "Loading..."}
+        </span>
+      </div>
 
-              <div className="flex gap-4">
-               <div className="shrink-0" aria-hidden="true">
-  ðŸŽ“
-</div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    Initial Assessment
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Evaluate your current skills and identify areas for improvement.
-                  </p>
-                </div>
-              </div>
+      <div
+        className="h-2.5 overflow-hidden rounded-full bg-slate-100"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={careerJourney ? journeyProgress : undefined}
+        aria-label="Career journey progress"
+      >
+        {careerJourney && (
+          <div
+            className="h-full rounded-full bg-blue-600 transition-all duration-500"
+            style={{ width: `${journeyProgress}%` }}
+          />
+        )}
+      </div>
+    </div>
 
-              <div className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-700">
-                  2
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    Learning your familier skillset from our Courses
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Follow your learning path and complete the required courses.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 font-bold text-purple-700">
-                  3
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    Final Assessment and Mini Project
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Demonstrate your skills, submit your mini project,
-                    and complete the required educator review.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 font-bold text-green-700">
-                  4
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    Career-Completion Certificate
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Earn your certificate after satisfying the required
-                    assessment and project-approval conditions.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700">
-                  5
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    Job Opportunities
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Explore and apply for jobs when you meet the relevant
-                    eligibility requirements.
-                  </p>
-                </div>
-              </div>
-
-            </div>
+    {/* Journey steps */}
+    <div className="mt-5 space-y-3">
+      {journeySteps.map((step) => (
+        <div
+          key={step.key}
+          className="flex items-start gap-3 rounded-xl border border-slate-100 p-3"
+        >
+          <div
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+              step.completed
+                ? "bg-green-100 text-green-700"
+                : "bg-slate-100 text-slate-500"
+            }`}
+          >
+            {step.completed ? "✓" : "○"}
           </div>
 
-          {/* First action */}
-          <div className="rounded-2xl border border-blue-100 bg-white p-6 sm:p-8 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900">
-              Ready to get started?
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Begin with your Initial Skill Assessment to help personalize
-              your learning journey.
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-slate-800">
+              {step.title}
+            </h4>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {step.description}
             </p>
-
-            <Link
-              to="/app/initial-assessment"
-              className="inline-flex mt-6 items-center justify-center rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
-            >
-              Start Skill Assessment
-              <span className="ml-2" aria-hidden="true">â†’</span>
-            </Link>
           </div>
 
+          <span
+            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${
+              step.completed
+                ? "bg-green-50 text-green-700"
+                : "bg-amber-50 text-amber-700"
+            }`}
+          >
+            {step.completed ? "Completed" : "Pending"}
+          </span>
+        </div>
+      ))}
+    </div>
+
+    {/* Continue to next milestone */}
+    {!careerJourney?.eligibleForJobs && nextJourneyStep && (
+      <button
+        type="button"
+        onClick={() => navigate(nextJourneyStep.route)}
+        className="mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+      >
+        Continue {nextJourneyStep.title} →
+      </button>
+    )}
+  </div>
+</Card>
         </div>
       </div>
     );
@@ -876,7 +869,7 @@ const availableJobs = recommendedJobs.filter(
                 `, aspiring ${dash.domainRole}`}
 
               <p className="mt-1 text-sm sm:text-base font-normal text-white/85">
-                let's close those skill gaps. ðŸš€
+                let's close those skill gaps.
               </p>
 
             </h2>
@@ -890,7 +883,7 @@ const availableJobs = recommendedJobs.filter(
                 {dash?.readinessScore ?? 0}%
               </span>
 
-              {' â€¢ '}
+              {' • '}
 
               {dash?.coursesEnrolled ?? 0} active courses
 
@@ -925,7 +918,7 @@ const availableJobs = recommendedJobs.filter(
 
             <Link to="/app/courses">
               <Button variant="accent">
-                Continue Learning â†’
+               Continue Learning →
               </Button>
             </Link>
 
@@ -1015,7 +1008,7 @@ const availableJobs = recommendedJobs.filter(
 <Card className="mb-6">
   <div className="flex items-start gap-4">
     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-      ðŸŽ“
+      <span aria-hidden="true">🎓</span>
     </div>
 
     <div className="flex-1">
@@ -1037,12 +1030,21 @@ const availableJobs = recommendedJobs.filter(
           </span>
         </div>
 
-        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-blue-600 transition-all duration-500"
-            style={{ width: `${journeyProgress}%` }}
-          />
-        </div>
+        <div
+  className="h-2.5 overflow-hidden rounded-full bg-slate-100"
+  role="progressbar"
+  aria-valuemin={0}
+  aria-valuemax={100}
+  aria-valuenow={careerJourney ? journeyProgress : undefined}
+  aria-label="Career journey progress"
+>
+  {careerJourney && (
+    <div
+      className="h-full rounded-full bg-blue-600 transition-all duration-500"
+      style={{ width: `${journeyProgress}%` }}
+    />
+  )}
+</div>
       </div>
 
       <div className="mt-5 space-y-3">
@@ -1058,7 +1060,7 @@ const availableJobs = recommendedJobs.filter(
       : "bg-slate-100 text-slate-500"
   }`}
 >
-  {step.completed ? "âœ“" : ""}
+  {step.completed ? "✓" : "○"}
 </div>
 
             <div className="flex-1">
@@ -1089,93 +1091,122 @@ const availableJobs = recommendedJobs.filter(
     onClick={() => navigate(nextJourneyStep.route)}
     className="mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
   >
-    Continue {nextJourneyStep.title} â†’
+    Continue {nextJourneyStep.title} →
   </button>
 )}
     </div>
   </div>
 </Card>
+{/* ------------------------------------------------ */}
+{/* Course Announcements Banner */}
+{/* ------------------------------------------------ */}
+{announcements.length > 0 && (
+  <Card className="!p-5 sm:!p-6 border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/70 via-white to-white shadow-sm">
+    <div className="mb-4 flex items-start justify-between gap-4 sm:items-center">
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700 shadow-sm ring-1 ring-amber-200/70">
+          <Megaphone className="h-5 w-5" aria-hidden="true" />
+        </span>
 
-      {/* ------------------------------------------------ */}
-      {/* Course Announcements Banner */}
-      {/* ------------------------------------------------ */}
-      {announcements.length > 0 && (
-        <Card className="!p-5 sm:!p-6 border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/70 via-white to-white shadow-sm">
-          <div className="flex items-start sm:items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-2.5">
-              <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 grid place-items-center text-sm font-bold shrink-0 shadow-sm ring-1 ring-amber-200/70">
-                ðŸ“£
+        <div>
+          <h3 className="text-sm font-bold leading-tight tracking-tight text-slate-900 sm:text-base">
+            Course Announcements
+          </h3>
+          <p className="text-[11px] text-slate-500">
+            Select an announcement to open it in the Community Feed.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200/70">
+          {announcements.length}{" "}
+          {announcements.length === 1 ? "announcement" : "announcements"}
+        </span>
+
+        <button
+          type="button"
+          onClick={() =>
+            navigate("/app/community", {
+              state: { activeTab: "Announcements" },
+            })
+          }
+          className="hidden items-center gap-1 text-xs font-semibold text-brand-blue-600 hover:underline sm:inline-flex"
+        >
+          Community Feed
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+
+    <div className="space-y-3">
+      {announcements.map((a) => (
+        <div
+          key={a.id}
+          role="button"
+          tabIndex={0}
+          onClick={() => handleAnnouncementClick(a.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleAnnouncementClick(a.id);
+            }
+          }}
+          className="group relative cursor-pointer rounded-2xl border border-amber-200/80 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md sm:p-5"
+        >
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-800 transition-colors group-hover:text-amber-800">
+                {a.title}
               </span>
-              <div>
-                <h3 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 leading-tight">
-                  Course Announcements
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Click any announcement to open in Community Feed (will clear from dashboard once clicked)
-                </p>
-              </div>
+
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                {a.audience === "course" ? "My Course" : "All Learners"}
+              </span>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[11px] px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold ring-1 ring-amber-200/70">
-                {announcements.length} {announcements.length === 1 ? 'New' : 'New'}
-              </span>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+                {a.educator?.name && (
+                  <span className="font-medium normal-case text-slate-700">
+                    By {a.educator.name}
+                  </span>
+                )}
+                <span>{fmtRel(a.created_at)}</span>
+              </div>
+
               <button
-                onClick={() => navigate('/app/community', { state: { activeTab: 'Announcements' } })}
-                className="text-xs text-brand-blue-600 hover:underline font-semibold hidden sm:inline"
+                type="button"
+                onClick={(e) => handleDismissOnly(e, a.id)}
+                title="Dismiss announcement"
+                aria-label={`Dismiss ${a.title || "announcement"}`}
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               >
-                Community Feed â†’
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </div>
 
-          <div className="space-y-3">
-            {announcements.map((a) => (
-              <div
-                key={a.id}
-                onClick={() => handleAnnouncementClick(a.id)}
-                className="p-4 sm:p-5 rounded-2xl bg-white border border-amber-200/80 shadow-sm hover:border-amber-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group relative"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-800 text-sm group-hover:text-amber-800 transition-colors">
-                      {a.title}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
-                      {a.audience === 'course' ? 'My Course' : 'All Learners'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 flex items-center gap-1.5">
-                      {a.educator?.name && (
-                        <span className="font-medium text-slate-700">By {a.educator.name}</span>
-                      )}
-                      <span>â€¢</span>
-                      <span>{fmtRel(a.created_at)}</span>
-                    </div>
-                    <button
-                      onClick={(e) => handleDismissOnly(e, a.id)}
-                      title="Dismiss from dashboard"
-                      className="w-5 h-5 rounded-full text-slate-300 hover:text-slate-600 hover:bg-slate-100 grid place-items-center text-xs transition"
-                    >
-                      âœ•
-                    </button>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed whitespace-pre-wrap">
-                  {a.message}
-                </p>
-                <div className="mt-2.5 flex items-center justify-between text-[11px] text-amber-700 font-medium pt-2 border-t border-amber-50">
-                  <span className="group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1">
-                    <span>View in Community Feed</span>
-                    <span>â†’</span>
-                  </span>
-                  <span className="text-slate-400 font-normal">Click to open & clear from dashboard</span>
-                </div>
-              </div>
-            ))}
+          <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-slate-600">
+            {a.message}
+          </p>
+
+          <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-amber-50 pt-2 text-[11px] font-medium text-amber-700">
+            <span className="inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5">
+              View in Community Feed
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+
+            <span className="text-right font-normal text-slate-400">
+              Select to open
+            </span>
           </div>
-        </Card>
-      )}
+        </div>
+      ))}
+    </div>
+  </Card>
+)}
+
 
 
       {/* ------------------------------------------------ */}
@@ -1334,7 +1365,7 @@ const availableJobs = recommendedJobs.filter(
                 >
 
                   <span className="text-brand-blue-500">
-                    âœ“
+                    ✓
                   </span>
 
                   <span className="flex-1 truncate text-slate-700">
@@ -1376,7 +1407,7 @@ const availableJobs = recommendedJobs.filter(
             ) : (
 
               <p className="text-sm text-slate-500">
-                Nothing due. ðŸŽ‰
+                Nothing due. 🎉
               </p>
 
             )}
@@ -1416,7 +1447,7 @@ const availableJobs = recommendedJobs.filter(
               </div>
 
               <div className="mt-4 text-xs font-semibold text-brand-blue-600">
-                Open â†’
+                Open →
               </div>
 
             </Card>
@@ -1460,7 +1491,7 @@ const availableJobs = recommendedJobs.filter(
                 >
 
                   <div className="w-11 h-11 rounded-xl bg-brand-blue-50 border border-brand-blue-100 grid place-items-center text-2xl shrink-0 shadow-sm">
-                    ðŸ“š
+                    📚
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -1475,7 +1506,7 @@ const availableJobs = recommendedJobs.filter(
 
                       {a.due_date && (
                         <>
-                          {' Â· '}
+                          {' · '}
 
                           <span
                             className={
@@ -1495,7 +1526,7 @@ const availableJobs = recommendedJobs.filter(
                         </>
                       )}
 
-                      {!a.due_date && ' Â· No due date'}
+                      {!a.due_date && ' · No due date'}
 
                     </div>
 
@@ -1503,7 +1534,7 @@ const availableJobs = recommendedJobs.filter(
                     {a.note && (
 
                       <div className="mt-2 text-[11px] text-slate-500 italic truncate">
-                        â€œ{a.note}â€
+                        “{a.note}”
                       </div>
 
                     )}
@@ -1569,7 +1600,7 @@ const availableJobs = recommendedJobs.filter(
 
               <div className="flex items-start gap-3.5">
                 <span className="text-2xl">
-                  ðŸ’¼
+                  💼
                 </span>
 
                 <div>
@@ -1588,25 +1619,25 @@ const availableJobs = recommendedJobs.filter(
 
                 {job.location && (
                   <span>
-                    ðŸ“ {job.location}
+                     {job.location}
                   </span>
                 )}
 
                 {job.employment_type && (
                   <span>
-                    ðŸ’¼ {job.employment_type}
+                    💼 {job.employment_type}
                   </span>
                 )}
 
                 {job.work_mode && (
                   <span>
-                    ðŸ  {job.work_mode}
+                    🏢 {job.work_mode}
                   </span>
                 )}
 
                 {job.salary && (
                   <span>
-                    ðŸ’° {job.salary}
+                    💰 {job.salary}
                   </span>
                 )}
 
@@ -1704,7 +1735,7 @@ const availableJobs = recommendedJobs.filter(
                 to={`/app/jobs/${job.id}`}
                 className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-blue-600 text-white text-sm font-semibold shadow-sm hover:bg-brand-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
-                View Job â†’
+               View Job <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
               </Link>
 
             </div>
@@ -1763,7 +1794,13 @@ const availableJobs = recommendedJobs.filter(
     ? "Application Update"
     : "Job Invitation";
 
-      const notificationIcon = isInterview ? "ðŸ“…" : type === "application_selected" ? "ðŸŽ‰" : type === "application" ? "ðŸ“‹" : "ðŸ’¼";
+      const NotificationIcon = isInterview
+  ? CalendarClock
+  : type === "application_selected"
+  ? PartyPopper
+  : type === "application"
+  ? ClipboardList
+  : BriefcaseBusiness;
 
       return (
         <div
@@ -1773,9 +1810,12 @@ const availableJobs = recommendedJobs.filter(
           <div className="flex items-start gap-3.5">
 
             {/* Icon */}
-            <div className="w-11 h-11 rounded-xl bg-brand-blue-50 border border-brand-blue-100 text-brand-blue-700 grid place-items-center shrink-0 shadow-sm text-base">
-              {notificationIcon}
-            </div>
+           <div className="w-11 h-11 rounded-xl bg-brand-blue-50 border border-brand-blue-100 text-brand-blue-700 grid place-items-center shrink-0 shadow-sm">
+  <NotificationIcon
+    className="h-5 w-5"
+    aria-hidden="true"
+  />
+</div>
 
             {/* Details */}
             <div className="flex-1 min-w-0">
@@ -1812,7 +1852,7 @@ const availableJobs = recommendedJobs.filter(
       to={`/app/jobs/${notification.job_id}`}
       className="inline-flex items-center justify-center mt-3 px-3.5 py-2 rounded-xl bg-brand-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-brand-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
     >
-      View Job â†’
+      View Job <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
     </Link>
   ) : isInterview ? (
     <button
@@ -1825,14 +1865,14 @@ const availableJobs = recommendedJobs.filter(
     >
       {loadingInterview
         ? "Loading..."
-        : "View Interview â†’"}
+        : "View Interview →"}
     </button>
   ) : (
     <Link
       to={`/app/jobs/${notification.job_id}`}
       className="inline-flex items-center justify-center mt-3 px-3.5 py-2 rounded-xl bg-brand-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-brand-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
     >
-      View Job â†’
+      View Job <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
     </Link>
   )
 )}
@@ -1853,7 +1893,7 @@ const availableJobs = recommendedJobs.filter(
         to="/app/recommendations"
         className="text-xs font-semibold text-brand-blue-600 hover:text-brand-blue-700 transition-colors"
       >
-        See all â†’
+        See all →
       </Link>
     }
   >
@@ -1864,7 +1904,7 @@ const availableJobs = recommendedJobs.filter(
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 -mx-3 hover:bg-slate-50 transition-colors"
         >
           <span className="w-8 h-8 rounded-lg bg-brand-blue-50 border border-brand-blue-100 grid place-items-center text-brand-blue-500 shrink-0">
-            ðŸ“˜
+            📘
           </span>
 
           <span className="font-semibold text-slate-800 tracking-tight">
@@ -1872,7 +1912,7 @@ const availableJobs = recommendedJobs.filter(
           </span>
 
           <span className="text-xs text-slate-500 truncate leading-relaxed">
-            â€” {r.reason}
+            — {r.reason}
           </span>
         </li>
       ))}
@@ -1913,7 +1953,7 @@ const availableJobs = recommendedJobs.filter(
           className="shrink-0 rounded-xl border border-slate-200 p-2 text-xl text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-colors"
           aria-label="Close"
         >
-          Ã—
+          ×
         </button>
       </div>
 
@@ -2110,7 +2150,7 @@ const availableJobs = recommendedJobs.filter(
           onClick={() => setSelectedInterview(null)}
           className="shrink-0 rounded-xl border border-slate-200 p-2 text-xl text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-colors"
         >
-           Ã—
+           ×
         </button>
       </div>
 
@@ -2197,7 +2237,7 @@ const availableJobs = recommendedJobs.filter(
         rel="noopener noreferrer"
         className="inline-flex items-center justify-center mt-2 px-3.5 py-2 rounded-xl bg-brand-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-brand-blue-700 hover:shadow-md transition-all duration-200"
       >
-        Join Interview â†’
+        Join Interview →
       </a>
     </div>
   )}

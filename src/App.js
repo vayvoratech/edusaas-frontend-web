@@ -59,8 +59,6 @@ import SubscriptionManagement from './pages/SubscriptionManagement';
 import MySubscription from './pages/MySubscription';
 import HelpSupport from './pages/HelpSupport';
 
-//student needs contact support
-import HelpSupport from './pages/HelpSupport';
 
 function RoleDashboard() {
   const { role } = useAuth();
@@ -228,6 +226,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-
-
-
