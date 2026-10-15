@@ -40,7 +40,7 @@ import {
 
 // Helper function to format relative time from an ISO string.
 const fmtRel = (iso) => {
-  if (!iso) return '—';
+  if (!iso) return 'â€”';
 
   const diff = (new Date() - new Date(iso)) / 60000;
 
@@ -60,25 +60,25 @@ const fmtRel = (iso) => {
 const moduleCards = [
   {
     to: '/app/learning',
-    emoji: '💬',
+    emoji: 'ðŸ’¬',
     title: 'Learning Module',
     sub: 'Continue your video lessons',
   },
   {
     to: '/app/achievements',
-    emoji: '🏆',
+    emoji: 'ðŸ†',
     title: 'Achievements',
     sub: 'View your badges and certificates',
   },
   {
     to: '/app/tasks',
-    emoji: '✅',
+    emoji: 'âœ…',
     title: 'Tasks & Deadlines',
     sub: 'Stay on top of your assignments',
   },
   {
     to: '/app/recommendations',
-    emoji: '✨',
+    emoji: 'âœ¨',
     title: 'Course Recommendations',
     sub: 'Picked for your goals',
   },
@@ -107,6 +107,73 @@ const [assessmentStatusLoading, setAssessmentStatusLoading] = useState(true);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [dashError, setDashError] = useState(null);
+
+  const careerJourney = dash?.careerJourney;
+
+const journeySteps = [
+  {
+    key: "initialAssessmentCompleted",
+    title: "Initial Assessment",
+    description: "Complete your initial quiz and coding assessment.",
+    completed: careerJourney?.initialAssessmentCompleted === true,
+    route: "/app/initial-assessment",
+  },
+  {
+    key: "courseCompleted",
+    title: "Course Completion",
+    description: "Complete at least one required enrolled course.",
+    completed: careerJourney?.courseCompleted === true,
+    route: "/app/courses",
+  },
+  {
+    key: "finalQuizCompleted",
+    title: "Final Quiz",
+    description: "Complete the final quiz after your course requirements.",
+    completed: careerJourney?.finalQuizCompleted === true,
+    route: "/app/final-assessment",
+  },
+  {
+    key: "miniProjectApproved",
+    title: "Mini Project",
+    description: "Submit your mini project and get the latest submission approved.",
+    completed: careerJourney?.miniProjectApproved === true,
+    route: "/app/mini-projects",
+  },
+  {
+    key: "careerCertificateObtained",
+    title: "Career Certificate",
+    description: "Obtain your career completion certificate.",
+    completed: careerJourney?.careerCertificateObtained === true,
+    route: "/app/certificates",
+  },
+  {
+    key: "eligibleForJobs",
+    title: "Job Opportunities",
+    description: "Explore matching jobs and apply when eligible.",
+    completed: careerJourney?.eligibleForJobs === true,
+    route: "/app/jobs",
+  },
+];
+
+const completedSteps = journeySteps.filter(
+  (step) => step.completed
+).length;
+
+const journeyProgress = Math.round(
+  (completedSteps / journeySteps.length) * 100
+);
+
+const nextJourneyStep = journeySteps.find(
+  (step) => !step.completed
+);
+
+const journeyMessage = !careerJourney
+  ? "Loading your career journey..."
+  : careerJourney.eligibleForJobs
+  ? "Congratulations! You have completed your career journey and can apply for eligible job opportunities."
+  : nextJourneyStep
+  ? `Your next milestone is ${nextJourneyStep.title}. ${nextJourneyStep.description}`
+  : "Keep progressing toward your career goals.";
 
   const [dialog, setDialog] = useState({
   open: false,
@@ -140,14 +207,14 @@ const showDialog = (options) => {
 };
 
   const dismissedKey = `edu_dismissed_announcements_${user?.id || 'student'}`;
-  const getDismissedIds = () => {
-    try {
-      const raw = localStorage.getItem(dismissedKey);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  };
+ const getDismissedIds = React.useCallback(() => {
+  try {
+    const raw = localStorage.getItem(dismissedKey);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}, [dismissedKey]);
 
   const markSeenLocally = (id) => {
     try {
@@ -220,6 +287,24 @@ const showDialog = (options) => {
     getMyTasks({ status: "pending" })
       .then(setTasks)
       .catch(() => {});
+
+      getMyAssignments()
+  .then((data) => {
+    const list = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.assignments)
+      ? data.assignments
+      : [];
+
+    setAssignments(list);
+  })
+  .catch((err) => {
+    console.error(
+      "Assignments error:",
+      err.response?.data || err.message
+    );
+    setAssignments([]);
+  });
 
     getMyAchievements()
       .then(setAchievements)
@@ -332,7 +417,7 @@ const showDialog = (options) => {
         console.error("My applications error:", err.response?.data || err.message);
         setMyApplications([]);
       });
-  }, [dismissedKey]);
+  }, [getDismissedIds]);
 
   useEffect(() => {
     loadDashboardData();
@@ -452,7 +537,7 @@ const handleViewInterview = async (jobId) => {
 
 
   // ----------------------------------------------------
-  // Fresh student - assessment not completed
+  // Fresh student - onboarding and career journey
   // ----------------------------------------------------
 
 if (
@@ -602,27 +687,135 @@ if (
 
   if (!dash.assessmentCompleted) {
     return (
-      <div className="min-h-screen bg-gray-100 p-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
+        <div className="mx-auto max-w-5xl space-y-6">
 
-          <div className="bg-white rounded-xl shadow-lg p-10 text-center">
+          {/* Welcome */}
+          <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 p-6 sm:p-10 text-white shadow-lg">
+            <p className="text-sm font-medium text-blue-100">
+              Welcome to EduSaaS
+            </p>
 
-            <h1 className="text-3xl font-bold text-gray-900">
-              Initial Skill Assessment
-            </h1>
 
-            <p className="mt-4 text-gray-500">
-              Complete this assessment to personalize your
-              learning path.
+<h1 className="mt-2 text-3xl sm:text-4xl font-bold">
+  Welcome, {user?.name?.trim()?.split(/\s+/)[0] || "Unnava- there"}!
+</h1>
+
+
+            <p className="mt-4 max-w-2xl text-sm sm:text-base leading-7 text-blue-50">
+              Your journey toward career readiness starts here.
+              Discover your strengths, build practical skills, earn your
+              career-completion certificate, and work toward exciting
+              job opportunities.
+            </p>
+          </div>
+
+          {/* Career journey */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+              Your Career Journey
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-600">
+              Follow these steps to progress from learning to career opportunities.
+            </p>
+
+            <div className="mt-6 space-y-5">
+
+              <div className="flex gap-4">
+               <div className="shrink-0" aria-hidden="true">
+  ðŸŽ“
+</div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">
+                    Initial Assessment
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Evaluate your current skills and identify areas for improvement.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-700">
+                  2
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">
+                    Learning your familier skillset from our Courses
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Follow your learning path and complete the required courses.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 font-bold text-purple-700">
+                  3
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">
+                    Final Assessment and Mini Project
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Demonstrate your skills, submit your mini project,
+                    and complete the required educator review.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 font-bold text-green-700">
+                  4
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">
+                    Career-Completion Certificate
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Earn your certificate after satisfying the required
+                    assessment and project-approval conditions.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700">
+                  5
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">
+                    Job Opportunities
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Explore and apply for jobs when you meet the relevant
+                    eligibility requirements.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* First action */}
+          <div className="rounded-2xl border border-blue-100 bg-white p-6 sm:p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900">
+              Ready to get started?
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Begin with your Initial Skill Assessment to help personalize
+              your learning journey.
             </p>
 
             <Link
               to="/app/initial-assessment"
-              className="inline-block mt-8 px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+              className="inline-flex mt-6 items-center justify-center rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
             >
               Start Skill Assessment
+              <span className="ml-2" aria-hidden="true">â†’</span>
             </Link>
-
           </div>
 
         </div>
@@ -683,7 +876,7 @@ const availableJobs = recommendedJobs.filter(
                 `, aspiring ${dash.domainRole}`}
 
               <p className="mt-1 text-sm sm:text-base font-normal text-white/85">
-                let's close those skill gaps. 🚀
+                let's close those skill gaps. ðŸš€
               </p>
 
             </h2>
@@ -697,7 +890,7 @@ const availableJobs = recommendedJobs.filter(
                 {dash?.readinessScore ?? 0}%
               </span>
 
-              {' • '}
+              {' â€¢ '}
 
               {dash?.coursesEnrolled ?? 0} active courses
 
@@ -732,7 +925,7 @@ const availableJobs = recommendedJobs.filter(
 
             <Link to="/app/courses">
               <Button variant="accent">
-                Continue Learning →
+                Continue Learning â†’
               </Button>
             </Link>
 
@@ -818,52 +1011,87 @@ const availableJobs = recommendedJobs.filter(
 
       </div>
 
- {/* Career Journey */}
+{/* Career Journey */}
 <Card className="mb-6">
   <div className="flex items-start gap-4">
     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-      🎓
+      ðŸŽ“
     </div>
 
-    <div>
+    <div className="flex-1">
       <h3 className="text-lg font-semibold text-slate-900">
         Your Career Journey
       </h3>
 
       <p className="mt-1 text-sm text-slate-600">
-        Complete your Initial Assessment first. Then complete the Final
-        Assessment, to become
-        eligible for your certificate.
+        {journeyMessage}
       </p>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-        <span className="rounded-full bg-blue-50 px-3 py-1.5 font-medium text-blue-700">
-          Initial Assessment
-        </span>
+      <div className="mt-4">
+        <div className="mb-2 flex justify-between text-sm">
+          <span className="font-medium text-slate-700">
+            Overall Progress
+          </span>
+          <span className="font-semibold text-blue-700">
+            {careerJourney ? `${journeyProgress}%` : "Loading..."}
+          </span>
+        </div>
 
-        <span className="text-slate-400">→</span>
-
-        <span className="rounded-full bg-purple-50 px-3 py-1.5 font-medium text-purple-700">
-          Final Assessment
-        </span>
-
-        <span className="text-slate-400">→</span>
-
-        <span className="rounded-full bg-green-50 px-3 py-1.5 font-medium text-green-700">
-          Certificate
-        </span>
-
-        <span className="text-slate-400">→</span>
-
-        <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-medium text-emerald-700">
-          Job Opportunities
-        </span>
+        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-blue-600 transition-all duration-500"
+            style={{ width: `${journeyProgress}%` }}
+          />
+        </div>
       </div>
 
-      <p className="mt-3 text-xs text-slate-500">
-        Complete the required assessments to receive your certificate and
-        become eligible to apply for available job opportunities.
-      </p>
+      <div className="mt-5 space-y-3">
+        {journeySteps.map((step, index) => (
+          <div
+            key={step.key}
+            className="flex items-start gap-3 rounded-xl border border-slate-100 p-3"
+          >
+           <div
+  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+    step.completed
+      ? "bg-green-100 text-green-700"
+      : "bg-slate-100 text-slate-500"
+  }`}
+>
+  {step.completed ? "âœ“" : ""}
+</div>
+
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-slate-800">
+                {step.title}
+              </h4>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                {step.description}
+              </p>
+            </div>
+
+            <span
+              className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${
+                step.completed
+                  ? "bg-green-50 text-green-700"
+                  : "bg-amber-50 text-amber-700"
+              }`}
+            >
+              {step.completed ? "Completed" : "Pending"}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {!careerJourney?.eligibleForJobs && nextJourneyStep && (
+  <button
+    type="button"
+    onClick={() => navigate(nextJourneyStep.route)}
+    className="mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+  >
+    Continue {nextJourneyStep.title} â†’
+  </button>
+)}
     </div>
   </div>
 </Card>
@@ -876,7 +1104,7 @@ const availableJobs = recommendedJobs.filter(
           <div className="flex items-start sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-2.5">
               <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 grid place-items-center text-sm font-bold shrink-0 shadow-sm ring-1 ring-amber-200/70">
-                📣
+                ðŸ“£
               </span>
               <div>
                 <h3 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 leading-tight">
@@ -895,7 +1123,7 @@ const availableJobs = recommendedJobs.filter(
                 onClick={() => navigate('/app/community', { state: { activeTab: 'Announcements' } })}
                 className="text-xs text-brand-blue-600 hover:underline font-semibold hidden sm:inline"
               >
-                Community Feed →
+                Community Feed â†’
               </button>
             </div>
           </div>
@@ -921,7 +1149,7 @@ const availableJobs = recommendedJobs.filter(
                       {a.educator?.name && (
                         <span className="font-medium text-slate-700">By {a.educator.name}</span>
                       )}
-                      <span>•</span>
+                      <span>â€¢</span>
                       <span>{fmtRel(a.created_at)}</span>
                     </div>
                     <button
@@ -929,7 +1157,7 @@ const availableJobs = recommendedJobs.filter(
                       title="Dismiss from dashboard"
                       className="w-5 h-5 rounded-full text-slate-300 hover:text-slate-600 hover:bg-slate-100 grid place-items-center text-xs transition"
                     >
-                      ✕
+                      âœ•
                     </button>
                   </div>
                 </div>
@@ -939,7 +1167,7 @@ const availableJobs = recommendedJobs.filter(
                 <div className="mt-2.5 flex items-center justify-between text-[11px] text-amber-700 font-medium pt-2 border-t border-amber-50">
                   <span className="group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1">
                     <span>View in Community Feed</span>
-                    <span>→</span>
+                    <span>â†’</span>
                   </span>
                   <span className="text-slate-400 font-normal">Click to open & clear from dashboard</span>
                 </div>
@@ -1106,7 +1334,7 @@ const availableJobs = recommendedJobs.filter(
                 >
 
                   <span className="text-brand-blue-500">
-                    ✓
+                    âœ“
                   </span>
 
                   <span className="flex-1 truncate text-slate-700">
@@ -1148,7 +1376,7 @@ const availableJobs = recommendedJobs.filter(
             ) : (
 
               <p className="text-sm text-slate-500">
-                Nothing due. 🎉
+                Nothing due. ðŸŽ‰
               </p>
 
             )}
@@ -1188,7 +1416,7 @@ const availableJobs = recommendedJobs.filter(
               </div>
 
               <div className="mt-4 text-xs font-semibold text-brand-blue-600">
-                Open →
+                Open â†’
               </div>
 
             </Card>
@@ -1232,7 +1460,7 @@ const availableJobs = recommendedJobs.filter(
                 >
 
                   <div className="w-11 h-11 rounded-xl bg-brand-blue-50 border border-brand-blue-100 grid place-items-center text-2xl shrink-0 shadow-sm">
-                    📚
+                    ðŸ“š
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -1247,7 +1475,7 @@ const availableJobs = recommendedJobs.filter(
 
                       {a.due_date && (
                         <>
-                          {' · '}
+                          {' Â· '}
 
                           <span
                             className={
@@ -1267,7 +1495,7 @@ const availableJobs = recommendedJobs.filter(
                         </>
                       )}
 
-                      {!a.due_date && ' · No due date'}
+                      {!a.due_date && ' Â· No due date'}
 
                     </div>
 
@@ -1275,7 +1503,7 @@ const availableJobs = recommendedJobs.filter(
                     {a.note && (
 
                       <div className="mt-2 text-[11px] text-slate-500 italic truncate">
-                        “{a.note}”
+                        â€œ{a.note}â€
                       </div>
 
                     )}
@@ -1341,7 +1569,7 @@ const availableJobs = recommendedJobs.filter(
 
               <div className="flex items-start gap-3.5">
                 <span className="text-2xl">
-                  💼
+                  ðŸ’¼
                 </span>
 
                 <div>
@@ -1360,25 +1588,25 @@ const availableJobs = recommendedJobs.filter(
 
                 {job.location && (
                   <span>
-                    📍 {job.location}
+                    ðŸ“ {job.location}
                   </span>
                 )}
 
                 {job.employment_type && (
                   <span>
-                    💼 {job.employment_type}
+                    ðŸ’¼ {job.employment_type}
                   </span>
                 )}
 
                 {job.work_mode && (
                   <span>
-                    🏠 {job.work_mode}
+                    ðŸ  {job.work_mode}
                   </span>
                 )}
 
                 {job.salary && (
                   <span>
-                    💰 {job.salary}
+                    ðŸ’° {job.salary}
                   </span>
                 )}
 
@@ -1476,7 +1704,7 @@ const availableJobs = recommendedJobs.filter(
                 to={`/app/jobs/${job.id}`}
                 className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-blue-600 text-white text-sm font-semibold shadow-sm hover:bg-brand-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
-                View Job →
+                View Job â†’
               </Link>
 
             </div>
@@ -1535,7 +1763,7 @@ const availableJobs = recommendedJobs.filter(
     ? "Application Update"
     : "Job Invitation";
 
-      const notificationIcon = isInterview ? "📅" : type === "application_selected" ? "🎉" : type === "application" ? "📋" : "💼";
+      const notificationIcon = isInterview ? "ðŸ“…" : type === "application_selected" ? "ðŸŽ‰" : type === "application" ? "ðŸ“‹" : "ðŸ’¼";
 
       return (
         <div
@@ -1584,7 +1812,7 @@ const availableJobs = recommendedJobs.filter(
       to={`/app/jobs/${notification.job_id}`}
       className="inline-flex items-center justify-center mt-3 px-3.5 py-2 rounded-xl bg-brand-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-brand-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
     >
-      View Job →
+      View Job â†’
     </Link>
   ) : isInterview ? (
     <button
@@ -1597,14 +1825,14 @@ const availableJobs = recommendedJobs.filter(
     >
       {loadingInterview
         ? "Loading..."
-        : "View Interview →"}
+        : "View Interview â†’"}
     </button>
   ) : (
     <Link
       to={`/app/jobs/${notification.job_id}`}
       className="inline-flex items-center justify-center mt-3 px-3.5 py-2 rounded-xl bg-brand-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-brand-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
     >
-      View Job →
+      View Job â†’
     </Link>
   )
 )}
@@ -1625,7 +1853,7 @@ const availableJobs = recommendedJobs.filter(
         to="/app/recommendations"
         className="text-xs font-semibold text-brand-blue-600 hover:text-brand-blue-700 transition-colors"
       >
-        See all →
+        See all â†’
       </Link>
     }
   >
@@ -1636,7 +1864,7 @@ const availableJobs = recommendedJobs.filter(
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 -mx-3 hover:bg-slate-50 transition-colors"
         >
           <span className="w-8 h-8 rounded-lg bg-brand-blue-50 border border-brand-blue-100 grid place-items-center text-brand-blue-500 shrink-0">
-            📘
+            ðŸ“˜
           </span>
 
           <span className="font-semibold text-slate-800 tracking-tight">
@@ -1644,7 +1872,7 @@ const availableJobs = recommendedJobs.filter(
           </span>
 
           <span className="text-xs text-slate-500 truncate leading-relaxed">
-            — {r.reason}
+            â€” {r.reason}
           </span>
         </li>
       ))}
@@ -1685,7 +1913,7 @@ const availableJobs = recommendedJobs.filter(
           className="shrink-0 rounded-xl border border-slate-200 p-2 text-xl text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-colors"
           aria-label="Close"
         >
-          ×
+          Ã—
         </button>
       </div>
 
@@ -1882,7 +2110,7 @@ const availableJobs = recommendedJobs.filter(
           onClick={() => setSelectedInterview(null)}
           className="shrink-0 rounded-xl border border-slate-200 p-2 text-xl text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-colors"
         >
-           ×
+           Ã—
         </button>
       </div>
 
@@ -1969,7 +2197,7 @@ const availableJobs = recommendedJobs.filter(
         rel="noopener noreferrer"
         className="inline-flex items-center justify-center mt-2 px-3.5 py-2 rounded-xl bg-brand-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-brand-blue-700 hover:shadow-md transition-all duration-200"
       >
-        Join Interview →
+        Join Interview â†’
       </a>
     </div>
   )}

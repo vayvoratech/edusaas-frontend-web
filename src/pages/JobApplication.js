@@ -7,6 +7,7 @@ import {
   applyJob,
   getMyJobApplications,
   getApplicationVideoUploadUrl,
+   getStudentDashboard,
 } from "../services/api";
 
 export default function JobApplication() {
@@ -47,6 +48,8 @@ const mediaStreamRef = useRef(null);
 const recordingChunksRef = useRef([]);
 const recordingTimerRef = useRef(null);
 
+const [eligibleForJobs, setEligibleForJobs] = useState(null);
+
 useEffect(() => {
   const loadJobAndProfile = async () => {
     try {
@@ -63,11 +66,17 @@ useEffect(() => {
         );
       }
 
-      const [jobData, profileData, applications] = await Promise.all([
-  getJobById(id),
-  getUserProfile(user.id),
-  getMyJobApplications(),
-]);
+     const [jobData, profileData, applications, dashboardData] =
+  await Promise.all([
+    getJobById(id),
+    getUserProfile(user.id),
+    getMyJobApplications(),
+    getStudentDashboard(),
+  ]);
+
+setEligibleForJobs(
+  dashboardData?.careerJourney?.eligibleForJobs === true
+);
 
 const existing = Array.isArray(applications)
   ? applications.find(
@@ -299,6 +308,12 @@ const cancelRecording = () => {
 
 const handleApply = async () => {
   try {
+    if (eligibleForJobs !== true) {
+  setError(
+    "Complete your learning journey and obtain your career certificate before applying for jobs."
+  );
+  return;
+}
     setApplying(true);
     setSubmitStage("Preparing application...");
     setApplicationMessage("");
@@ -503,9 +518,56 @@ return (
        Back to Job
     </button>
 
+{eligibleForJobs === true ? (
+  <>
 
     {/* Application Form */}
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+
+      {/* Keep job details visible to all students */}
+{job && (
+  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-3">
+    <h1 className="text-xl font-bold text-slate-900">
+      {job.title}
+    </h1>
+
+    {job.description && (
+      <p className="text-slate-600 whitespace-pre-line">
+        {job.description}
+      </p>
+    )}
+
+    {job.responsibilities && (
+      <div>
+        <h2 className="font-semibold text-slate-800">
+          Responsibilities
+        </h2>
+        <p className="mt-1 text-sm text-slate-600 whitespace-pre-line">
+          {job.responsibilities}
+        </p>
+      </div>
+    )}
+
+    {Array.isArray(job.required_skills) &&
+      job.required_skills.length > 0 && (
+        <div>
+          <h2 className="font-semibold text-slate-800 mb-2">
+            Required Skills
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {job.required_skills.map((skill) => (
+              <span
+                key={skill}
+                className="rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+  </div>
+)}
 
       {/* Error */}
       {error && (
@@ -898,6 +960,126 @@ return (
 
       </div>
     </div>
+
+</>
+) : (
+<div className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-blue-50 px-3 py-2 shadow-sm sm:px-6 sm:py-5">
+    <div className="mx-auto max-w-2xl text-center">
+
+      {/* Lock icon */}
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-amber-200 bg-white shadow-sm">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          className="h-6 w-6 text-amber-600"
+          aria-hidden="true"
+        >
+          <rect x="5" y="10" width="14" height="11" rx="2" />
+          <path d="M8 10V7a4 4 0 0 1 8 0v3" strokeLinecap="round" />
+          <circle cx="12" cy="15" r="1.2" />
+          <path d="M12 16.2V18" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      <p className="mt-3 text-xs font-bold uppercase tracking-widest text-amber-700">
+        Career Milestone
+      </p>
+
+      <h2 className="mt-2 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+        Unlock Your Career Opportunities
+      </h2>
+
+      <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">
+        Complete your learning journey and earn your career
+        certificate to unlock job applications. Explore job
+        descriptions now and prepare for roles that match your
+        career goals.
+      </p>
+
+      {/* Learning requirements */}
+      <div className="mx-auto mt-5 grid max-w-lg grid-cols-1 gap-3 text-left sm:grid-cols-2">
+        <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">
+              Complete Learning
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Finish your required courses and assessments.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path d="M12 3 4 6v5c0 5 3.4 8.1 8 10 4.6-1.9 8-5 8-10V6l-8-3Z" />
+              <path d="m9 12 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">
+              Earn Your Certificate
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Meet the requirements to unlock job applications.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Continue learning */}
+      <button
+        type="button"
+        onClick={() => navigate("/app/dashboard")}
+        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-blue-700 focus:outline-none focus:ring-2 focus:ring-brand-blue-500 focus:ring-offset-2 sm:w-auto"
+      >
+        Continue Learning
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      <p className="mt-3 text-xs text-slate-500">
+        Your next career opportunity starts with your learning journey.
+      </p>
+    </div>
+  </div>
+)}
+
+
 
 {showValidationModal && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">

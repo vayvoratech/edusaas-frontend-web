@@ -23,6 +23,7 @@ import {
   GraduationCap,
   UserRoundCheck,
   CreditCard,
+  LifeBuoy,
   X,
 } from 'lucide-react';
 
@@ -91,21 +92,20 @@ const navByRole = {
     },
 
     {
-    to: '/app/my-subscription',
-    labelKey: 'My Subscriptions',
-   icon: CreditCard,
-    },
-
-
-    {
-  to: '/app/help-support',
-  labelKey: 'Help & Support',
-  icon: MessageCircle,
-},
-    {
       to: '/app/settings',
       labelKey: 'settings',
       icon: Settings,
+    },
+
+    {
+  to: '/app/help-support',
+  labelKey: 'help_support',
+  icon: LifeBuoy,
+},
+    {
+      to: '/app/my-subscription',
+      labelKey: 'My-Subscriptions',
+      icon: CreditCard,
     },
   ],
 

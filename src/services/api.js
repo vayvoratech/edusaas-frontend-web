@@ -316,6 +316,16 @@ export const getMyMiniProjects = () => api.get("/api/mini-projects").then((r) =>
 
 export const createMiniProject = (data) => api.post("/api/mini-projects", data).then((r) => r.data);
 
+export const approveMiniProjectSubmission = (submissionId) =>
+  api
+    .post(`/api/mini-projects/submissions/${submissionId}/approve`)
+    .then((r) => r.data);
+
+export const reassignMiniProjectSubmission = (submissionId) =>
+  api
+    .post(`/api/mini-projects/submissions/${submissionId}/reassign`)
+    .then((r) => r.data);
+
 export const publishMiniProject = (assignmentId, due_at) =>
   api
     .post(`/api/mini-projects/${assignmentId}/publish`, {

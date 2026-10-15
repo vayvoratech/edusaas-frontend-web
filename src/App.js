@@ -57,6 +57,7 @@ import Community from './pages/Community';
 import AssessmentReview from './pages/AssessmentReview';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import MySubscription from './pages/MySubscription';
+import HelpSupport from './pages/HelpSupport';
 
 //student needs contact support
 import HelpSupport from './pages/HelpSupport';
@@ -132,6 +133,7 @@ export default function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<RoleSettings />} />
             <Route path="community" element={<Community />} />
+            <Route path="help-support" element={<HelpSupport />} />
 
             {/* Student */}
               <Route element={<RoleRoute allowedRoles={["Student"]} />}>

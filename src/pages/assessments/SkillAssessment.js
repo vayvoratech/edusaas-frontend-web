@@ -29,7 +29,7 @@ import AppDialog from '../../components/ui/AppDialog';
 });
 
   useEffect(() => {
-   const loadOverview = async () => {
+  const loadOverview = async () => {
   try {
     const [data, reports] = await Promise.all([
       getAssessmentOverview(),
@@ -38,58 +38,76 @@ import AppDialog from '../../components/ui/AppDialog';
 
     setOverview(data);
 
-    const codingSessionId =
-      data?.codingAssessment?.sessionId;
+    // Normalize the reports response
+    const reportsList = Array.isArray(reports)
+      ? reports
+      : reports?.data ?? [];
 
-    const codingReport =
-      Array.isArray(reports)
-        ? reports.find(
-            (report) =>
-              Number(report.quiz_session_id) ===
-                Number(codingSessionId) &&
-              String(report.assessment_stage || "").toUpperCase() ===
-                "INITIAL_CODING"
-          ) || null
-        : null;
+    // Declare session IDs before using them
+    const codingSessionId = data?.codingAssessment?.sessionId;
+    const initialSessionId = data?.initialAssessment?.sessionId;
 
-    setTerminationReport(codingReport);
+    const codingTerminated =
+      String(data?.codingAssessment?.status || "").toLowerCase() ===
+      "terminated";
 
+    const initialTerminated =
+      String(data?.initialAssessment?.status || "").toLowerCase() ===
+      "terminated";
 
-const initialQuizCompleted =
-  data.initialAssessment.questionsAnswered >=
-    data.initialAssessment.totalQuestions &&
-  data.initialAssessment.totalQuestions > 0;
+    // Find the report for the terminated assessment
+    const matchingReport = reportsList.find((report) => {
+      const sameCodingSession =
+        codingTerminated &&
+        Number(report.quiz_session_id) === Number(codingSessionId) &&
+        String(report.assessment_stage || "").toUpperCase() ===
+          "INITIAL_CODING";
 
-const codingCompleted =
-  data.codingAssessment?.status === "Completed";
+      const sameInitialSession =
+        initialTerminated &&
+        Number(report.quiz_session_id) === Number(initialSessionId) &&
+        String(report.assessment_stage || "").toUpperCase() ===
+          "INITIAL_QUIZ";
 
+      return sameCodingSession || sameInitialSession;
+    });
 
-if (
-  initialQuizCompleted &&
-  !codingCompleted &&
-  data.codingAssessment?.status !== "Terminated"
-) {
-  setDialog({
-    open: true,
-    type: "warning",
-    title: "Complete Your Assessment",
-    message:
-      "Please complete the Coding Assessment to view your complete progress, readiness score, and skill-gap results.",
-    confirmText: "Continue Coding Assessment",
-    cancelText: "Later",
-    showCancel: true,
-  });
-}
-      } catch (err) {
-        setError(
-          err.response?.data?.error ||
-          err.message ||
-          'Failed to load assessment progress'
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+    setTerminationReport(matchingReport ?? null);
+
+    const initialQuizCompleted =
+      (data?.initialAssessment?.questionsAnswered ?? 0) >=
+        (data?.initialAssessment?.totalQuestions ?? 0) &&
+      (data?.initialAssessment?.totalQuestions ?? 0) > 0;
+
+    const codingCompleted =
+      data?.codingAssessment?.status === "Completed";
+
+    if (
+      initialQuizCompleted &&
+      !codingCompleted &&
+      data?.codingAssessment?.status !== "Terminated"
+    ) {
+      setDialog({
+        open: true,
+        type: "warning",
+        title: "Complete Your Assessment",
+        message:
+          "Please complete the Coding Assessment to view your complete progress, readiness score, and skill-gap results.",
+        confirmText: "Continue Coding Assessment",
+        cancelText: "Later",
+        showCancel: true,
+      });
+    }
+  } catch (err) {
+    setError(
+      err.response?.data?.error ||
+        err.message ||
+        "Failed to load assessment progress"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
     loadOverview();
   }, []);
@@ -256,7 +274,7 @@ const finalAssessmentUnlocked =
             })
           }
         >
-          Open Assessment
+          Report to Admin
         </Button>
       </>
     )}
@@ -286,17 +304,46 @@ const finalAssessmentUnlocked =
       navigate("/app/initial-assessment", {
         state: {
           phase: "coding",
+          restartApproved: true,
         },
+      })
+    }
+  >
+    Restart Coding Assessment
+  </Button>
+) : codingTerminated ? (
+  <span className="text-sm font-medium text-red-600">
+    Assessment Terminated
+  </span>
+) : codingTimedOut ? (
+  <span className="text-sm font-medium text-orange-600">
+    Coding Assessment Timed Out
+  </span>
+) : !initialQuizCompleted ? (
+   <Button
+    variant="primary"
+    onClick={() =>
+      navigate("/app/initial-assessment", {
+        state: { phase: "quiz" },
+      })
+    }
+  >
+    Start Initial Skill Assessment →
+  </Button>
+) : (
+  <Button
+    variant="primary"
+    onClick={() =>
+      navigate("/app/initial-assessment", {
+        state: { phase: "coding" },
       })
     }
   >
     Continue Coding Assessment
   </Button>
-) : null}
+) }
 
 </div>
-
-
 
 {/* Termination Notice */}
 {initialTerminated || (codingTerminated && !terminationReport) ? (
@@ -324,37 +371,21 @@ const finalAssessmentUnlocked =
         </div>
       </div>
 
-      {/* Stage 1 → Report to Admin */}
-      {initialTerminated && !terminationReport && (
-
-       <Button
-  variant="primary"
-  className="shrink-0 self-start sm:self-center"
-  onClick={() =>
-    navigate(
-      `/app/help-support?category=assessment_termination&sessionId=${overview?.initialAssessment?.sessionId}&assessmentType=INITIAL&assessmentStage=INITIAL_QUIZ&open=report`
-    )
-  }
->
-  Report to Admin →
-</Button>
-
-      )}
     </div>
   </div>
 ) : null}
-
+  
   {/* Stages */}
-  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-
+<div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+  
     {/* Stage 1 */}
     <div
-      className={`rounded-xl p-5 ${
+      className={`rounded-xl border p-5 ${
         initialTerminated
-  ? "border border-red-200 bg-red-50/40"
-  : overview.initialAssessment?.status === "Completed"
-    ? "border border-green-200 bg-green-50/40"
-    : "border border-slate-200 bg-slate-50/40"
+          ? "border-red-200 bg-red-50/40"
+          : initialQuizCompleted
+            ? "border-green-200 bg-green-50/40"
+            : "border-blue-200 bg-blue-50/40"
       }`}
     >
       <div className="flex items-center justify-between">
@@ -362,19 +393,21 @@ const finalAssessmentUnlocked =
           Stage 1
         </span>
 
-       <span
-  className={`text-sm font-medium ${
-    initialTerminated
-      ? "text-red-600"
-      : overview.initialAssessment?.initialQuizStatus === "Completed"
-        ? "text-green-600"
-        : "text-slate-600"
-  }`}
->
-  {initialTerminated
-    ? "Terminated"
-    : overview.initialAssessment?.initialQuizStatus || "Not Started"}
-</span>
+        <span
+          className={`text-sm font-medium ${
+            initialTerminated
+              ? "text-red-600"
+              : initialQuizCompleted
+                ? "text-green-600"
+                : "text-blue-600"
+          }`}
+        >
+          {initialTerminated
+            ? "Terminated"
+            : initialQuizCompleted
+              ? "Completed"
+              : overview?.initialAssessment?.initialQuizStatus || "Not Started"}
+        </span>
       </div>
 
       <h3 className="mt-2 text-lg font-semibold text-slate-900">
@@ -385,217 +418,248 @@ const finalAssessmentUnlocked =
         Knowledge and skill assessment
       </p>
 
-     <div className="mt-4 rounded-lg bg-white px-4 py-3">
-  <div className="flex items-center justify-between">
-    <span className="text-sm text-slate-500">
-      Questions
-    </span>
+      <div className="mt-4 rounded-lg bg-white px-4 py-3">
+        {initialQuizCompleted ? (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-500">Questions</span>
+              <span className="font-semibold text-slate-900">
+                {overview?.initialAssessment?.questionsAnswered ?? 0} /{" "}
+                {overview?.initialAssessment?.totalQuestions ?? 0}
+              </span>
+            </div>
 
-    <span className="font-semibold text-slate-900">
-      {overview.initialAssessment.questionsAnswered}/
-      {overview.initialAssessment.totalQuestions}
-    </span>
-  </div>
+            <p className="mt-3 border-t border-slate-100 pt-3 text-sm font-medium text-green-700">
+              ✓ Initial Quiz completed successfully.{" "}
+              {codingCompleted
+                ? ""
+                : "You can now proceed to your Coding Assessment (Stage 2)."}
+            </p>
+          </>
+        ) : initialTerminated ? (
+          <p className="text-sm font-medium text-red-700">
+            This assessment has been terminated.
+          </p>
+        ) : (
+          <div>
+            <p className="text-sm font-medium text-blue-700">
+              Ready to discover your strengths?
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Start your Initial Skill Assessment to evaluate your current skills
+              and identify areas for improvement.
+            </p>
+          </div>
+        )}
+      </div>
+   </div>
 
- {overview.initialAssessment.totalQuestions > 0 &&
-  overview.initialAssessment.questionsAnswered ===
-    overview.initialAssessment.totalQuestions && (
-      <p className="mt-2 text-sm font-medium text-green-600">
-        ✓ Initial Quiz completed successfully.
-      </p>
-)}
-</div>
-    </div>
 
     {/* Stage 2 */}
 <div
   className={`rounded-xl p-5 ${
     codingTerminated && terminationReport?.status !== "Approved"
       ? "border border-red-200 bg-red-50/40"
-      : overview?.codingAssessment?.status === "Completed"
+      : codingCompleted
         ? "border border-green-200 bg-green-50/40"
         : "border border-blue-200 bg-blue-50/40"
   }`}
 >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Stage 2
-        </span>
+  <div className="flex items-center justify-between">
+    <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+      Stage 2
+    </span>
+
 
         <span
-  className={`text-sm font-medium ${
-  codingTerminated && terminationReport?.status === "Approved"
-    ? "text-green-600"
-    : codingTerminated
-      ? "text-red-600"
-      : overview.codingAssessment?.status === "Completed"
-        ? "text-green-600"
-        : "text-blue-600"
-}`}
->               {codingTerminated && terminationReport?.status === "Approved"
-  ? "Ready to Restart"
-  : codingTerminated
-    ? "Terminated"
-    : overview.codingAssessment?.status || "Ready"}
+          className={`text-sm font-medium ${
+            codingCompleted
+              ? "text-green-600"
+              : codingTerminated
+                ? terminationReport?.status === "Approved"
+                  ? "text-green-600"
+                  : "text-red-600"
+                : codingTimedOut
+                  ? "text-orange-600"
+                  : "text-blue-600"
+          }`}
+        >
+          {codingCompleted
+            ? "Completed"
+            : codingTerminated
+              ? terminationReport?.status === "Approved"
+                ? "Restart Approved"
+                : "Terminated"
+              : codingTimedOut
+                ? "Timed Out"
+                : initialQuizCompleted
+                  ? "Ready"
+                  : "Locked"}
         </span>
       </div>
 
-      <h3 className="mt-2 text-lg font-semibold text-slate-900">
-        Coding Assessment
-      </h3>
 
-      <p className="mt-1 text-sm text-slate-500">
-        Practical coding evaluation
-      </p>
+  <h3 className="mt-2 text-lg font-semibold text-slate-900">
+    Coding Assessment
+  </h3>
 
-     <div className="mt-4 rounded-lg bg-white px-4 py-3">
-  {codingTerminated && !terminationReport && (
-    <span className="text-sm text-red-600">
-      Your coding assessment has been terminated. Please contact Admin.
-    </span>
-  )}
-
-  {codingTerminated &&
-    terminationReport?.status === "Pending" && (
-      <div>
-        <p className="text-sm font-semibold text-green-700">
-          Termination Report Sent Successfully
-        </p>
-
-        <p className="mt-1 text-sm text-green-600">
-          Your termination report has been sent successfully
-          and is awaiting Admin review.
-        </p>
-
-        <p className="mt-1 text-xs text-green-600">
-          You can resume the Coding Assessment after Admin approval.
-        </p>
-      </div>
-
-    )}  
-
-{codingTerminated &&
-  terminationReport?.status === "Approved" && (
-    <div>
-      <p className="text-sm font-semibold text-green-700">
-        Termination Report Approved
-      </p>
-
-      <p className="mt-1 text-sm text-green-600">
-        Admin has approved your termination report.
-        You can now resume your Coding Assessment.
-      </p>
-    </div>
-  )}
-
-{codingTerminated &&
-  terminationReport?.status === "Rejected" && (
-    <div>
-      <p className="text-sm font-semibold text-red-700">
-        Termination Report Rejected
-      </p>
-
-      <p className="mt-1 text-sm text-red-600">
-        Your termination report was rejected by Admin.
-      </p>
-
-      {terminationReport?.admin_notes && (
-        <p className="mt-1 text-xs text-red-600">
-          Admin response: {terminationReport.admin_notes}
-        </p>
-      )}
-    </div>
-  )}
-{codingCompleted ? (
-  <p className="text-sm font-medium text-green-600">
-    ✓ Coding Assessment completed successfully.
-  </p>
-) : !initialQuizCompleted ? (
-  <p className="text-sm text-slate-500">
-    Please complete the Initial Quiz first. Coding Assessment will be
-    available after you complete Stage 1.
+  <p className="mt-1 text-sm text-slate-500">
+    Practical coding evaluation
   </p>
 
-) : !codingTerminated && !codingTimedOut ? (
 
-  <p className="text-sm text-blue-600">
-    Your coding assessment is ready to continue.
-  </p>
-) : null}
-        </div>
-     </div>
-  </div>
+<div className="mt-4 rounded-lg bg-white px-4 py-3">
 
-  {/* Assessment metrics */}
-  <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-
-    <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-        Overall Status
-      </span>
-
-      <p
-        className={`mt-1 text-sm font-semibold ${
-          initialTerminated || codingTerminated
-            ? "text-red-600"
-            : overview.initialAssessment.status === "Completed"
-              ? "text-green-600"
-              : "text-amber-600"
-        }`}
-      >
-        {codingTerminated
-          ? "Terminated"
-          : overview.initialAssessment.status}
-      </p>
-    </div>
-
-    <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+{/* Coding question progress */}
+{initialQuizCompleted &&
+  !codingTerminated &&
+  !codingTimedOut && (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-slate-500">
         Questions
       </span>
 
-      <p className="mt-1 text-sm font-semibold text-slate-700">
-        {overview.initialAssessment.questionsAnswered}/
-        {overview.initialAssessment.totalQuestions}
-      </p>
-    </div>
-
-    <div className="rounded-lg bg-orange-50 px-3 py-2.5">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-orange-500">
-        Readiness
+      <span className="font-semibold text-slate-900">
+        {overview?.codingAssessment?.questionsCompleted ?? 0}
+        {" / "}
+        {overview?.codingAssessment?.totalQuestions ?? 3}
       </span>
-
-      <p
-  className={`text-sm font-semibold ${
-    overview.initialAssessment?.readinessScore != null
-      ? "text-green-600"
-      : "text-slate-900"
-  }`}
->
-  {overview.initialAssessment?.readinessScore != null
-    ? overview.initialAssessment.readinessScore
-    : "Pending"}
-</p>
     </div>
+  )}
 
-    <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-        Purpose
-      </span>
+      {/* Existing status messages */}
+      <div className="mt-3 border-t border-slate-100 pt-3">
+        {codingCompleted ? (
+          <p className="text-sm font-medium text-green-700">
+            ✓ Coding Assessment completed successfully.
+          </p>
+        ) : codingTerminated && terminationReport?.status === "Approved" ? (
+          <div>
+            <p className="text-sm font-semibold text-green-700">
+              Termination Report Approved Successfully
+            </p>
+            <p className="mt-1 text-sm text-green-600">
+              Admin has approved your report. You can now restart your Coding
+              Assessment.
+            </p>
+          </div>
+        ) : codingTerminated && terminationReport?.status === "Pending" ? (
+          <div>
+            <p className="text-sm font-semibold text-amber-700">
+              Termination Report Submitted Successfully
+            </p>
+            <p className="mt-1 text-sm text-amber-600">
+              Your report has been submitted and is awaiting Admin review.
+              You do not need to submit it again. Please check back for the
+              review result before restarting your Coding Assessment.
+            </p>
+          </div>
+        ) : codingTerminated && terminationReport?.status === "Rejected" ? (
+          <div>
+            <p className="text-sm font-semibold text-red-700">
+              Termination Report Rejected
+            </p>
+            <p className="mt-1 text-sm text-red-600">
+              Your report was rejected by Admin. Please review the Admin response.
+            </p>
+            {terminationReport?.admin_notes && (
+              <p className="mt-1 text-xs text-red-600">
+                Admin response: {terminationReport.admin_notes}
+              </p>
+            )}
+          </div>
+        ) : codingTerminated ? (
+          <div>
+            <p className="text-sm font-semibold text-red-700">
+              Assessment Terminated
+            </p>
+            <p className="mt-1 text-sm text-red-600">
+              Your Coding Assessment was terminated. Submit a termination report
+              to Admin to request permission to restart.
+            </p>
+          </div>
+        ) : codingTimedOut ? (
+          <p className="text-sm text-orange-600">
+            Your coding assessment has timed out.
+          </p>
+        ) : !initialQuizCompleted ? (
+          <p className="text-sm text-slate-500">
+            Please complete the Initial Quiz first. Coding Assessment will be
+            available after you complete Stage 1.
+          </p>
+        ) : (
+          <p className="text-sm text-blue-600">
+            Your coding assessment is ready to continue.
+          </p>
+        )}
+      </div>
 
-      <p className="mt-1 text-sm font-semibold text-slate-700">
-        Skill & Readiness
-      </p>
-    </div>
-
+     </div>
   </div>
+</div>
+ 
+{/* Assessment metrics */}
+<div className="mt-5 grid w-full grid-cols-4 gap-3">
+  <div className="min-w-0 rounded-lg bg-slate-50 p-4">
+    <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      Overall Status
+    </span>
+    <p
+      className={`mt-1 text-sm font-semibold ${
+        initialTerminated || codingTerminated
+          ? "text-red-600"
+          : overview?.initialAssessment?.status === "Completed"
+            ? "text-green-600"
+            : "text-amber-600"
+      }`}
+    >
+      {initialTerminated || codingTerminated
+        ? "Terminated"
+        : overview?.initialAssessment?.status || "Pending"}
+    </p>
+  </div>
+
+  <div className="min-w-0 rounded-lg bg-slate-50 p-4">
+    <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      Questions
+    </span>
+    <p className="mt-1 text-sm font-semibold text-slate-700">
+      {(overview?.initialAssessment?.questionsAnswered ?? 0) +
+        (overview?.codingAssessment?.questionsCompleted ?? 0)}
+      {" / "}
+      {(overview?.initialAssessment?.totalQuestions ?? 0) +
+        (overview?.codingAssessment?.totalQuestions ?? 3)}
+    </p>
+  </div>
+
+  <div className="min-w-0 rounded-lg bg-orange-50 p-4">
+    <span className="text-[11px] font-medium uppercase tracking-wide text-orange-500">
+      Readiness
+    </span>
+    <p className="mt-1 text-sm font-semibold text-orange-600">
+      {overview?.initialAssessment?.readinessScore != null
+        ? overview.initialAssessment.readinessScore
+        : "Pending"}
+    </p>
+  </div>
+
+  <div className="min-w-0 rounded-lg bg-slate-50 p-4">
+    <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      Purpose
+    </span>
+    <p className="mt-1 text-sm font-semibold text-slate-700">
+      Skill &amp; Readiness
+    </p>
+  </div>
+</div>
 </Card>
+
 
       {/* Learning Prerequisites */}
       <Card>
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
-            ✦
+          
           </div>
 
           <div>
@@ -807,6 +871,5 @@ const finalAssessmentUnlocked =
   }}
 />
 </div>
-
-  );
+);
 }
