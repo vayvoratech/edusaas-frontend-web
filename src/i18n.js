@@ -24,6 +24,7 @@ const resources = {
       reports: "Reports",
       messages: "Messages",
       help: "Help",
+      help_support: "Help & Support",
       search: "Search",
       submit: "Submit",
       edit: "Edit",

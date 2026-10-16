@@ -284,6 +284,7 @@ const Icon = {
 const InitialCodingAssessment = ({
   sessionId,
   onComplete,
+  openTerminationReport,
   onError,
   proctoringWarning,
 }) => {
@@ -324,6 +325,7 @@ const InitialCodingAssessment = ({
   // Instant tab-switch blocking overlay
   const [tabSwitchAlert, setTabSwitchAlert] = useState(false);
   const tabSwitchCountRef = useRef(0);
+  const [terminationReason, setTerminationReason] = useState("");
 
   // ---- purely presentational UI state (no effect on data/flow) ----
   const [problemTab, setProblemTab] = useState("description"); // "description" | "examples"
@@ -342,6 +344,14 @@ const InitialCodingAssessment = ({
   const editorRef = useRef(null);
   const proctoringRef = useRef(null);
   const proctoringStartRef = useRef(false);
+
+  useEffect(() => {
+  if (openTerminationReport && sessionStatus === "terminated") {
+    setShowReportForm(true);
+    setReportError("");
+  }
+}, [openTerminationReport, sessionStatus]);
+
 
   const getMonacoLanguage = (lang) => {
     const l = String(lang || "").toLowerCase();
@@ -503,35 +513,68 @@ const showDialog = (options) => {
         }
       },
 
-      onTerminate: async (data) => {
-        console.error(
-          "Coding assessment terminated by proctoring:",
-          data
-        );
+     
+onTerminate: async (data) => {
+  console.error("Coding assessment terminated by proctoring:", data);
+  
+   console.error(
+    "ACTUAL TERMINATION DATA:",
+    JSON.stringify(data, null, 2)
+  );
 
-        skipAutoPauseRef.current = true;
+  skipAutoPauseRef.current = true;
+  assessmentActiveRef.current = false;
+  setAssessmentActive(false);
 
-        assessmentActiveRef.current = false;
-        setAssessmentActive(false);
+  const fraud = data?.fraud || data;
 
-        try {
-          await exitCodingFullscreen();
-        } catch (error) {
-          console.error(
-            "Failed to exit fullscreen after termination:",
-            error
-          );
-        }
+  const violationType = String(
+    fraud?.violation_type || fraud?.violationType || ""
+  ).toUpperCase();
 
-        proctoringRef.current?.cleanup();
-        proctoringRef.current = null;
+  const serverMessage = fraud?.reason || fraud?.message;
 
-        setSessionStatus("terminated");
+  const reasonByType = {
+    FULLSCREEN_EXIT:
+      "Your assessment was terminated because you exited fullscreen mode.",
+    FULLSCREEN_VIOLATION:
+      "Your assessment was terminated because you violated the fullscreen requirement.",
+    MOBILE_PHONE:
+      "Your assessment was terminated because a mobile phone was detected.",
+    PHONE_DETECTED:
+      "Your assessment was terminated because a mobile phone was detected.",
+    MOBILE_DETECTED:
+      "Your assessment was terminated because a mobile device was detected.",
+    TAB_SWITCH:
+      "Your assessment was terminated because you switched tabs or left the assessment window.",
+  };
 
-        setError(
-          "Your coding assessment was terminated by the proctoring system."
-        );
-      },
+  const reason =
+    serverMessage ||
+    reasonByType[violationType] ||
+    (violationType
+      ? `Your assessment was terminated due to a proctoring violation: ${violationType.replaceAll("_", " ").toLowerCase()}.`
+      : "Your assessment was terminated by the proctoring system. Please contact your administrator for details.");
+
+  setTerminationReason(reason);
+  setError("");
+
+  try {
+    await exitCodingFullscreen();
+  } catch (err) {
+    console.error("Failed to exit fullscreen:", err);
+  }
+
+  try {
+    await proctoringRef.current?.cleanup();
+  } catch (err) {
+    console.error("Proctoring cleanup failed:", err);
+  }
+
+  proctoringRef.current = null;
+  setSessionStatus("terminated");
+},
+
 
       onDisconnected: () => {
         console.warn("Coding proctoring WebSocket disconnected.");
@@ -679,7 +722,7 @@ const showDialog = (options) => {
 
         if (!mounted) return;
 
-        const data = response?.data;
+        const data = response?.data ?? response;
 
         if (!data) {
           throw new Error("Invalid coding assessment response.");
@@ -701,19 +744,22 @@ const showDialog = (options) => {
         const isTimedOut = serverStatus === "Timed Out";
         const isPaused = serverStatus === "Paused";
         const isInProgress = serverStatus === "In Progress";
+        const isTerminated = serverStatus === "Terminated";
 
         assessmentActiveRef.current = false;
         setAssessmentActive(false);
 
         setSessionStatus(
-          isTimedOut
-            ? "timed_out"
-            : isPaused
-            ? "paused"
-            : isInProgress
-            ? "paused"
-            : "ready"
-        );
+  isTerminated
+    ? "terminated"
+    : isTimedOut
+    ? "timed_out"
+    : isPaused
+    ? "paused"
+    : isInProgress
+    ? "paused"
+    : "ready"
+);
 
         pauseSentRef.current = false;
         skipAutoPauseRef.current = false;
@@ -739,30 +785,43 @@ const showDialog = (options) => {
         setCurrentIndex(firstUnanswered >= 0 ? firstUnanswered : 0);
         setRemainingSeconds(Number(remainingTime));
 
-      } catch (err) {
-        if (!mounted) return;
+       } catch (err) {
+  if (!mounted) return;
 
-        const errorCode = err.response?.data?.code;
+const errorCode = err?.response?.data?.code;
 
-        if (errorCode === "ASSESSMENT_TERMINATED") {
-          setAssessmentActive(false);
-          assessmentActiveRef.current = false;
-          setSessionStatus("terminated");
-          setError(
-            err.response?.data?.error ||
-              "This assessment has been terminated. Please report the issue to Admin before restarting."
-          );
-          return;
-        }
+if (errorCode === "ASSESSMENT_TERMINATED") {
+  setAssessmentActive(false);
+  assessmentActiveRef.current = false;
+  setSessionStatus("terminated");
+  setError(
+    err.response?.data?.error ||
+      "This assessment has been terminated. Please report the issue to Admin before restarting."
+  );
+  return;
+}
 
-        const message = getErrorMessage(
-          err,
-          "Unable to start the coding assessment."
-        );
+const errorMessage = getErrorMessage(
+  err,
+  "Unable to start the coding assessment."
+);
 
-        setError(message);
-        onError?.(message);
-      } finally {
+  const isTerminated =
+    errorCode === "ASSESSMENT_TERMINATED" ||
+    errorMessage.toLowerCase().includes("assessment has been terminated") ||
+    errorMessage.toLowerCase().includes("coding assessment was terminated");
+
+  if (isTerminated) {
+    assessmentActiveRef.current = false;
+    setAssessmentActive(false);
+    setSessionStatus("terminated");
+    setError("");
+    return;
+  }
+
+  setError(errorMessage);
+  onError?.(errorMessage);
+} finally {
         if (mounted) {
           setLoading(false);
         }
@@ -867,41 +926,82 @@ const showDialog = (options) => {
 
         const data = response?.data;
 
-        if (typeof data?.remaining_seconds === "number") {
-          setRemainingSeconds(data.remaining_seconds);
-        }
+if (
+  assessmentActiveRef.current &&
+  typeof data?.remaining_seconds === "number"
+) {
+  setRemainingSeconds(data.remaining_seconds);
+}
 
-        if (data?.active === false) {
-          if (data.status === "Timed Out") {
-            assessmentActiveRef.current = false;
-            setAssessmentActive(false);
-            setSessionStatus("timed_out");
+       if (data?.active === false) {
+  if (data.status === "Terminated") {
+    assessmentActiveRef.current = false;
+    setAssessmentActive(false);
 
-            skipAutoPauseRef.current = true;
+    skipAutoPauseRef.current = true;
 
-            await finalizeAssessment(
-              "Your coding assessment time has expired."
-            );
-          } else {
-            assessmentActiveRef.current = false;
-            setAssessmentActive(false);
-            setSessionStatus("paused");
+    await exitCodingFullscreen();
 
-            console.log(
-              "Server reports coding assessment is paused."
-            );
-          }
-        }
+    if (proctoringRef.current) {
+      proctoringRef.current.cleanup();
+      proctoringRef.current = null;
+    }
+
+    setSessionStatus("terminated");
+
+    setError(
+      "Your coding assessment was terminated by the proctoring system."
+    );
+
+    return;
+  }
+
+  if (data.status === "Timed Out") {
+    assessmentActiveRef.current = false;
+    setAssessmentActive(false);
+
+    skipAutoPauseRef.current = true;
+
+    await finalizeAssessment(
+      "Your coding assessment time has expired."
+    );
+
+    return;
+  }
+
+  assessmentActiveRef.current = false;
+  setAssessmentActive(false);
+  setSessionStatus("paused");
+
+  console.log(
+    "Server reports coding assessment is paused."
+  );
+}
       } catch (err) {
         const status = err.response?.status;
 
         if (status === 409 || status === 404 || status === 403) {
-          setSessionStatus("timed_out");
-          finalizeAssessment(
-            err.response?.data?.error ||
-              "Your coding assessment session has ended."
-          );
-        }
+  const errorCode = err.response?.data?.code;
+
+  assessmentActiveRef.current = false;
+  setAssessmentActive(false);
+
+  if (errorCode === "ASSESSMENT_TERMINATED") {
+    setSessionStatus("terminated");
+    setError(
+      err.response?.data?.error ||
+        "Your coding assessment has been terminated."
+    );
+    return;
+  }
+
+  setSessionStatus("timed_out");
+
+  finalizeAssessment(
+    err.response?.data?.error ||
+      "Your coding assessment session has ended."
+  );
+}
       }
     }, 10000);
 
@@ -1010,45 +1110,143 @@ const showDialog = (options) => {
   }, [sessionId, onError]);
 
 
-  const pauseCodingAssessment = useCallback(async () => {
-    const sid = sessionIdRef.current || sessionId;
+const pauseCodingAssessment = useCallback(async () => {
+  const sid = sessionIdRef.current || sessionId;
 
+  if (
+    !sid ||
+    !assessmentActiveRef.current ||
+    pauseSentRef.current ||
+    skipAutoPauseRef.current
+  ) {
+    return;
+  }
+
+  // Prevent duplicate pause requests.
+  pauseSentRef.current = true;
+
+  assessmentActiveRef.current = false;
+  setAssessmentActive(false);
+
+  try {
+    await pauseInitialCodingAssessment(sid);
+
+    setSessionStatus("paused");
+    setError("");
+
+    console.log(
+      "Coding assessment paused successfully:",
+      sid
+    );
+  } catch (err) {
+    const status = err?.response?.status;
+    const errorCode = err?.response?.data?.code;
+    const errorMessage = getErrorMessage(
+      err,
+      "Unable to update the assessment session."
+    );
+
+    console.error(
+      "Failed to persist coding assessment pause:",
+      err?.response?.data || err.message
+    );
+
+    // The backend has confirmed that this session is terminated.
     if (
-      !sid ||
-      !assessmentActiveRef.current ||
-      pauseSentRef.current ||
-      skipAutoPauseRef.current
+      errorCode === "ASSESSMENT_TERMINATED" ||
+      (status === 409 &&
+        errorMessage.toLowerCase().includes("terminated"))
     ) {
+      skipAutoPauseRef.current = true;
+
+      setAssessmentActive(false);
+      assessmentActiveRef.current = false;
+      setSessionStatus("terminated");
+      setError(
+        "Your coding assessment has been terminated. This assessment cannot be resumed."
+      );
+
+      // Stop proctoring and exit fullscreen without triggering
+      // another automatic pause request.
+      try {
+        if (proctoringRef.current) {
+          await proctoringRef.current.cleanup();
+          proctoringRef.current = null;
+        }
+
+        await exitCodingFullscreen();
+      } catch (cleanupError) {
+        console.error(
+          "Cleanup after assessment termination failed:",
+          cleanupError
+        );
+      }
+
+      // The conflict is handled; don't rethrow it to React.
       return;
     }
 
-    pauseSentRef.current = true;
-
-    assessmentActiveRef.current = false;
-    setAssessmentActive(false);
+    // A different failure should remain visible to the user.
     setSessionStatus("paused");
+    setError(errorMessage);
+    throw err;
+  } finally {
+    pauseSentRef.current = false;
+  }
+}, [sessionId]);
 
-    try {
-      await pauseInitialCodingAssessment(sid);
 
-      console.log(
-        "Coding assessment paused successfully:",
-        sid
-      );
-    } catch (err) {
-      console.error(
-        "Failed to persist coding assessment pause:",
-        err
-      );
-
-      setError(
-        getErrorMessage(
-          err,
-          "The assessment was interrupted, but the pause could not be saved."
-        )
-      );
+ 
+const handleExitToDashboard = useCallback(async () => {
+  try {
+    if (assessmentActiveRef.current) {
+      await pauseCodingAssessment();
     }
-  }, [sessionId]);
+
+    if (proctoringRef.current) {
+      await proctoringRef.current.cleanup();
+      proctoringRef.current = null;
+    }
+
+    skipAutoPauseRef.current = true;
+
+    await exitCodingFullscreen();
+    navigate("/app/dashboard");
+  } catch (err) {
+    if (err?.response?.status === 409) {
+      // The session has already changed state on the server.
+      assessmentActiveRef.current = false;
+      setAssessmentActive(false);
+      setSessionStatus("terminated");
+      skipAutoPauseRef.current = true;
+
+      if (proctoringRef.current) {
+        try {
+          await proctoringRef.current.cleanup();
+        } catch (cleanupError) {
+          console.error(
+            "Proctoring cleanup failed:",
+            cleanupError
+          );
+        }
+
+        proctoringRef.current = null;
+      }
+
+      await exitCodingFullscreen();
+      navigate("/app/dashboard");
+      return;
+    }
+
+    console.error(
+      "Failed to leave assessment:",
+      err
+    );
+
+    setError("Unable to leave the assessment. Please try again.");
+  }
+}, [pauseCodingAssessment, navigate]); 
+
 
 // coding assessmnet report for termination
 const handleSubmitAssessmentReport = async (e) => {
@@ -1074,7 +1272,9 @@ const handleSubmitAssessmentReport = async (e) => {
 
 formData.append("quiz_session_id", sid);
 formData.append("assessment_type", "CODING");
+formData.append("assessment_stage", "INITIAL_CODING");
 formData.append("reason", reportReason.trim());
+
 
 if (reportEvidence.trim()) {
   formData.append("additional_evidence", reportEvidence.trim());
@@ -1107,39 +1307,60 @@ await submitAssessmentReport(formData);
   // ============================================================
   // Fullscreen enforcement
   // ============================================================
-  useEffect(() => {
-    const handleFullscreenChange = async () => {
-      if (document.fullscreenElement !== null) {
-        return;
-      }
+  
+useEffect(() => {
+  const handleFullscreenChange = async () => {
+    if (document.fullscreenElement !== null) return;
+    if (skipAutoPauseRef.current) return;
+    if (!assessmentActiveRef.current) return;
+    if (pauseSentRef.current) return;
 
-      if (!assessmentActiveRef.current) {
-        return;
-      }
+    console.warn(
+      "Coding assessment exited fullscreen."
+    );
 
-      if (skipAutoPauseRef.current) {
-        return;
-      }
-
-      console.warn(
-        "Coding assessment exited fullscreen. Pausing immediately."
-      );
-
+    try {
       await pauseCodingAssessment();
-    };
+    } catch (err) {
+      // A terminated session may reject a pause request with 409.
+      if (err?.response?.status === 409) {
+        console.warn(
+          "Assessment session state changed on the server.",
+          err.response?.data
+        );
 
-    document.addEventListener(
+        assessmentActiveRef.current = false;
+        setAssessmentActive(false);
+        setTerminationReason(
+  "Your assessment was terminated because you exited fullscreen mode."
+);
+setError("");
+        setSessionStatus("terminated");
+        skipAutoPauseRef.current = true;
+
+        return;
+      }
+
+      console.error(
+        "Fullscreen-change handling failed:",
+        err
+      );
+    }
+  };
+
+  document.addEventListener(
+    "fullscreenchange",
+    handleFullscreenChange
+  );
+
+  return () => {
+    document.removeEventListener(
       "fullscreenchange",
       handleFullscreenChange
     );
+  };
+}, [pauseCodingAssessment]); 
 
-    return () => {
-      document.removeEventListener(
-        "fullscreenchange",
-        handleFullscreenChange
-      );
-    };
-  }, [pauseCodingAssessment]);
 
   // Best-effort pause on hard refresh / tab close.
   useEffect(() => {
@@ -1523,29 +1744,7 @@ await submitAssessmentReport(formData);
     );
   }
 
-  if (!currentQuestion) {
-    return (
-      <div className="h-full flex items-center justify-center bg-[#111318] p-6">
-        <div className="max-w-md rounded-xl border border-white/10 bg-[#181b22] p-8 text-center">
-          <h2 className="text-base font-semibold text-white">
-            No questions available
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-400">
-            This assessment session doesn't have any coding questions to
-            display.
-          </p>
-
-          {error && (
-            <p className="mt-4 rounded-lg bg-red-500/10 p-3 text-xs text-red-300">
-              {error}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
+  // first: terminated session
   if (sessionStatus === "terminated") {
   return (
     <div className="h-full flex items-center justify-center bg-[#111318] p-6">
@@ -1563,11 +1762,10 @@ await submitAssessmentReport(formData);
           This assessment can't be resumed.
         </p>
 
-        {error && (
-          <p className="mt-3 text-xs text-red-400">
-            {error}
-          </p>
-        )}
+      <p className="mt-4 text-sm leading-6 text-red-400">
+  {terminationReason ||
+    "Your assessment was terminated by the proctoring system. Please contact your administrator for details."}
+</p>
 
         {!reportSubmitted && !showReportForm && (
           <div className="mt-6 flex flex-col gap-3">
@@ -1581,7 +1779,7 @@ await submitAssessmentReport(formData);
 
             <button
               type="button"
-              onClick={() => navigate("/app/dashboard")}
+             onClick={handleExitToDashboard}
               className="w-full rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800"
             >
               Go to Dashboard
@@ -1678,7 +1876,7 @@ await submitAssessmentReport(formData);
 
             <button
               type="button"
-              onClick={ () => navigate("/app/dashboard")}
+              onClick={handleExitToDashboard}
               className="mt-4 w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-600"
             >
               Go to Dashboard
@@ -1689,6 +1887,31 @@ await submitAssessmentReport(formData);
     </div>
   );
 }
+
+//second: empty questions
+  if (!currentQuestion) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[#111318] p-6">
+        <div className="max-w-md rounded-xl border border-white/10 bg-[#181b22] p-8 text-center">
+          <h2 className="text-base font-semibold text-white">
+            No questions available
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-400">
+            This assessment session doesn't have any coding questions to
+            display.
+          </p>
+
+          {error && (
+            <p className="mt-4 rounded-lg bg-red-500/10 p-3 text-xs text-red-300">
+              {error}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
 
   if (sessionStatus === "timed_out") {
     return (
