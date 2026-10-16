@@ -737,5 +737,8 @@ export const aimlAnalyzeSkillGap = (data) =>
 export const aimlCheckMiniProjectPlagiarism = (data) =>
   api.post("/api/aiml/plagiarism/mini-project", data).then((r) => r.data);
 
+export const warmUpAIMLService = () =>
+  api.get("/api/aiml/health").then((r) => r.data).catch(() => null);
+
 export default api;
 
