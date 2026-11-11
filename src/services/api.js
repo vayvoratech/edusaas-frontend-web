@@ -19,6 +19,11 @@ const api = axios.create({
   baseURL: API_BASE,
 });
 
+const authApi = axios.create({
+  baseURL: API_BASE,
+  timeout: 15_000,
+});
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);
 
@@ -41,7 +46,7 @@ async function attemptRefresh() {
   if (!refreshPromise) {
     const token = localStorage.getItem(TOKEN_KEY);
 
-    refreshPromise = axios
+    refreshPromise = authApi
       .post(
         `${API_BASE}/api/auth/refresh`,
         { refreshToken },
@@ -96,10 +101,15 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${newToken}`;
 
         return api(original);
-      } catch (_) {
+      } catch (refreshError) {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(REFRESH_KEY);
         localStorage.removeItem(USER_KEY);
+        err.authRefreshFailed = true;
+        console.warn(
+          "Authentication refresh failed; cleared the expired local session.",
+          refreshError.code || "REFRESH_FAILED"
+        );
       }
     }
 
@@ -308,7 +318,16 @@ export const getSkillGapAnalysis = (userId) =>
 
 export const startInitialQuiz = () =>
   api
-    .post("/api/assessments/initial-quiz/start")
+    .post(
+      "/api/assessments/initial-quiz/start",
+      {},
+      { timeout: 45_000 }
+    )
+    .then((r) => r.data);
+
+export const submitInitialAssessmentRestartRequest = (reason) =>
+  api
+    .post("/api/assessment-reports/initial-restart-request", { reason })
     .then((r) => r.data);
 
 export const submitInitialQuizAnswer = ({
@@ -1140,6 +1159,11 @@ export const getReportsSummary = () =>
 export const getPlatformHealth = () =>
   api
     .get("/api/health")
+    .then((r) => r.data);
+
+export const getProctorHealth = () =>
+  api
+    .get("/api/proctor/health")
     .then((r) => r.data);
 
 export const getTopReports = () =>

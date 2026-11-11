@@ -11,6 +11,8 @@ class ProctoringService {
     this.cameraWidth = options.cameraWidth || 320;
     this.cameraHeight = options.cameraHeight || 240;
     this.jpegQuality = options.jpegQuality || 0.5;
+    this.connectionTimeoutMs = options.connectionTimeoutMs || 15_000;
+    this.startTimeoutMs = options.startTimeoutMs || 70_000;
 
     this.isProcessingFrame = false;
     this.frameProcessingTimeout = null;
@@ -28,6 +30,10 @@ class ProctoringService {
     this.connected = false;
     this.started = false;
     this.terminated = false;
+    this.startAcknowledgement = null;
+    this.startAcknowledgementTimer = null;
+    this.resolveStartAcknowledgement = null;
+    this.rejectStartAcknowledgement = null;
 
     this.browserMonitoring = false;
     this.boundEvents = [];
@@ -46,6 +52,44 @@ class ProctoringService {
     this.onTerminate = options.onTerminate || (() => { });
     this.onDisconnected = options.onDisconnected || (() => { });
     this.onError = options.onError || (() => { });
+  }
+
+  waitForStartAcknowledgement() {
+    return new Promise((resolve, reject) => {
+      this.resolveStartAcknowledgement = resolve;
+      this.rejectStartAcknowledgement = reject;
+      this.startAcknowledgementTimer = setTimeout(() => {
+        this.settleStartAcknowledgement(
+          new Error(
+            `Proctoring AI did not respond within ${Math.ceil(
+              this.startTimeoutMs / 1000
+            )} seconds.`
+          )
+        );
+      }, this.startTimeoutMs);
+    });
+  }
+
+  settleStartAcknowledgement(error = null) {
+    if (!this.resolveStartAcknowledgement) {
+      return false;
+    }
+
+    clearTimeout(this.startAcknowledgementTimer);
+    this.startAcknowledgementTimer = null;
+
+    const resolve = this.resolveStartAcknowledgement;
+    const reject = this.rejectStartAcknowledgement;
+    this.resolveStartAcknowledgement = null;
+    this.rejectStartAcknowledgement = null;
+
+    if (error) {
+      reject(error);
+    } else {
+      resolve();
+    }
+
+    return true;
   }
 
   // WebSocket URL
@@ -206,6 +250,8 @@ if (this.running) {
 
       // WebSocket
       await this.connectWebSocket(sessionId);
+      await this.startAcknowledgement;
+      this.startAcknowledgement = null;
 
       // Browser monitoring
       this.enableBrowserMonitoring();
@@ -213,6 +259,7 @@ if (this.running) {
       console.log("Waiting for PROCTORING_STARTED...");
     } catch (error) {
       console.error("Proctoring start failed:", error);
+      this.startAcknowledgement = null;
       await this.cleanup();
       this.onError(error);
       throw error;
@@ -223,6 +270,19 @@ if (this.running) {
   connectWebSocket(sessionId) {
     return new Promise((resolve, reject) => {
       let settled = false;
+      const connectionTimeout = setTimeout(() => {
+        if (settled) return;
+
+        settled = true;
+        reject(
+          new Error(
+            `Timed out connecting to the proctoring service after ${Math.ceil(
+              this.connectionTimeoutMs / 1000
+            )} seconds.`
+          )
+        );
+        this.websocket?.close();
+      }, this.connectionTimeoutMs);
 
       try {
         console.log(
@@ -237,6 +297,10 @@ if (this.running) {
         // ----------------------------------------------
 
         this.websocket.onopen = () => {
+          if (settled) return;
+
+          settled = true;
+          clearTimeout(connectionTimeout);
           console.log("Connected to main backend WebSocket.");
 
           this.connected = true;
@@ -254,13 +318,13 @@ if (this.running) {
 
             this.websocket.close();
 
-            if (!settled) {
-              settled = true;
-              reject(error);
-            }
+            reject(error);
 
             return;
           }
+
+          this.startAcknowledgement =
+            this.waitForStartAcknowledgement();
 
           // --------------------------------------------
           // Authenticate + identify assessment
@@ -277,10 +341,7 @@ if (this.running) {
 
           this.onConnected();
 
-          if (!settled) {
-            settled = true;
-            resolve();
-          }
+          resolve();
         };
 
         // ----------------------------------------------
@@ -301,16 +362,23 @@ if (this.running) {
             error
           );
 
-          this.onError(error);
-
           if (!settled) {
             settled = true;
+            clearTimeout(connectionTimeout);
 
             reject(
               new Error(
                 "Unable to connect to the proctoring WebSocket."
               )
             );
+          } else if (
+            !this.settleStartAcknowledgement(
+              new Error(
+                "The proctoring WebSocket failed before AI initialization completed."
+              )
+            )
+          ) {
+            this.onError(error);
           }
         };
 
@@ -333,10 +401,24 @@ if (this.running) {
           this.disableBrowserMonitoring();
 
           this.onDisconnected(event);
+
+          const closeError = new Error(
+            event.reason ||
+              "The proctoring WebSocket closed before AI initialization completed."
+          );
+
+          if (!settled) {
+            settled = true;
+            clearTimeout(connectionTimeout);
+            reject(closeError);
+          } else {
+            this.settleStartAcknowledgement(closeError);
+          }
         };
       } catch (error) {
         if (!settled) {
           settled = true;
+          clearTimeout(connectionTimeout);
           reject(error);
         }
       }
@@ -418,6 +500,7 @@ if (this.running) {
     if (data.type === "PROCTORING_STARTED") {
       this.started = true;
       this.running = true;
+      this.settleStartAcknowledgement();
 
       console.log(
         "AI proctoring successfully started."
@@ -501,7 +584,9 @@ if (this.running) {
         data.message || "Proctoring service error."
       );
 
-      this.onError(error);
+      if (!this.settleStartAcknowledgement(error)) {
+        this.onError(error);
+      }
 
       return;
     }
@@ -915,6 +1000,9 @@ if (this.running) {
 
   // CLEANUP
   async cleanup() {
+    this.settleStartAcknowledgement(
+      new Error("Proctoring initialization was cancelled.")
+    );
     this.stopFrameSending();
     this.disableBrowserMonitoring();
 

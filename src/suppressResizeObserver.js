@@ -1,4 +1,4 @@
-// Suppress benign ResizeObserver errors caused by Monaco Editor / resizable panels
+ // Suppress benign ResizeObserver errors caused by Monaco Editor / resizable panels
 if (typeof window !== 'undefined') {
   const isResizeObserverError = (err) => {
     const msg = typeof err === 'string' ? err : err?.message;

@@ -7,7 +7,8 @@ import {
   pauseFinalQuiz,
   pauseFinalQuizOnUnload,
     submitAssessmentReport,
-    getMyAssessmentReports
+    getMyAssessmentReports,
+    getProctorHealth,
 } from "../../../services/api";
 import ProctoringService from "../../../services/proctoringServices";
 import FinalQuiz from "./FinalQuiz";
@@ -34,6 +35,7 @@ const FinalAssessment = () => {
   // PROCTORING / CAMERA STATE
   const [proctoringError, setProctoringError] = useState(null);
   const [proctoringWarning, setProctoringWarning] = useState(null);
+  const [startingProctoring, setStartingProctoring] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
 
   // REFS
@@ -105,6 +107,10 @@ const FinalAssessment = () => {
   // LOAD / RESUME FINAL ASSESSMENT
   useEffect(() => {
     let cancelled = false;
+
+    void getProctorHealth().catch((healthError) => {
+      console.warn("Proctoring warm-up health check failed:", healthError.message);
+    });
 
     const loadAssessment = async () => {
       try {
@@ -218,6 +224,8 @@ const FinalAssessment = () => {
     if (assessmentActiveRef.current) {
       return;
     }
+
+    setStartingProctoring(true);
 
     try {
       setProctoringError(null);
@@ -443,6 +451,8 @@ const FinalAssessment = () => {
           error?.message ||
           "Unable to start the assessment."
       );
+    } finally {
+      setStartingProctoring(false);
     }
   }, [
     clearAssessmentTimers,
@@ -1380,8 +1390,11 @@ const FinalAssessment = () => {
                 <Button
                   variant="primary"
                   onClick={startAssessment}
+                  disabled={startingProctoring}
                 >
-                  Start Final Assessment
+                  {startingProctoring
+                    ? "Starting proctoring service, please wait..."
+                    : "Start Final Assessment"}
                 </Button>
               </div>
             </div>

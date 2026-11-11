@@ -1506,7 +1506,9 @@ await submitAssessmentReport(formData);
             disabled={resuming}
             className="mt-6 w-full rounded-lg bg-[#3161d1] py-2.5 text-sm font-medium text-white transition hover:bg-[#2952b3] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {resuming ? "Resuming…" : "Resume assessment"}
+            {resuming
+              ? "Starting proctoring service, please wait..."
+              : "Resume assessment"}
           </button>
         </div>
       </div>

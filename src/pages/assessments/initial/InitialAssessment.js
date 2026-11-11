@@ -7,7 +7,11 @@ import {
   heartbeatInitialQuiz,
   pauseInitialQuiz,
   pauseInitialQuizOnUnload,
-  submitAssessmentReport
+  submitAssessmentReport,
+  submitInitialAssessmentRestartRequest,
+  getAssessmentOverview,
+  getMyAssessmentReports,
+  getProctorHealth,
 } from "../../../services/api";
 
 import ProctoringService from "../../../services/proctoringServices";
@@ -46,9 +50,6 @@ const InitialAssessment = () => {
 
   const isCodingStage = location.state?.phase === "coding";
 
-  const isRestartApproved =
-    location.state?.restartApproved === true;
-
   const proctoringRef = useRef(null);
 
   // Hide the normal application shell while the assessment is active.
@@ -77,6 +78,7 @@ const InitialAssessment = () => {
         onStarted: (data) => {
           console.log("AI proctoring started:", data);
           setStartingProctoring(false);
+          setProctoringRetryAvailable(false);
           setError("");
           setAssessmentActive(true);
           setPage("quiz");
@@ -155,11 +157,7 @@ const InitialAssessment = () => {
   // ----------------------------------------------------
   // Page state
   // ----------------------------------------------------
-    const [page, setPage] = useState(
-    isCodingStage || isRestartApproved
-      ? "instructions"
-      : "checking"
-  );
+    const [page, setPage] = useState("instructions");
   const [loading, setLoading] = useState(false);
   const loadingAssessmentRef = useRef(false);
   const [error, setError] = useState("");
@@ -170,11 +168,24 @@ const InitialAssessment = () => {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [reportError, setReportError] = useState("");
+  const [restartRequestReason, setRestartRequestReason] = useState("");
+  const [restartRequestSubmitted, setRestartRequestSubmitted] = useState(false);
+  const [restartRequestSubmitting, setRestartRequestSubmitting] = useState(false);
+  const [restartRequestError, setRestartRequestError] = useState("");
+  const [restartRequestReport, setRestartRequestReport] = useState(null);
   
   const [startingProctoring, setStartingProctoring] = useState(false);
+  const [proctoringRetryAvailable, setProctoringRetryAvailable] =
+    useState(false);
   const [proctoringWarning, setProctoringWarning] = useState(null);
 
   const [codingInfo, setCodingInfo] = useState(null);
+
+  useEffect(() => {
+    void getProctorHealth().catch((healthError) => {
+      console.warn("Proctoring warm-up health check failed:", healthError.message);
+    });
+  }, []);
 
   // ----------------------------------------------------
   // Tab-switch blocking overlay
@@ -222,6 +233,76 @@ const InitialAssessment = () => {
 
   const [quizData, setQuizData] = useState(null);
 
+  const loadRestartRequest = async () => {
+    const [overview, reports] = await Promise.all([
+      getAssessmentOverview(),
+      getMyAssessmentReports(),
+    ]);
+    const sessionId = overview?.initialAssessment?.sessionId;
+    const report = Array.isArray(reports)
+      ? reports.find(
+          (item) =>
+            item.assessment_stage === "INITIAL_QUIZ" &&
+            sessionId != null &&
+            Number(item.quiz_session_id) === Number(sessionId)
+        ) || null
+      : null;
+
+    setRestartRequestReport(report);
+    setRestartRequestSubmitted(Boolean(report));
+    return report;
+  };
+
+  const refreshRestartRequestStatus = async () => {
+    try {
+      setRestartRequestError("");
+      await loadRestartRequest();
+    } catch (err) {
+      console.error("Failed to load Initial Assessment restart status:", err);
+      setRestartRequestError(
+        "Unable to check your restart request. Please retry in a moment."
+      );
+    }
+  };
+
+  useEffect(() => {
+    const reportId = restartRequestReport?.id;
+    if (
+      page !== "expired" ||
+      !reportId ||
+      !["Pending", "Under Review"].includes(restartRequestReport.status)
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const refreshRestartRequest = async () => {
+      try {
+        const reports = await getMyAssessmentReports();
+        const report = Array.isArray(reports)
+          ? reports.find((item) => Number(item.id) === Number(reportId))
+          : null;
+        if (!cancelled && report) {
+          setRestartRequestReport(report);
+          setRestartRequestError("");
+        }
+      } catch (err) {
+        console.error("Failed to refresh Initial Assessment restart status:", err);
+        if (!cancelled) {
+          setRestartRequestError(
+            "Unable to refresh your restart request status. Retrying..."
+          );
+        }
+      }
+    };
+
+    const interval = setInterval(refreshRestartRequest, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [page, restartRequestReport?.id, restartRequestReport?.status]);
+
   // ----------------------------------------------------
   // Load Assessment configuration
   // ----------------------------------------------------
@@ -235,61 +316,6 @@ const InitialAssessment = () => {
     try {
       setLoading(true);
       setError("");
-
-      if (
-        !navigator.mediaDevices ||
-        !navigator.mediaDevices.getUserMedia
-      ) {
-        setError(
-          "Your browser does not support camera and microphone access. Please use Chrome, Edge, or Firefox."
-        );
-        return;
-      }
-
-      let testStream = null;
-
-      try {
-        testStream =
-          await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
-      } catch (mediaErr) {
-        console.error(
-          "Camera and Microphone permission denied:",
-          mediaErr
-        );
-
-        if (
-          mediaErr.name === "NotAllowedError" ||
-          mediaErr.name === "PermissionDeniedError"
-        ) {
-          setError(
-            "Camera and microphone permissions are required to load the assessment. Please allow camera and microphone access in your browser site settings and click Load Assessment again."
-          );
-        } else if (
-          mediaErr.name === "NotFoundError" ||
-          mediaErr.name === "DevicesNotFoundError"
-        ) {
-          setError(
-            "Camera or microphone device was not found. Please connect your camera and microphone and try again."
-          );
-        } else {
-          setError(
-            `Camera and microphone access error: ${
-              mediaErr.message || "Permission not granted"
-            }.`
-          );
-        }
-
-        return;
-      } finally {
-        if (testStream) {
-          testStream.getTracks().forEach((track) =>
-            track.stop()
-          );
-        }
-      }
 
       const response = await startInitialQuiz();
 
@@ -369,13 +395,63 @@ const InitialAssessment = () => {
         err
       );
 
+      if (
+        err.response?.data?.code === "ASSESSMENT_TIME_EXPIRED"
+      ) {
+        setPage("expired");
+        await refreshRestartRequestStatus();
+      }
+
+      const requestTimedOut =
+        err.code === "ECONNABORTED" ||
+        err.code === "ETIMEDOUT";
+      const authenticationExpired =
+        err.authRefreshFailed || err.response?.status === 401;
       setError(
-        err.response?.data?.error ||
-          "Failed to start the initial assessment."
+        authenticationExpired
+          ? "Your sign-in session expired before the assessment could start. Please sign in again, then return to the assessment; your approved restart request remains available."
+          : requestTimedOut
+          ? "The assessment could not be loaded within 45 seconds. Your request may have reached the server; retrying will resume the latest session if it was created."
+          : err.response?.data?.error ||
+              "Failed to start the initial assessment."
       );
     } finally {
       loadingAssessmentRef.current = false;
       setLoading(false);
+    }
+  };
+
+  const handleSubmitRestartRequest = async (e) => {
+    e.preventDefault();
+
+    if (!restartRequestReason.trim()) {
+      setRestartRequestError(
+        "Please explain why you are requesting a new attempt."
+      );
+      return;
+    }
+
+    try {
+      setRestartRequestSubmitting(true);
+      setRestartRequestError("");
+
+      const response = await submitInitialAssessmentRestartRequest(
+        restartRequestReason.trim()
+      );
+      setRestartRequestReport(response?.report || null);
+      setRestartRequestSubmitted(true);
+    } catch (err) {
+      console.error(
+        "Initial Assessment restart request failed:",
+        err.response?.data || err.message
+      );
+
+      setRestartRequestError(
+        err.response?.data?.error ||
+          "Failed to submit the restart request."
+      );
+    } finally {
+      setRestartRequestSubmitting(false);
     }
   };
 
@@ -415,6 +491,7 @@ const InitialAssessment = () => {
     }
 
     setStartingProctoring(true);
+    setProctoringRetryAvailable(false);
     setError("");
     setProctoringWarning(null);
 
@@ -456,6 +533,7 @@ const InitialAssessment = () => {
       );
     } catch (err) {
       setStartingProctoring(false);
+      setProctoringRetryAvailable(true);
 
       console.error(
         "Failed to start proctoring:",
@@ -1484,6 +1562,94 @@ const InitialAssessment = () => {
               "Your assessment time has expired."}
           </p>
 
+          {restartRequestSubmitted ? (
+            <div className="mx-auto mt-6 max-w-lg rounded-xl border border-blue-400/20 bg-blue-500/10 p-4 text-left text-sm text-blue-100">
+              <p>
+                Restart request status:{" "}
+                <strong>{restartRequestReport?.status || "Submitted"}</strong>.
+              </p>
+              {restartRequestReport?.status === "Rejected" ? (
+                <p className="mt-2">
+                  Your request was not approved. Contact an administrator for
+                  more information.
+                </p>
+              ) : ["Approved", "Restarted"].includes(
+                  restartRequestReport?.status
+                ) ? (
+                <>
+                  <p className="mt-2">
+                    An authorized administrator approved your request. You can
+                    now start a new attempt.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={loadAssessment}
+                    disabled={loading}
+                    className="mt-4 inline-flex items-center justify-center rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading ? "Loading assessment..." : "Start new assessment"}
+                  </button>
+                </>
+              ) : (
+                <p className="mt-2">
+                  An authorized administrator must approve your request before
+                  you can begin a new attempt.
+                </p>
+              )}
+              {restartRequestError && (
+                <div className="mt-3">
+                  <p className="text-sm text-red-200">
+                    {restartRequestError}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={refreshRestartRequestStatus}
+                    className="mt-2 rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                  >
+                    Refresh request status
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <form
+              onSubmit={handleSubmitRestartRequest}
+              className="mx-auto mt-6 max-w-lg text-left"
+            >
+              <label className="block text-sm font-medium text-slate-200">
+                Request a new attempt
+                <textarea
+                  value={restartRequestReason}
+                  onChange={(event) =>
+                    setRestartRequestReason(event.target.value)
+                  }
+                  maxLength={2000}
+                  rows={4}
+                  required
+                  disabled={restartRequestSubmitting}
+                  className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900/70 px-3 py-2 text-sm text-white placeholder:text-slate-500"
+                  placeholder="Explain why you are requesting another attempt."
+                />
+              </label>
+
+              {restartRequestError && (
+                <p className="mt-3 text-sm text-red-300">
+                  {restartRequestError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={restartRequestSubmitting}
+                className="mt-4 inline-flex items-center justify-center rounded-xl border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {restartRequestSubmitting
+                  ? "Submitting..."
+                  : "Submit restart request"}
+              </button>
+            </form>
+          )}
+
           <button
             onClick={() =>
               handleExitAssessmentToDashboard()
@@ -1668,13 +1834,15 @@ const InitialAssessment = () => {
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
 
                       <span>
-                        Connecting Proctoring AI... Please wait...
+                        Starting proctoring service, please wait...
                       </span>
                     </>
                   ) : (
                     <>
                       <span>
-                        {resumed
+                        {proctoringRetryAvailable
+                          ? "Retry Proctoring"
+                          : resumed
                           ? "Resume Skill Assessment"
                           : "Start Skill Assessment"}
                       </span>

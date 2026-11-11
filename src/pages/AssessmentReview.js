@@ -16,6 +16,7 @@ const statusStyles = {
   pending: 'bg-red-50 text-red-700',
   'under review': 'bg-orange-50 text-orange-700',
   approved: 'bg-green-50 text-green-700',
+  restarted: 'bg-blue-50 text-blue-700',
   rejected: 'bg-slate-100 text-slate-600',
 };
 
@@ -171,6 +172,20 @@ export default function AssessmentReviews() {
   const handleDecision = async (status) => {
     if (!selectedReport?.id) return;
 
+    const isTimedOutInitialRestart =
+      selectedReport.assessment_stage === 'INITIAL_QUIZ' &&
+      selectedReport.quiz_session?.assessment_type === 'INITIAL' &&
+      selectedReport.quiz_session?.status === 'Timed Out';
+
+    if (
+      isTimedOutInitialRestart &&
+      status === 'Approved' &&
+      !adminNotes.trim()
+    ) {
+      setError('A decision reason is required to authorize this restart.');
+      return;
+    }
+
     try {
       setSavingDecision(true);
       setError('');
@@ -209,7 +224,7 @@ export default function AssessmentReviews() {
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            Review student reports submitted after assessment termination.
+            Review assessment reports and restart requests.
           </p>
         </div>
 
@@ -262,12 +277,13 @@ export default function AssessmentReviews() {
             <option value="Pending">Pending</option>
             <option value="Under Review">Under Review</option>
             <option value="Approved">Approved</option>
+            <option value="Restarted">Restarted</option>
             <option value="Rejected">Rejected</option>
           </select>
         </Card>
       </div>
 
-      <Card title="Assessment Termination Reports">
+      <Card title="Assessment Reports and Restart Requests">
         {loading ? (
           <div className="py-10 text-center text-sm text-slate-400">
             Loading assessment reports...
@@ -384,7 +400,10 @@ export default function AssessmentReviews() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wider text-brand-blue-600">
-                    Assessment Termination Review
+                    {selectedReport.assessment_stage === 'INITIAL_QUIZ' &&
+                    selectedReport.quiz_session?.status === 'Timed Out'
+                      ? 'Initial Assessment Restart Review'
+                      : 'Assessment Termination Review'}
                   </div>
 
                   <h2 className="mt-1 text-xl font-bold text-slate-900">
@@ -453,7 +472,7 @@ export default function AssessmentReviews() {
 
               <div>
                 <div className="text-sm font-semibold text-slate-900">
-                  Termination Reason
+                  Student Request Reason
                 </div>
 
                 <div className="mt-2 rounded-xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700">
@@ -502,14 +521,18 @@ export default function AssessmentReviews() {
 
               <div>
                 <label className="text-sm font-semibold text-slate-900">
-                  Admin Notes
+                  Decision Reason
+                  {selectedReport.assessment_stage === 'INITIAL_QUIZ' &&
+                  selectedReport.quiz_session?.status === 'Timed Out' && (
+                    <span className="ml-1 text-red-600">*</span>
+                  )}
                 </label>
 
                 <textarea
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
                   rows={4}
-                  placeholder="Add notes about your review or decision..."
+                  placeholder="Explain the decision. Required when approving a restart request."
                   className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-brand-blue-400 focus:ring-2 focus:ring-brand-blue-100"
                   disabled={savingDecision}
                 />
@@ -583,4 +606,3 @@ export default function AssessmentReviews() {
     </div>
   );
 }
-
