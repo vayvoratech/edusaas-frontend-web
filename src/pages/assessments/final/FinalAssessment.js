@@ -162,6 +162,16 @@ const FinalAssessment = () => {
           error
         );
 
+        const errorCode = error?.response?.data?.code;
+        if (errorCode === "ASSESSMENT_TIME_EXPIRED") {
+          setAssessmentState("expired");
+          return;
+        }
+        if (errorCode === "ASSESSMENT_ALREADY_COMPLETED") {
+          setAssessmentState("completed");
+          return;
+        }
+
         if (
   error?.response?.status === 409 &&
   error?.response?.data?.code === "ASSESSMENT_TERMINATED"
@@ -446,6 +456,16 @@ const FinalAssessment = () => {
 
       assessmentActiveRef.current = false;
 
+      const errorCode = error?.response?.data?.code;
+      if (errorCode === "ASSESSMENT_TIME_EXPIRED") {
+        setAssessmentState("expired");
+        return;
+      }
+      if (errorCode === "ASSESSMENT_ALREADY_COMPLETED") {
+        setAssessmentState("completed");
+        return;
+      }
+
       setProctoringError(
         error?.response?.data?.error ||
           error?.message ||
@@ -545,6 +565,18 @@ const FinalAssessment = () => {
             );
           }
         } catch (error) {
+          if (
+            error?.response?.data?.code ===
+            "ASSESSMENT_TIME_EXPIRED"
+          ) {
+            clearAssessmentTimers();
+            assessmentActiveRef.current = false;
+            setAssessmentState("expired");
+            await stopProctoring();
+            await exitFullscreen();
+            return;
+          }
+
           console.error(
             "Final assessment heartbeat failed:",
             error
@@ -597,6 +629,18 @@ const FinalAssessment = () => {
 
         setAssessmentState("ready");
       } catch (error) {
+        if (
+          error?.response?.data?.code ===
+          "ASSESSMENT_TIME_EXPIRED"
+        ) {
+          assessmentActiveRef.current = false;
+          clearAssessmentTimers();
+          await stopProctoring();
+          await exitFullscreen();
+          setAssessmentState("expired");
+          return;
+        }
+
         console.error(
           "Failed to pause final assessment:",
           error
